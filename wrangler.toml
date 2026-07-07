@@ -1,0 +1,12 @@
+name = "evroproekti-dashboard"
+main = "worker.js"
+# Акаунтът, в който е създадена D1 базата (Office@s2kdesign.com).
+account_id = "9c3fcd4952bcf0c295532e9884377d37"
+compatibility_date = "2025-05-05"
+compatibility_flags = ["nodejs_compat"]
+
+# Билд на статичния сайт преди деплой (важно за Cloudflare Git деплой / Workers Builds).
+[build]
+command = "npx next build"
+
+# Статичните файлове на дашборда (Next.js ex

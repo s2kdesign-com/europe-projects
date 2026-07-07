@@ -1,0 +1,1 @@
+// Не се използва повече. Деплоят става с plain Cloudflare Worker (worker.js
