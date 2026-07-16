@@ -60,7 +60,8 @@ export function useProjectFilters() {
         sort: f.sort,
         view: f.view,
         tab: f.tab,
-        period: f.period, // периодът е overview-only и не се нулира с филтрите
+        period: f.period, // overview-only — не се нулира с филтрите
+        activityPeriod: f.activityPeriod, // overview-only
       })),
     []
   );
@@ -69,32 +70,14 @@ export function useProjectFilters() {
   const setSort = useCallback((sort) => patch({ sort }), [patch]);
   const setView = useCallback((view) => patch({ view }), [patch]);
   const setPeriod = useCallback((period) => patch({ period }), [patch]);
+  const setActivityPeriod = useCallback((activityPeriod) => patch({ activityPeriod }), [patch]);
   const setTab = useCallback((tab) => patch({ tab, selected: null }), [patch]);
+  // Клик по колона в „Активност" → таб „Процедури", филтриран по седмица и тип.
+  const filterByWeek = useCallback((changeType, weekFrom, weekTo) => patch({ tab: "procedures", selected: null, changeType, weekFrom, weekTo, sort: "updated" }), [patch]);
+  const clearChangeWeek = useCallback(() => patch({ changeType: "", weekFrom: "", weekTo: "" }), [patch]);
   const openProject = useCallback((id) => patch({ selected: id }), [patch]);
   const closeProject = useCallback(() => patch({ selected: null }), [patch]);
 
   const toggleCompare = useCallback((id) => {
     setFilters((f) => {
-      const arr = f.compare || [];
-      if (arr.includes(id)) return { ...f, compare: arr.filter((x) => x !== id) };
-      if (arr.length >= 3) return f; // лимит 3 — игнорираме над него
-      return { ...f, compare: [...arr, id] };
-    });
-  }, []);
-
-  const clearCompare = useCallback(() => patch({ compare: [] }), [patch]);
-
-  return useMemo(
-    () => ({
-      filters,
-      setFilters,
-      patch,
-      toggleInArray,
-      clearAll,
-      setQuery,
-      setSort,
-      setView,
-      setPeriod,
-      setTab,
-      openProject,
-      closeProj
+      const arr = f

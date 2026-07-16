@@ -10,6 +10,8 @@ import {
   DEFAULT_TAB,
   DEFAULT_PERIOD,
   PERIOD_KEYS,
+  DEFAULT_ACTIVITY_PERIOD,
+  ACTIVITY_PERIOD_KEYS,
 } from "./constants.js";
 
 // ---------------------------------------------------------------------------
@@ -121,6 +123,11 @@ export const EMPTY_FILTERS = Object.freeze({
   view: DEFAULT_VIEW,
   tab: DEFAULT_TAB,
   period: DEFAULT_PERIOD,
+  activityPeriod: DEFAULT_ACTIVITY_PERIOD,
+  // Филтър по седмица от диаграмата „Активност на процедурите" (клик по колона).
+  changeType: "", // "new" | "changed" | ""
+  weekFrom: "", // ISO YYYY-MM-DD (включително)
+  weekTo: "", // ISO YYYY-MM-DD (включително)
   selected: null,
   compare: [],
 });
@@ -128,6 +135,20 @@ export const EMPTY_FILTERS = Object.freeze({
 /** Нормализира стойност на период до валиден ключ (30/60/90), иначе 30. */
 export function normalizePeriod(v) {
   return PERIOD_KEYS.includes(v) ? v : DEFAULT_PERIOD;
+}
+
+/** Нормализира периода на „Активност" до валиден ключ (30/60/90), иначе 90. */
+export function normalizeActivityPeriod(v) {
+  return ACTIVITY_PERIOD_KEYS.includes(v) ? v : DEFAULT_ACTIVITY_PERIOD;
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+function inIsoRange(dateStr, from, to) {
+  if (!dateStr || !ISO_DATE.test(String(dateStr).slice(0, 10))) return false;
+  const d = String(dateStr).slice(0, 10);
+  if (from && d < from) return false;
+  if (to && d > to) return false;
+  return true;
 }
 
 function matchesDeadlineWindows(project, windows, now) {
@@ -141,6 +162,18 @@ function matchesDeadlineWindows(project, windows, now) {
   });
 }
 
+// Филтър по седмица + тип промяна (от клик върху „Активност на процедурите").
+// „new" → first_seen в диапазона; „changed" → last_updated в диапазона и различно
+// от first_seen. Празен changeType → без филтър.
+function matchesChangeWeek(p, f) {
+  if (!f.changeType) return true;
+  if (f.changeType === "new") return inIsoRange(p.first_seen, f.weekFrom, f.weekTo);
+  if (f.changeType === "changed") {
+    return p.last_updated && p.first_seen && p.last_updated !== p.first_seen && inIsoRange(p.last_updated, f.weekFrom, f.weekTo);
+  }
+  return true;
+}
+
 /** Прилага всички филтри. Не мутира входа. */
 export function filterProjects(projects, filters = EMPTY_FILTERS, now = new Date()) {
   const f = { ...EMPTY_FILTERS, ...filters };
@@ -151,6 +184,7 @@ export function filterProjects(projects, filters = EMPTY_FILTERS, now = new Date
     if (f.docs && !hasDocuments(p)) return false;
     if (!matchesDeadlineWindows(p, f.deadline, now)) return false;
     if (!matchesQuery(p, f.q)) return false;
+    if (!matchesChangeWeek(p, f)) return false;
     return true;
   });
 }
@@ -241,6 +275,13 @@ export function serializeFilters(filters) {
   // Периодът за „Какво е ново" се записва винаги, за да е споделяемо/възстановимо
   // (напр. ?tab=overview&period=30).
   p.set("period", normalizePeriod(f.period));
+  p.set("activityPeriod", normalizeActivityPeriod(f.activityPeriod));
+  // Филтър по седмица от диаграмата — само когато е активен.
+  if (f.changeType === "new" || f.changeType === "changed") {
+    p.set("changeType", f.changeType);
+    if (f.weekFrom) p.set("weekFrom", f.weekFrom);
+    if (f.weekTo) p.set("weekTo", f.weekTo);
+  }
   if (f.selected) p.set("id", f.selected);
   return p.toString();
 }
@@ -262,6 +303,10 @@ export function deserializeFilters(search) {
     view: p.get("view") || EMPTY_FILTERS.view,
     tab: p.get("tab") || EMPTY_FILTERS.tab,
     period: normalizePeriod(p.get("period")),
+    activityPeriod: normalizeActivityPeriod(p.get("activityPeriod")),
+    changeType: p.get("changeType") === "new" || p.get("changeType") === "changed" ? p.get("changeType") : "",
+    weekFrom: ISO_DATE.test(p.get("weekFrom") || "") ? p.get("weekFrom") : "",
+    weekTo: ISO_DATE.test(p.get("weekTo") || "") ? p.get("weekTo") : "",
     selected: p.get("id") || null,
   };
 }
@@ -273,6 +318,7 @@ export function activeFilterCount(filters) {
   if (f.q) n++;
   for (const key of ["status", "program", "target", "deadline"]) n += f[key].length;
   if (f.docs) n++;
+  if (f.changeType === "new" || f.changeType === "changed") n++;
   return n;
 }
 
@@ -336,78 +382,3 @@ export function generateICS(project, now = new Date()) {
   const end = new Date(start.getTime() + 86400000); // all-day, exclusive end
   const uid = `${project.id}@evroproekti.dashboard`;
   const descParts = [
-    project.program ? `Програма: ${project.program}` : "",
-    project.budget ? `Бюджет: ${project.budget}` : "",
-    project.eligible ? `Допустими: ${project.eligible}` : "",
-    project.link || "",
-  ].filter(Boolean);
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//Европроекти//Дашборд//BG",
-    "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
-    "BEGIN:VEVENT",
-    `UID:${uid}`,
-    `DTSTAMP:${icsStamp(now)}`,
-    `DTSTART;VALUE=DATE:${icsDate(start)}`,
-    `DTEND;VALUE=DATE:${icsDate(end)}`,
-    foldICSLine(`SUMMARY:Краен срок: ${escapeICS(project.name)}`),
-    foldICSLine(`DESCRIPTION:${escapeICS(descParts.join("\n"))}`),
-    project.link ? foldICSLine(`URL:${escapeICS(project.link)}`) : "",
-    "END:VEVENT",
-    "END:VCALENDAR",
-  ].filter(Boolean);
-  return lines.join("\r\n") + "\r\n";
-}
-
-// ---------------------------------------------------------------------------
-// CSV експорт
-// ---------------------------------------------------------------------------
-
-function csvCell(v) {
-  const s = v == null ? "" : String(v);
-  return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-}
-
-/** CSV с BOM за коректни български букви в Excel. */
-export function projectsToCSV(projects, now = new Date()) {
-  const headers = [
-    "Име",
-    "Програма",
-    "Приоритет",
-    "Статус",
-    "Срок (текст)",
-    "Крайна дата",
-    "Дни до срок",
-    "Бюджет",
-    "Допустими кандидати",
-    "Целева група",
-    "Ново/променено",
-    "Линк",
-  ];
-  const rows = (projects || []).map((p) => {
-    const dl = daysLeft(p.deadline_date, now);
-    return [
-      p.name,
-      p.program,
-      p.priority,
-      statusMeta(p.status).label,
-      p.deadline,
-      p.deadline_date,
-      dl == null ? "" : dl,
-      p.budget,
-      p.eligible,
-      targetGroup(p) === "youth" ? "Младежка заетост" : "Общи / бизнес",
-      isNovel(p) ? "да" : "не",
-      p.link,
-    ].map(csvCell).join(",");
-  });
-  return "﻿" + [headers.join(","), ...rows].join("\r\n") + "\r\n";
-}
-
-// ---------------------------------------------------------------------------
-// Статистики за KPI картите
-// ---------------------------------------------------------------------------
-
-expor

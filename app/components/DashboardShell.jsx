@@ -19,6 +19,7 @@ import UpcomingDeadlines from "./UpcomingDeadlines.jsx";
 import ChangeFeed from "./ChangeFeed.jsx";
 import SavedTracked from "./SavedTracked.jsx";
 import FundingCharts from "./FundingCharts.jsx";
+import ProcedureActivity from "./ProcedureActivity.jsx";
 import QuickActions from "./QuickActions.jsx";
 
 import { useProjectFilters } from "../hooks/useProjectFilters.js";
@@ -28,10 +29,10 @@ import { useSavedSync } from "../hooks/useSavedSync.js";
 import {
   filterProjects, sortProjects, groupByProgram, generateICS, projectsToCSV, buildShareUrl, targetGroup, formatDate, daysLeft,
 } from "../lib/project-utils.js";
-import { overviewStats, attentionProjects, changeFeed, urgencyBuckets } from "../lib/overview-utils.js";
+import { overviewStats, attentionProjects, changeFeed, urgencyBuckets, weeklyActivity } from "../lib/overview-utils.js";
 import { recommend, canRecommend } from "../lib/recommend.js";
 import { downloadTextFile, copyText, slugFilename } from "../lib/browser.js";
-import { LS_VIEW, MAX_COMPARE, DEFAULT_VIEW, DEFAULT_PERIOD, TABS } from "../lib/constants.js";
+import { LS_VIEW, MAX_COMPARE, DEFAULT_VIEW, DEFAULT_PERIOD, DEFAULT_ACTIVITY_PERIOD, ACTIVITY_PERIOD_DAYS, TABS } from "../lib/constants.js";
 
 const PERIOD_DAYS = { "30": 30, "60": 60, "90": 90 };
 
@@ -159,6 +160,10 @@ export default function DashboardShell({ initialData = null, fetchList = default
   // „Наближаващи срокове" НЕ зависят от периода — той управлява само „Какво е ново".
   const buckets = useMemo(() => urgencyBuckets(ovProjects, now), [ovProjects, now]);
 
+  const activityPeriod = filters.activityPeriod || DEFAULT_ACTIVITY_PERIOD; // независим от „Какво е ново"
+  const activityDays = ACTIVITY_PERIOD_DAYS[activityPeriod] || 90;
+  const activity = useMemo(() => weeklyActivity(ovProjects, now, activityDays), [ovProjects, now, activityDays]);
+
   const profileComplete = canRecommend(acctProfile);
   const recommendations = useMemo(() => recommend(ovProjects, acctProfile, now), [ovProjects, acctProfile, now]);
 
@@ -222,6 +227,13 @@ export default function DashboardShell({ initialData = null, fetchList = default
             <UpcomingDeadlines buckets={buckets} now={now} isSaved={isSavedFn} savedMeta={saved.savedMeta} onOpen={openProcedure} onToggleSave={toggleSave} onCalendar={downloadICS} onOpenCalendar={() => fx.setTab("calendar")} />
             <ChangeFeed items={feed} onOpen={openProcedure} period={period} onPeriod={fx.setPeriod} />
             <SavedTracked savedProjects={savedProjects} now={now} savedMeta={saved.savedMeta} notes={saved.notes} onNote={saved.setNote} onOpen={openProcedure} onRemove={(id) => toggleSave(id)} />
+            <ProcedureActivity
+              activity={activity}
+              period={activityPeriod}
+              onPeriod={fx.setActivityPeriod}
+              onSelectWeek={(changeType, from, to) => fx.filterByWeek(changeType, from, to)}
+              onSeeAll={() => goProcedures({})}
+            />
             <FundingCharts projects={ovProjects} now={now} />
             <QuickActions
               onSearch={() => goProcedures({})}
@@ -241,7 +253,7 @@ export default function DashboardShell({ initialData = null, fetchList = default
               <FilterPanel filters={filters} programs={programs} counts={counts} onToggle={(k, v) => (v === undefined ? fx.toggleInArray("docs") : fx.toggleInArray(k, v))} onClear={fx.clearAll} onCloseSheet={() => setSheetOpen(false)} isSheet={sheetOpen} />
             </aside>
             <div>
-              <ViewControls filters={filters} resultCount={filtered.length} totalCount={projects.length} onQuery={fx.setQuery} onSort={fx.setSort} onView={fx.setView} onOpenSheet={() => setSheetOpen(true)} onRemoveChip={(c) => (c.kind === "q" ? fx.setQuery("") : c.kind === "docs" ? fx.toggleInArray("docs") : fx.toggleInArray(c.kind, c.val))} onClearAll={fx.clearAll} onExportCSV={() => exportCSV(filtered)} onPrint={() => window.print()} onCopyView={copyView} />
+              <ViewControls filters={filters} resultCount={filtered.length} totalCount={projects.length} onQuery={fx.setQuery} onSort={fx.setSort} onView={fx.setView} onOpenSheet={() => setSheetOpen(true)} onRemoveChip={(c) => (c.kind === "q" ? fx.setQuery("") : c.kind === "docs" ? fx.toggleInArray("docs") : c.kind === "changeWeek" ? fx.clearChangeWeek() : fx.toggleInArray(c.kind, c.val))} onClearAll={fx.clearAll} onExportCSV={() => exportCSV(filtered)} onPrint={() => window.print()} onCopyView={copyView} />
               <Results items={filtered} />
             </div>
           </div>
@@ -282,18 +294,4 @@ export default function DashboardShell({ initialData = null, fetchList = default
 
       {compareProjects.length > 0 && !showCompare && (
         <div className="compare-tray" role="region" aria-label="Сравнение">
-          <Icon name="compare" size={18} />
-          <strong>{compareProjects.length}</strong> за сравнение{compareProjects.length >= MAX_COMPARE ? " (макс. 3)" : ""}
-          <button className="btn btn-primary" onClick={() => setShowCompare(true)}>Сравни</button>
-          <button className="iconbtn" style={{ color: "#fff" }} onClick={fx.clearCompare} aria-label="Изчисти сравнението"><Icon name="close" size={18} /></button>
-        </div>
-      )}
-
-      {showCompare && compareProjects.length > 0 && (
-        <CompareDrawer projects={compareProjects} onClose={() => setShowCompare(false)} onRemove={(id) => fx.toggleCompare(id)} />
-      )}
-
-      {toast && <div className="toast" role="status"><Icon name="check" size={16} /> {toast}</div>}
-    </>
-  );
-}
+          <Icon na

@@ -132,8 +132,11 @@
 .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
 .donut-wrap { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
 .chart-note { display: flex; gap: 6px; align-items: flex-start; font-size: 12px; color: var(--muted); margin-top: var(--s4); }
-.chart-note .icon { color: var(--faint); flex: none; margin-top: 2px; }
 
-/* ---- Quick actions ---- */
-.quick-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--s3); }
-.quick-btn { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 10px 14px; background: var(--surface); border: 1px solid var(
+/* ---- „Активност на процедурите" (седмична диаграма) ---- */
+.act-section { min-width: 0; }
+.act-head { align-items: flex-start; }
+.act-titles { min-width: 0; }
+.act-sub { margin: 2px 0 0; font-size: 13px; color: var(--muted); font-weight: 500; }
+.act-period { margin-left: auto; display: flex; }
+.act-period .segmented 

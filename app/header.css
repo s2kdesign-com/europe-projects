@@ -1,34 +1,24 @@
 /* ============================================================
-   Хедър: подредба и хоризонтално скролваща навигация на мобилно.
+   Хедър: подредба, хоризонтално скролваща навигация на мобилно и
+   компактен режим при скрол (скрива само горния ред).
    ============================================================ */
 
-/* Ред на елементите (плоският markup е brand, account, nav, hint). */
+/* Desktop/tablet: .appbar-top не създава кутия (display:contents), за да останат
+   brand, nav и account на един ред чрез order (както преди). */
+.appbar-top { display: contents; }
 .brand { order: 1; }
 .nav { order: 2; }
 .appbar-account { order: 3; }
 .nav-swipe-hint { order: 4; display: none; }
 
-/* Мобилно: лого горе-ляво, вход горе-дясно, навигацията — хоризонтален скрол. */
+/* Мобилно: лого+вход в горен ред (свиваем), навигацията — хоризонтален скрол. */
 @media (max-width: 720px) {
   .appbar-inner { flex-wrap: wrap; row-gap: 8px; }
-  .brand { order: 1; }
-  .appbar-account { order: 2; margin-left: auto; }
-  .nav {
-    order: 3; flex: 0 0 100%; width: 100%; margin-left: 0;
-    overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; padding-bottom: 2px;
-  }
-  .nav::-webkit-scrollbar { display: none; }
-  .nav-tab { flex: 0 0 auto; white-space: nowrap; }
-  .nav-swipe-hint {
-    order: 4; display: flex; flex: 0 0 100%;
-    align-items: center; justify-content: center; gap: 6px;
-    font-size: 11px; color: var(--faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-  }
-}
 
-/* Много тесни екрани: скъси надписа на бутона за вход. */
-@media (max-width: 400px) {
-  .um-login-label { display: none; }
-  .btn-google::after { content: "Вход"; font-weight: 700; }
-}
+  /* Горен ред: brand (ляво) + account (дясно). Свива се в компактен режим.
+     overflow е visible в пълния режим, за да не се отрязва падащото потребителско
+     меню; hidden се прилага само при свиване (в .is-compact по-долу). */
+  .appbar-top {
+    display: flex; align-items: center; gap: var(--s4); width: 100%; order: 1; min-width: 0;
+    max-height: 72px; opacity: 1; transform: translateY(0); overflow: visible;
+    transition: max-height 220ms ease, opacity 160ms ease, transfor

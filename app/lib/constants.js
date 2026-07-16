@@ -57,6 +57,16 @@ export const PERIODS = [
 export const DEFAULT_PERIOD = "30";
 export const PERIOD_KEYS = PERIODS.map((p) => p.key);
 
+// Периоди за картата „Активност на процедурите" (независим от горния период).
+export const ACTIVITY_PERIODS = [
+  { key: "30", label: "30 дни", days: 30 },
+  { key: "60", label: "60 дни", days: 60 },
+  { key: "90", label: "90 дни", days: 90 },
+];
+export const DEFAULT_ACTIVITY_PERIOD = "90";
+export const ACTIVITY_PERIOD_KEYS = ACTIVITY_PERIODS.map((p) => p.key);
+export const ACTIVITY_PERIOD_DAYS = { "30": 30, "60": 60, "90": 90 };
+
 // Кофи по спешност за наближаващите срокове.
 export const URGENCY_BUCKETS = [
   { key: "overdue", label: "Изтекли", max: -1 },
@@ -72,10 +82,4 @@ export const LS_VIEW = "evroproekti:view:v1";
 export const LS_PROFILE = "evroproekti:profile:v1";
 export const LS_LAST_VISIT = "evroproekti:lastVisit:v1";
 
-// Профил (за препоръки/филтриране). Ползваме само полета, които реално
-// съществуват в данните — програма и целева група. Без бюджет/сектор, защото
-// тези данни са свободен текст и не са структурирани.
-export const PROFILE_DEFAULT = {
-  programs: [], // предпочитани програми
-  target: "", // "youth" | "general" | ""
-  onlyOpen: 
+// П

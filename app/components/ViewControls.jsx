@@ -3,8 +3,14 @@
 import Icon from "./Icon.jsx";
 import { SORT_OPTIONS, VIEWS, STATUS, TARGET_GROUP, DEADLINE_WINDOWS } from "../lib/constants.js";
 import { activeFilterCount } from "../lib/project-utils.js";
+import { formatWeekLabel } from "../lib/overview-utils.js";
 
 const VIEW_ICON = { cards: "grid", list: "list", program: "layers" };
+
+function isoToDate(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ""));
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+}
 
 // Етикети за активните чипове.
 function chipLabels(filters) {
@@ -18,6 +24,11 @@ function chipLabels(filters) {
   });
   (filters.program || []).forEach((p) => out.push({ key: "program:" + p, label: p, kind: "program", val: p }));
   if (filters.docs) out.push({ key: "docs", label: "С документи", kind: "docs" });
+  if (filters.changeType === "new" || filters.changeType === "changed") {
+    const from = isoToDate(filters.weekFrom), to = isoToDate(filters.weekTo);
+    const range = from && to ? " · " + formatWeekLabel(from, to).full : "";
+    out.push({ key: "changeWeek", label: (filters.changeType === "new" ? "Нови" : "Актуализирани") + range, kind: "changeWeek" });
+  }
   return out;
 }
 
@@ -94,22 +105,4 @@ export default function ViewControls({
         <span className="result-count" aria-live="polite">
           <strong>{resultCount}</strong> от {totalCount} процедури
         </span>
-        {chips.length > 0 && (
-          <div className="chips">
-            {chips.map((c) => (
-              <span className="chip" key={c.key}>
-                {c.label}
-                <button onClick={() => onRemoveChip(c)} aria-label={`Премахни филтър: ${c.label}`}>
-                  <Icon name="close" size={14} />
-                </button>
-              </span>
-            ))}
-            <button className="btn btn-ghost" style={{ minHeight: 32, padding: "2px 10px" }} onClick={onClearAll}>
-              Изчисти всички
-            </button>
-          </div>
-        )}
-      </div>
-    </>
-  );
-}
+        {chips.length > 0 && 

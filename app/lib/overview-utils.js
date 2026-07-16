@@ -222,35 +222,18 @@ export function newChangedOverWeeks(projects, now = new Date(), weeks = 6) {
   return out;
 }
 
-function countMap(arr, keyFn) {
-  const m = {};
-  for (const x of arr || []) {
-    const k = keyFn(x);
-    if (k == null) continue;
-    m[k] = (m[k] || 0) + 1;
-  }
-  return m;
-}
-function countBy(arr, keyFn) {
-  const m = countMap(arr, keyFn);
-  return Object.entries(m)
-    .map(([label, value]) => ({ label, value }))
-    .sort((a, b) => b.value - a.value);
-}
+// ---- „Активност на процедурите" (седмични серии Нови/Актуализирани) ----
+// Класификация от РЕАЛНИ полета:
+//   • Нова          = first_seen попада в седмицата;
+//   • Актуализирана = last_updated попада в седмицата И last_updated ≠ first_seen
+//                     И е в различна седмица от first_seen (без двойно броене).
+// Седмица = понеделник–неделя (BG locale). Смятат се 2×N седмици, за да имаме и
+// непосредствено предходния период за сравнение (тенденция).
 
-// ---- Разширени KPI (само реални стойности) ----
-export function overviewStats(projects, savedCount, now = new Date()) {
-  let open = 0, exp7 = 0, exp30 = 0, newWeek = 0, changedWeek = 0, withDocs = 0, noDocs = 0;
-  for (const p of projects || []) {
-    const isOpen = p.status === "open" || p.status === "closing_soon";
-    if (isOpen) open++;
-    const dl = daysLeft(p.deadline_date, now);
-    if (isOpen && dl != null && dl >= 0 && dl <= 7) exp7++;
-    if (isOpen && dl != null && dl >= 0 && dl <= 30) exp30++;
-    if (isNewSince(p, now)) newWeek++;
-    else if (isChangedSince(p, now)) changedWeek++;
-    if ((p.doc_count || 0) > 0) withDocs++;
-    else if (isOpen) noDocs++;
-  }
-  return { open, exp7, exp30, newWeek, changedWeek, withDocs, noDocs, saved: savedCount, total: (projects || []).length };
-}
+const BG_MONTHS_FULL = ["януари", "февруари", "март", "април", "май", "юни", "юли", "август", "септември", "октомври", "ноември", "декември"];
+const pad2 = (n) => String(n).padStart(2, "0");
+const isoDate = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+function mondayOf(date) {
+  const x = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
