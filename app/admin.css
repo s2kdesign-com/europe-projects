@@ -1,0 +1,39 @@
+/* ============================================================
+   Админ конзола (Настройки): табове, таблици, роли, Exceptions, Сигнали.
+   ============================================================ */
+.admin { max-width: 960px; }
+.admin-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+.admin-tab {
+  flex: 1 1 0; min-width: 0; justify-content: center;
+  min-height: 46px; padding: 8px 12px; border: none; background: none; color: var(--muted);
+  font-weight: 700; font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent;
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+}
+.admin-tab:hover { color: var(--ink); background: var(--surface-2); border-radius: var(--r-sm) var(--r-sm) 0 0; }
+.admin-tab[aria-selected="true"] { color: var(--primary-ink); border-bottom-color: var(--primary); }
+@media (max-width: 640px) {
+  .admin-tabs { overflow-x: auto; }
+  .admin-tab { flex: 1 0 auto; }
+  .admin-tab .tab-label { display: none; }
+}
+
+.sys-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; margin: 0; }
+.sys-grid dt { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--faint); }
+.sys-grid dd { margin: 2px 0 0; font-size: 15px; color: var(--ink-2); overflow-wrap: anywhere; }
+
+.role-chip { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; background: var(--primary-weak); color: var(--primary-ink); border-radius: var(--r-pill); padding: 1px 7px; vertical-align: middle; }
+
+.table-scroll { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; min-width: 640px; }
+.admin-table th, .admin-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 13.5px; vertical-align: middle; }
+.admin-table thead th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--faint); font-weight: 800; }
+.u-cell { display: flex; align-items: center; gap: 8px; }
+.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; overflow-wrap: anywhere; }
+.nowrap { white-space: nowrap; }
+.err-row { cursor: pointer; }
+.err-row:hover { background: var(--surface-2); }
+.err-msg { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.err-detail { white-space: pre-wrap; font-size: 11.5px; background: var(--surface-sunken); padding: 10px; border-radius: var(--r-sm); margin: 0; overflow-x: auto; color: var(--ink-2); }
+.fb-desc { max-width: 420px; white-space: pre-wrap; }
+
+@media (max-width: 640px) { .sys-grid { grid-template-columns: 1fr; } .err-msg { max-width: 180px; } }

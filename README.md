@@ -1,76 +1,105 @@
-# Европроекти — Дашборд
+# Европроекти — Табло
 
-Модерен Next.js дашборд за активни и предстоящи европроцедури за България
-(с фокус върху младежка заетост). Данните се пазят в **Cloudflare D1** и се
-**обновяват автоматично всеки ден** от насрочената задача в Claude.
+Работно пространство за активни и предстоящи европроцедури за България.
+Данните са в **Cloudflare D1** и се **обновяват автоматично всеки ден** от
+насрочена задача. Изгражда се със статичен **Next.js export** + **Cloudflare
+Worker** (сервира статиката + лек JSON API).
 
-## Как е устроено
+## Начална страница „Обзор"
 
-```
-Насрочена задача (всеки ден 08:08)
-   │  прави уеб проучване + записва в D1 чрез Cloudflare MCP
-   ▼
-Cloudflare D1  «evroproekti-dashboard»   (таблици: projects, snapshots)
-   ▲  чете през /api/projects (D1 binding в worker.js)
-   │
-Cloudflare Worker + статичен Next.js дашборд (./out)
-```
+Обзорът отговаря в първите секунди на: кое е спешно, кое е ново/променено, кое
+е подходящо за мен и какво следя. Секции:
 
-- **Групиране по програма/приоритет** (ПРЧР, ПКИП, Образование, Околна среда…).
-- Статуси: Отворена / Изтича скоро / Предстояща / Приключена.
-- Търсене, филтри (Всички / Отворени / Предстоящи / Младежки), броячи на дни до срок.
-- Банер „Ново/променено" от последния дневен snapshot.
+1. **Хедър** — поздрав, час на последно обновяване, статус на авто-обновяването, бутон „Обнови сега", какво се е сменило от последното посещение, филтри за период (Днес/7/30 дни), програма и тип кандидат.
+2. **Изискват внимание** — процедури с доказуеми сигнали: изтичащи скоро, нови/обновени тази седмица, промяна по следена, без публикувани условия. Подредени по спешност; всяка карта показва точните причини (текст + икона) и действия (Детайли, Запази, Сравни, Календар).
+3. **Най-подходящи за вас** — по потребителски профил (програми, тип кандидат) с **прозрачна** оценка за съответствие и обяснение „защо". Ако липсват данни → „Нужна е допълнителна проверка".
+4. **Разширени KPI карти** (реални): отворени, изтичащи до 7/30 дни, нови/променени тази седмица, запазени, подходящи за профила, с документи, без публикувани условия. Кликат и филтрират.
+5. **Наближаващи срокове** — групиране по спешност, оставащи дни, времева линия (% до срока), статус на документите, индикатор „запазена" и „променена след запазване". Изгледи: по спешност / списък / календар.
+6. **Какво е ново** — хронологичен поток (нови и обновени процедури) с дата, вид, кратко обяснение и линк към детайли.
+7. **Запазени и следени** — разделени на „Изискват внимание / Без промени / Приключили", с персонални бележки (локални).
+8. **Финансиране по направления** — интерактивни SVG диаграми (без библиотека): срокове по месеци, процедури по програма, по статус, по тип кандидат, нови/променени във времето.
+9. **Бързи действия** — търсене, профил, запазени, календар, експорт на срокове, напомняне (.ics), сравнение.
 
-База данни (вече създадена):
-- Име: `evroproekti-dashboard`
-- ID: `d5f1bb40-3729-4c11-ae06-efbd4b5c9760`
-- Акаунт: Office@s2kdesign.com (`9c3fcd4952bcf0c295532e9884377d37`)
+Профилът, запазените, бележките и изгледът се пазят локално (localStorage).
 
-## Деплой в Cloudflare (еднократно)
+## Как се изчисляват показателите (само реални данни)
 
-Нужен е Node 18+ (работи и на Node 24) и вход в Cloudflare.
+Полета: `program, priority, category(youth/new/other), status, deadline_date,
+budget(своб. текст), eligible(своб. текст), link, notes, is_new, first_seen,
+last_updated, year`, + `doc_count`, глобален `snapshot`.
+
+- „Ново тази седмица" = `first_seen` в последните 7 дни. „Променено" = `last_updated`
+  в последните 7 дни и различно от `first_seen`.
+- „Изтичащи до 7/30 дни" = от `deadline_date`. Времевата линия = прогрес от
+  `first_seen` до `deadline_date`.
+- „Промяна след запазване" = при запазване пазим `last_updated`; сравняваме с текущия.
+- Релевантност = прозрачни точки: предпочитана програма (+50), тип кандидат (+30), отворена (+20).
+
+**Съзнателно НЕ се показват** (за да няма измислени данни): сумарен бюджет и
+бюджет по програма (бюджетът е свободен текст като „83 млн. €" / „Държавен бюджет"),
+и разбивка по **сектор** (няма такова поле). Използва се програмата като налично измерение.
+
+## SEO
+
+Meta таговете, Open Graph, Twitter Card, JSON-LD, `robots.txt`, `sitemap.xml`,
+`site.webmanifest`, favicon и OG картинка (`public/`) се управляват от
+`app/layout.jsx`. Публичният адрес е в константата `SITE_URL` — при собствен
+домейн смени само нея.
+
+## Архитектура
+
+Компоненти (`app/components/`): `DashboardShell` (оркестратор); Обзор —
+`OverviewHeader, OverviewKPIs, AttentionSection, RecommendedSection,
+UpcomingDeadlines, ChangeFeed, SavedTracked, FundingCharts, QuickActions,
+ProfileModal, Chart`; общи — `ProjectCard, ProjectListRow, ProjectActions,
+ProjectDrawer, CompareDrawer, DeadlineCalendar, StatusBadge, Icon, Markdown, States`.
+
+Логика без React (`app/lib/`): `project-utils.js`, `overview-utils.js`,
+`constants.js`, `browser.js`. Hooks: `useProjectFilters, useLocalStorage,
+useProfile, useFocusTrap`.
+
+### API (worker.js)
+
+| Път | Описание |
+| --- | --- |
+| `GET /api/projects` | Лек списък: проекти + брой документи + последен snapshot. |
+| `GET /api/project?id=…` | Пълни данни + документи (мързеливо). |
+| `GET /api/documents?project_id=…` | Само документите на процедура. |
+
+Prepared statements, безопасни грешки, коректни HTTP кодове.
+
+## Схема и миграции
+
+`migrations/0001_indexes.sql` — само добавящи индекси (идемпотентни).
+`fixtures/seed.sql` + `fixtures/sample-data.json` — локални примерни данни.
+**Не се прилагат към продукционната D1.**
+
+`projects`: id, name, program, priority, category, status, deadline, deadline_date,
+budget, eligible, link, notes, is_new, first_seen, last_updated, year.
+`documents`: id, project_id, title, doc_type, content, source_url.
+`snapshots`: id, run_date, summary, created_at.
+
+## Разработка
 
 ```bash
-cd dashboard
-npm install
-
-# 1) Вход в Cloudflare (отваря браузър)
-npx wrangler login
-#    ИЛИ задай API token:  set CLOUDFLARE_API_TOKEN=...   (Windows)
-
-# 2) Билд + деплой (прави `next build` и качва Worker-а с D1 binding)
-npm run deploy
+npm ci
+npm run dev        # Next.js dev
+npm run build      # статичен export в ./out
+npm run lint       # ESLint (next/core-web-vitals)
+npm test           # Vitest (unit + интеграционни)
 ```
 
-Накрая получаваш адрес от вида
-`https://evroproekti-dashboard.<твой-subdomain>.workers.dev`.
+## Деплой (ръчно)
 
-> Ако имаш стара папка `.open-next` от предишен опит — може да я изтриеш, вече не се ползва.
-
-### Локален преглед
 ```bash
-npm run dev     # Next.js dev сървър (само UI; за реални данни ползвай деплоя)
+npm run deploy     # next build + wrangler deploy
 ```
 
-## Структура
+Валидиране без деплой: `npx wrangler deploy --dry-run`.
+DB: `evroproekti-dashboard` (`d5f1bb40-3729-4c11-ae06-efbd4b5c9760`),
+акаунт Office@s2kdesign.com (`9c3fcd4952bcf0c295532e9884377d37`).
 
-```
-dashboard/
-├─ app/
-│  ├─ page.jsx              # клиентски компонент, тегли /api/projects
-│  ├─ layout.jsx
-│  ├─ globals.css           # стилове (модерен вид)
-│  └─ components/Dashboard.jsx  # UI: секции, филтри, карти
-├─ worker.js                # Cloudflare Worker: /api/projects (D1) + статични файлове
-├─ wrangler.toml            # binding-и (D1, ASSETS) + конфигурация
-├─ next.config.mjs          # output: "export"
-└─ package.json
-```
+## Локален преглед
 
-## Схема на базата
-
-`projects`: id, name, program, priority, category (youth/new/other),
-status (open/closing_soon/upcoming/closed), deadline, deadline_date, budget,
-eligible, link, notes, is_new, first_seen, last_updated.
-
-`snapshots`: id, run_date, summary, created_at — дневно резюме „какво е ново".
+`preview.html` (в тази папка) е самостоятелен файл с целия UI и вградени примерни
+данни — отваря се директно в браузър, без сървър.

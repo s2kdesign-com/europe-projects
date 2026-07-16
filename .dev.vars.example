@@ -1,0 +1,8 @@
+# Примерни променливи за ЛОКАЛНА разработка (`wrangler dev`).
+# Копирайте като `.dev.vars` и попълнете. НЕ комитвайте `.dev.vars` (вече е в .gitignore).
+# За продукция ползвайте `wrangler secret put <NAME>` — не слагайте тайни в wrangler.toml.
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+AUTH_SECRET=
+APP_URL=http://localhost:8787

@@ -9,4 +9,29 @@ compatibility_flags = ["nodejs_compat"]
 [build]
 command = "npx next build"
 
-# Статичните файлове на дашборда (Next.js ex
+# Статичните файлове на дашборда (Next.js export).
+[assets]
+directory = "./out"
+binding = "ASSETS"
+
+# База данни Cloudflare D1 с проследяваните европроекти.
+# Обновява се всеки ден от насрочената задача в Claude.
+[[d1_databases]]
+binding = "DB"
+database_name = "evroproekti-dashboard"
+database_id = "d5f1bb40-3729-4c11-ae06-efbd4b5c9760"
+
+# ---------------------------------------------------------------------------
+# Автентикация (Google OAuth). НЕ слагайте тайни тук — това е под version control.
+#
+# Публичен, не-таен параметър — може да остане тук за продукция:
+[vars]
+APP_URL = "https://evroproekti-dashboard.autumn-limit-8eff.workers.dev"
+#
+# Тайните се задават с `wrangler secret put`:
+#   wrangler secret put GOOGLE_CLIENT_ID
+#   wrangler secret put GOOGLE_CLIENT_SECRET
+#   wrangler secret put AUTH_SECRET      # дълъг случаен низ, напр. `openssl rand -base64 48`
+#
+# За ЛОКАЛНА разработка ползвайте .dev.vars (копие на .dev.vars.example).
+# ---------------------------------------------------------------------------

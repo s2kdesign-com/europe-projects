@@ -1,0 +1,15 @@
+{
+  "name": "Европроекти — Табло",
+  "short_name": "Европроекти",
+  "description": "Активни и предстоящи европроцедури за България.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#0b6ea3",
+  "lang": "bg",
+  "dir": "ltr",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

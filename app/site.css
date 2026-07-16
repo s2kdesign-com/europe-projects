@@ -1,0 +1,168 @@
+/* ============================================================
+   Onboarding модал, бисквитки, нов футър, changelog, правни страници.
+   ============================================================ */
+
+/* --- Централизирани слоеве (z-index) — само един модал overlay активен --- */
+:root {
+  --z-header: 40;
+  --z-tray: 50;
+  --z-cookie: 60;   /* банер за бисквитки */
+  --z-overlay: 80;  /* всички модали (drawer, welcome, settings, feedback) — НАД банера */
+  --z-toast: 90;
+}
+.appbar { z-index: var(--z-header); }
+.compare-tray { z-index: var(--z-tray); }
+.cookie-banner { z-index: var(--z-cookie); }
+.overlay { z-index: var(--z-overlay); }
+.toast { z-index: var(--z-toast); }
+
+/* --- Sticky footer layout --- */
+body { min-height: 100dvh; display: flex; flex-direction: column; }
+#main { flex: 1 0 auto; }
+.appbar, .site-footer { flex: none; }
+
+/* --- Welcome (onboarding) модал --- */
+.welcome-overlay { align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(5px); }
+.welcome { width: min(720px, 100%); max-height: 88vh; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--sh-3); position: relative; display: flex; flex-direction: column; animation: slideIn 0.2s ease; }
+.welcome-x { position: absolute; top: 12px; right: 12px; z-index: 2; }
+.welcome-scroll { overflow-y: auto; padding: 28px; }
+.welcome-sec { padding: 20px 0; border-top: 1px solid var(--line); }
+.welcome-sec:first-child { padding-top: 4px; border-top: none; }
+.welcome-mark { width: 56px; height: 56px; border-radius: 14px; display: inline-grid; place-items: center; background: linear-gradient(135deg, var(--primary), var(--primary-strong)); color: #fff; margin-bottom: 10px; }
+.welcome-eyebrow { margin: 0; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary); }
+.welcome h2 { margin: 4px 0 8px; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+.welcome-lead { margin: 0 0 16px; color: var(--ink-2); font-size: 15px; line-height: 1.55; }
+.welcome-benefits { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.welcome-benefit { display: flex; flex-direction: column; gap: 6px; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; }
+.welcome-benefit .wb-ico { width: 34px; height: 34px; border-radius: 9px; background: var(--primary-weak); color: var(--primary); display: grid; place-items: center; }
+.welcome-benefit strong { display: block; font-size: 13.5px; }
+.welcome-benefit span { font-size: 12.5px; color: var(--muted); }
+.welcome-note { display: flex; gap: 6px; align-items: flex-start; font-size: 13px; color: var(--muted); background: var(--primary-weak); border-radius: var(--r); padding: 10px 12px; }
+.welcome-note .icon { color: var(--primary); flex: none; margin-top: 2px; }
+.welcome-disclaimer { font-size: 12.5px; color: var(--faint); margin: 10px 0 0; }
+.welcome-login h3, .welcome-links h3 { margin: 0 0 12px; font-size: 16px; font-weight: 800; }
+.welcome-login-text { margin: 10px 0; font-size: 13.5px; color: var(--muted); }
+.welcome-guest { width: 100%; justify-content: center; }
+.welcome-legal { margin: 12px 0 0; font-size: 12px; color: var(--muted); }
+.welcome-links-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.welcome-link { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13.5px; padding: 6px 10px; border-radius: var(--r-sm); background: var(--surface-2); text-decoration: none; }
+.welcome-link:hover { background: var(--primary-weak); }
+.welcome-version { margin: 12px 0 0; font-size: 12px; color: var(--faint); }
+@media (max-width: 560px) {
+  .welcome-overlay { padding: 0; align-items: flex-start; }
+  .welcome { width: calc(100% - 24px); margin: 12px auto; max-height: calc(100dvh - 24px); border-radius: 16px; }
+  .welcome-scroll { padding: 20px; }
+  .welcome-benefits { grid-template-columns: 1fr; }
+  .welcome h2 { font-size: 21px; }
+}
+
+/* --- Cookie банер (компактна лента; никога заедно с модала) --- */
+.cookie-banner {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px;
+  width: calc(100% - 32px); max-width: 960px; min-width: 0; box-sizing: border-box;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-lg);
+  box-shadow: var(--sh-3); padding: 16px 20px;
+  display: flex; align-items: center; gap: 20px; flex-wrap: nowrap;
+}
+.cookie-banner * { box-sizing: border-box; }
+.cookie-text { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--ink-2); flex: 1 1 auto; min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break: normal; white-space: normal; }
+.cookie-text > .icon { color: var(--primary); flex: none; margin-top: 1px; }
+.cookie-text-short { display: none; }
+.cookie-actions { display: flex; gap: 8px; flex: none; align-items: center; min-width: 0; }
+.cookie-actions .btn { white-space: nowrap; }
+
+/* Tablet 641–900: разрешаваме wrap, но не пълен mobile layout. Действията
+   могат да преминат на нов ред при недостатъчно място. */
+@media (max-width: 900px) {
+  .cookie-banner { flex-wrap: wrap; gap: 12px; }
+  .cookie-text { flex: 1 1 100%; }
+  .cookie-actions { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-end; }
+}
+
+/* Mobile ≤640: компактен fixed bottom sheet, вертикални бутони, кратък текст.
+   Ширината се извежда от inset-ите (12px от двете страни) + box-sizing:border-box,
+   без width:100vw и без transform-центриране, за да няма хоризонтален overflow. */
+@media (max-width: 640px) {
+  .cookie-banner {
+    left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); transform: none;
+    width: auto; max-width: none; min-width: 0; height: auto; min-height: 0; max-height: calc(100dvh - 24px);
+    padding: 16px; border-radius: 16px; overflow-x: clip; overflow-y: auto;
+    flex-direction: column; align-items: stretch; gap: 14px; flex-wrap: nowrap;
+  }
+  .cookie-text { flex: none; font-size: 14px; text-align: left; }
+  .cookie-text-full { display: none; }
+  .cookie-text-short { display: inline; }
+  /* Действия: 1 колона на пълна ширина, равни бутони, touch target ≥ 48px */
+  .cookie-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; width: 100%; min-width: 0; }
+  .cookie-actions .btn { width: 100%; max-width: 100%; min-width: 0; min-height: 48px; justify-content: center; text-align: center; white-space: normal; }
+}
+
+/* --- Cookie settings модал (отделен; bottom sheet на mobile) --- */
+.cookie-overlay { align-items: center; justify-content: center; }
+.cookie-settings { width: min(460px, 92%); background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--sh-3); display: flex; flex-direction: column; max-height: calc(100dvh - 40px); animation: slideIn 0.2s ease; }
+.cookie-settings-head { display: flex; align-items: flex-start; gap: 12px; padding: 20px 20px 6px; }
+.cookie-settings-head h2 { flex: 1; margin: 0; font-size: 18px; font-weight: 800; }
+.cookie-settings-body { padding: 4px 20px 8px; overflow-y: auto; }
+.cookie-settings-actions { display: flex; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--line); position: sticky; bottom: 0; background: var(--surface); }
+.cookie-cat { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.cookie-cat:first-of-type { border-top: none; }
+.cookie-cat strong { display: block; font-size: 14px; }
+.cookie-cat span { font-size: 12.5px; color: var(--muted); }
+.cookie-cat input { width: 20px; height: 20px; accent-color: var(--primary); flex: none; margin-left: auto; }
+@media (max-width: 640px) {
+  .cookie-overlay { align-items: flex-end; }
+  .cookie-settings { width: 100%; max-width: none; max-height: 90dvh; border-radius: 16px 16px 0 0; }
+}
+
+/* --- Нов футър --- */
+.site-footer { border-top: 1px solid var(--line); background: var(--surface-sunken); margin-top: var(--s6); }
+.site-footer-inner { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: var(--s5); padding: 36px var(--s4) 28px; }
+.sf-col { min-width: 0; }
+.sf-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+.sf-tagline { margin: 10px 0 6px; font-weight: 700; color: var(--ink-2); font-size: 14px; }
+.sf-desc { margin: 0 0 10px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.sf-status { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); font-weight: 600; margin: 0 0 10px; }
+.sf-title { margin: 0 0 12px; font-size: 14px; font-weight: 800; }
+.sf-links { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.sf-links-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+.sf-link { background: none; border: none; padding: 4px 0; color: var(--ink-2); font-size: 13.5px; font-weight: 600; cursor: pointer; text-align: left; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.sf-link:hover { color: var(--primary); }
+.sf-user { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.sf-user-name { font-weight: 800; font-size: 14px; }
+.sf-user-email { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.new-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); display: inline-block; margin-left: 4px; }
+.sf-bottom { border-top: 1px solid var(--line); }
+.sf-bottom-inner { text-align: center; padding: 22px var(--s4); font-size: 13px; color: var(--muted); }
+.sf-bottom-inner a { color: var(--primary); font-weight: 700; text-decoration: none; }
+.sf-bottom-inner a:hover { text-decoration: underline; }
+.sf-bottom-inner .heart { color: #e0577f; }
+@media (max-width: 900px) { .site-footer-inner { grid-template-columns: 1fr 1fr; } .sf-col:nth-child(3) { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .site-footer-inner { grid-template-columns: 1fr; gap: var(--s4); } .sf-links-grid { grid-template-columns: 1fr; } }
+
+/* --- Changelog --- */
+.changelog { max-width: 820px; }
+.cl-head { margin-bottom: 16px; }
+.cl-meta { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+.cl-status { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.cl-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+.cl-timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+.cl-timeline::before { content: ""; position: absolute; left: 15px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
+.cl-entry { display: flex; gap: 16px; position: relative; padding-bottom: 18px; }
+.cl-dot { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; flex: none; z-index: 1; }
+.cl-dot.violet { background: var(--violet-bg); color: var(--violet); }
+.cl-dot.blue { background: var(--blue-bg); color: var(--blue-ink); }
+.cl-dot.amber { background: var(--amber-bg); color: var(--amber-ink); }
+.cl-dot.green { background: var(--green-bg); color: var(--green-ink); }
+.cl-dot.red { background: var(--red-bg); color: var(--red-ink); }
+.cl-card { flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-1); padding: 16px; }
+.cl-card-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.cl-version { font-weight: 800; font-size: 13px; color: var(--primary-ink); background: var(--primary-weak); padding: 1px 8px; border-radius: var(--r-pill); }
+.cl-date { margin-left: auto; font-size: 12px; color: var(--faint); }
+.cl-title { margin: 2px 0 4px; font-size: 16px; font-weight: 800; }
+.cl-summary { margin: 0 0 8px; font-size: 14px; color: var(--ink-2); }
+.cl-list { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--muted); }
+.cl-list li { margin: 3px 0; }
+.cl-route { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; font-weight: 700; font-size: 13px; text-decoration: none; }
+.cl-more { text-align: center; color: var(--muted); font-size: 13.5px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 0; }
+.cl-end { text-align: center; color: var(--faint); font-size: 13px; padding: 16px 0; }
+.cl-top { position: fixed; right: 20px; bottom: 20px; z-index: var(--z-tray); width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface); box-shadow: var(--sh-2); cursor: pointer; display: grid; place-items: center; color: var(--

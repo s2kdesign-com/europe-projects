@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://evroproekti-dashboard.autumn-limit-8eff.workers.dev/sitemap.xml

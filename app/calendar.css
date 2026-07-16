@@ -1,0 +1,44 @@
+/* Годишен изглед на календара (12 мини-месеца). */
+.cal-modes { margin-left: auto; }
+
+.cal-year {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s4);
+}
+.cal-mini {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 12px;
+  box-shadow: var(--sh-1);
+}
+.cal-mini-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.cal-mini-name {
+  background: none; border: none; padding: 2px 4px; margin: 0;
+  font-size: 14px; font-weight: 800; color: var(--ink); cursor: pointer;
+  text-transform: capitalize; border-radius: var(--r-sm);
+}
+.cal-mini-name:hover { color: var(--primary); background: var(--surface-2); }
+
+.cal-mini-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-mini-dow { text-align: center; font-size: 9px; font-weight: 700; color: var(--faint); padding: 2px 0; }
+.cal-mini-day {
+  aspect-ratio: 1 / 1;
+  display: grid; place-items: center;
+  font-size: 10.5px; color: var(--ink-2);
+  border: none; background: none; border-radius: 6px; padding: 0;
+}
+.cal-mini-day.empty { visibility: hidden; }
+.cal-mini-day.today { outline: 1.5px solid var(--primary); outline-offset: -1.5px; font-weight: 800; }
+button.cal-mini-day.has-event {
+  cursor: pointer; font-weight: 800;
+  background: var(--primary-weak); color: var(--primary-ink);
+}
+button.cal-mini-day.has-event:hover { background: #d5e8f4; }
+button.cal-mini-day.has-event.hot { background: var(--red-bg); color: var(--red-ink); }
+button.cal-mini-day.has-event:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+@media (max-width: 960px) { .cal-year { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 680px) { .cal-year { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .cal-year { grid-template-columns: 1fr; } .cal-modes { margin-left: 0; } }

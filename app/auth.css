@@ -1,0 +1,87 @@
+/* ============================================================
+   Стилове за автентикация, потребителско меню и профил.
+   ============================================================ */
+
+/* --- Google бутон --- */
+.btn-google { background: #fff; border: 1px solid var(--line-strong); color: var(--ink); font-weight: 700; }
+.btn-google:hover { background: var(--surface-2); }
+.btn-google-lg { width: 100%; min-height: 48px; justify-content: center; font-size: 15px; }
+.um-login-label { white-space: nowrap; }
+
+/* --- Акаунт в хедъра --- */
+.appbar-account { margin-left: 12px; display: flex; align-items: center; }
+.um { position: relative; }
+.um-skel { display: inline-block; width: 96px; height: 36px; border-radius: var(--r-pill); background: var(--surface-2); }
+.um-trigger {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 10px 4px 4px;
+  border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-pill); cursor: pointer; color: var(--ink); font-weight: 600;
+}
+.um-trigger:hover { background: var(--surface-2); }
+.um-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex: none; }
+.um-initials { display: grid; place-items: center; background: var(--primary); color: #fff; font-size: 13px; font-weight: 800; }
+.um-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.um-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); min-width: 220px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-3); padding: 6px; z-index: 60;
+}
+.um-head { padding: 8px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.um-head-name { font-weight: 800; font-size: 14px; }
+.um-head-email { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.um-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 8px 10px; border: none;
+  background: none; color: var(--ink); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: var(--r-sm); text-align: left; text-decoration: none;
+}
+.um-item:hover { background: var(--surface-2); }
+.um-item .icon { color: var(--muted); }
+.um-danger { color: var(--red-ink); }
+.um-danger .icon { color: var(--red); }
+
+/* --- Login / auth карта --- */
+.auth-wrap { min-height: 70vh; display: grid; place-items: center; padding: var(--s6) var(--s4); }
+.auth-card { width: min(440px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-2); padding: 32px; text-align: center; }
+.auth-mark { width: 56px; height: 56px; border-radius: 14px; display: inline-grid; place-items: center; background: linear-gradient(135deg, var(--primary), var(--primary-strong)); color: #fff; margin-bottom: 12px; }
+.auth-card h1 { margin: 0 0 8px; font-size: 22px; font-weight: 800; }
+.auth-desc { margin: 0 0 20px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.auth-error { display: flex; gap: 8px; align-items: center; justify-content: center; background: var(--red-bg); color: var(--red-ink); border: 1px solid #f0c4c9; border-radius: var(--r); padding: 10px 14px; margin-bottom: 16px; font-size: 13.5px; font-weight: 600; }
+.auth-secondary { display: inline-block; margin-top: 14px; font-weight: 700; }
+.auth-privacy { display: flex; gap: 6px; align-items: flex-start; text-align: left; margin: 20px 0 0; font-size: 12px; color: var(--muted); }
+.auth-privacy .icon { flex: none; margin-top: 2px; color: var(--faint); }
+
+/* --- Профил --- */
+.profile { max-width: 900px; }
+.prof-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-1); padding: 20px; margin-bottom: 16px; }
+.prof-section-title { margin: 0 0 14px; font-size: 16px; font-weight: 800; }
+.prof-summary { display: flex; gap: 16px; align-items: center; }
+.prof-avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; flex: none; }
+.prof-initials { display: grid; place-items: center; background: var(--primary); color: #fff; font-size: 26px; font-weight: 800; }
+.prof-name { font-size: 18px; font-weight: 800; }
+.prof-email { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.verified { display: inline-flex; align-items: center; gap: 3px; color: var(--green-ink); background: var(--green-bg); border-radius: var(--r-pill); padding: 1px 8px; font-size: 11px; font-weight: 700; }
+.prof-completion { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 13px; color: var(--muted); }
+.pc-bar { flex: 1; max-width: 260px; height: 8px; background: var(--surface-2); border-radius: var(--r-pill); overflow: hidden; }
+.pc-fill { height: 100%; background: var(--primary); border-radius: var(--r-pill); }
+
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field-label { font-size: 12.5px; font-weight: 700; color: var(--ink-2); }
+.inp { min-height: 42px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: var(--r); font: inherit; font-size: 14px; background: var(--surface); color: var(--ink); width: 100%; }
+.inp:focus-visible { outline-offset: 0; border-color: var(--primary); }
+.inp-sm { max-width: 140px; }
+.checkgroup { border: none; padding: 14px 0 0; margin: 8px 0 0; border-top: 1px solid var(--line); min-inline-size: 0; }
+.check-cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 2px; margin-top: 6px; }
+.field-err { display: flex; align-items: center; gap: 6px; color: var(--red-ink); font-size: 12.5px; font-weight: 600; margin: 6px 0 0; }
+.prof-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.save-ok { display: inline-flex; align-items: center; gap: 6px; color: var(--green-ink); font-weight: 700; font-size: 14px; }
+.btn-danger { border-color: #f0c4c9; color: var(--red-ink); background: var(--red-bg); }
+.btn-danger:hover { background: #f7d4d8; }
+
+.confirm { width: min(440px, 92%); margin: auto; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--sh-3); padding: 24px; }
+.confirm h2 { margin: 0 0 8px; font-size: 18px; font-weight: 800; }
+.confirm p { margin: 0 0 16px; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
+.overlay { align-items: center; justify-content: center; }
+
+@media (max-width: 640px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .um-name { display: none; }
+  .appbar-account { margin-left: auto; }
+}

@@ -1,0 +1,106 @@
+// Структуриран източник на истината за историята на промените.
+// Реални записи (от нашата работа). Ползва се и за seed на D1 таблицата
+// changelog_entries. Категории: feature | improvement | fix | data | performance | security.
+
+export const CATEGORIES = [
+  { key: "feature", label: "Ново", icon: "sparkle", tone: "violet" },
+  { key: "improvement", label: "Подобрение", icon: "check", tone: "blue" },
+  { key: "fix", label: "Поправка", icon: "refresh", tone: "amber" },
+  { key: "data", label: "Данни", icon: "document", tone: "green" },
+  { key: "performance", label: "Производителност", icon: "clock", tone: "blue" },
+  { key: "security", label: "Сигурност", icon: "alert", tone: "red" },
+];
+
+export const CHANGELOG_ENTRIES = [
+  {
+    version: "2.3.0", category: "feature", published_at: "2026-07-13", affected_route: "changelog",
+    title: "Onboarding, бисквитки, нов футър и страница „Промени“",
+    summary: "Информационен модал за първо посещение, банер за съгласие за бисквитки, обновен футър с три колони и публична страница с история на промените.",
+    content: [
+      "Модал „Добре дошли“ с версиониране (показва се веднъж на версия).",
+      "Банер за бисквитки (необходими / аналитични) с настройки и оттегляне.",
+      "Нов футър с три колони, динамична година и полезни връзки.",
+      "Страница „Какво ново“ с филтри, търсене и безкраен скрол.",
+      "Страници Условия, Поверителност и Бисквитки с ясни placeholder-и.",
+    ],
+  },
+  {
+    version: "2.2.1", category: "feature", published_at: "2026-07-13", affected_route: "procedures",
+    title: "Бутон „Документи“ към картите",
+    summary: "Бърз достъп до документите на процедура директно от картата.",
+    content: [
+      "Бутон „Документи (n)“ до „Детайли“ в „Процедури“.",
+      "Отваря детайлния панел директно на таб „Документи“.",
+      "При липса на документи е неактивен с подсказка.",
+    ],
+  },
+  {
+    version: "2.2.0", category: "security", published_at: "2026-07-13", affected_route: null,
+    title: "Роли и администрация",
+    summary: "Роли потребител/премиум/администратор и админ конзола с потребители и журнал на грешките.",
+    content: [
+      "Админ конзола на /admin (само за администратори).",
+      "Таб „Потребители“ със смяна на ролята.",
+      "Таб „Exceptions“ — журнал на сървърни и клиентски грешки.",
+    ],
+  },
+  {
+    version: "2.1.1", category: "improvement", published_at: "2026-07-13", affected_route: null,
+    title: "Мобилен хедър и жестове",
+    summary: "Хоризонтално скролваща навигация, вход горе вдясно и смяна на раздели с плъзгане.",
+    content: [
+      "Активният раздел се центрира при смяна.",
+      "Смяна на табове с плъзгане (swipe) на телефон.",
+    ],
+  },
+  {
+    version: "2.1.0", category: "data", published_at: "2026-07-12", affected_route: null,
+    title: "Автоматично захранване на базата",
+    summary: "Дневната задача вече записва процедурите и документите директно в базата (Cloudflare D1).",
+    content: ["Ежедневен upsert на процедури и документи.", "Премахнат ръчният бутон „Обнови сега“."],
+  },
+  {
+    version: "2.0.0", category: "feature", published_at: "2026-07-12", affected_route: "saved",
+    title: "Вход с Google и профил",
+    summary: "Сигурен вход, профил, синхронизирани запазвания между устройства и персонализирани препоръки.",
+    content: [
+      "Google вход (OAuth 2.0 + PKCE, проверка на сървъра).",
+      "Профил и предпочитания; акаунт-базирани запазвания.",
+      "Персонализирани препоръки по профила.",
+    ],
+  },
+  {
+    version: "1.5.0", category: "feature", published_at: "2026-07-12", affected_route: "calendar",
+    title: "Годишен изглед на календара",
+    summary: "Преглед на всички месеци с маркирани крайни срокове.",
+    content: ["12 мини-месеца; клик върху ден/месец отваря детайлите."],
+  },
+  {
+    version: "1.4.0", category: "improvement", published_at: "2026-07-12", affected_route: null,
+    title: "SEO и споделяне",
+    summary: "Meta тагове, Open Graph, Twitter Card, sitemap, favicon и OG картинка.",
+    content: ["Богати визуализации при споделяне в социални мрежи."],
+  },
+  {
+    version: "1.2.0", category: "feature", published_at: "2026-07-12", affected_route: "overview",
+    title: "Богат начален екран „Обзор“",
+    summary: "Секции за внимание, препоръки, срокове, промени и диаграми.",
+    content: ["Разширени KPI карти; интерактивни диаграми без библиотека."],
+  },
+  {
+    version: "1.1.0", category: "improvement", published_at: "2026-07-12", affected_route: null,
+    title: "Пълен редизайн и архитектура",
+    summary: "Модерен вид, филтри, сортиране, изгледи, детайлен панел, календар и достъпност.",
+    content: ["Компонентна архитектура; лек API; WCAG 2.2 AA."],
+  },
+  {
+    version: "1.0.0", category: "feature", published_at: "2026-07-07", affected_route: null,
+    title: "Първоначално публикуване на историята на промените",
+    summary: "Начална версия на таблото за европейско финансиране за България.",
+    content: ["Next.js статичен export + Cloudflare Worker + D1."],
+  },
+];
+
+export function categoryMeta(key) {
+  return CATEGORIES.find((c) => c.key === key) || CATEGORIES[0];
+}
