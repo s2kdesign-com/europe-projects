@@ -1,23 +1,25 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import { formatDate } from "../lib/project-utils.js";
 import { TARGET_GROUP_LIST } from "../lib/constants.js";
 
-function greeting(now) {
+function greetingKey(now) {
   const h = now.getHours();
-  if (h < 12) return "Добро утро";
-  if (h < 18) return "Добър ден";
-  return "Добра вечер";
+  if (h < 12) return "common.greetingMorning";
+  if (h < 18) return "common.greetingDay";
+  return "common.greetingEvening";
 }
 
 export default function OverviewHeader({ now, snapshot, sinceVisit, programs, overviewFilter, onOverviewFilter }) {
+  const { t } = useTranslation();
   return (
-    <section className="ov-header" aria-label="Обзор">
+    <section className="ov-header" aria-label={t("navigation.overview")}>
       <div className="ov-greet">
         <div>
-          <h2>{greeting(now)} 👋</h2>
-          <p className="ov-sub">Активни и предстоящи европроцедури за България · фокус младежка заетост</p>
+          <h2>{t(greetingKey(now))} 👋</h2>
+          <p className="ov-sub">{t("overview.subtitle")}</p>
         </div>
         <div className="ov-status">
           <span className="updated">

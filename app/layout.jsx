@@ -34,7 +34,7 @@ const SITE_URL = "https://euro-funds.eu";
 
 const TITLE = "Европроекти — Табло за европейско финансиране за България";
 const DESCRIPTION =
-  "Ежедневно обновяван преглед на активни и предстоящи европроцедури за България — срокове, бюджети и допустими кандидати. Източник: eufunds.bg, esf.bg, az.government.bg.";
+  "Ежедневно обновяван преглед на активни и предстоящи европроцедури за България — срокове, бюджети и допустими кандидати. Данни от официални източници.";
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
@@ -49,7 +49,7 @@ export const metadata = {
   publisher: "s2kdesign.com",
   category: "finance",
   applicationCategory: "BusinessApplication",
-  alternates: { canonical: "/", languages: { "bg-BG": "/" } },
+  alternates: { canonical: "/", languages: { "bg-BG": "/", "x-default": "/" } },
   robots: { index: true, follow: true, nocache: false, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
   openGraph: {
     type: "website", locale: "bg_BG", url: "/", siteName: "Европроекти", title: TITLE, description: DESCRIPTION,

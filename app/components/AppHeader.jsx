@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import UserMenu from "./UserMenu.jsx";
 import { TABS } from "../lib/constants.js";
@@ -15,6 +16,7 @@ const DIR_THRESHOLD = 16;  // натрупано движение в посок�
 const COMPACT_LOCK_MS = 500; // заключване след смяна на режима (анти-трептене)
 
 export default function AppHeader({ tab, onTab, savedCount, session }) {
+  const { t: tr } = useTranslation();
   const navRef = useRef(null);
   const topRef = useRef(null);
   const [compact, setCompact] = useState(false);
@@ -98,23 +100,23 @@ export default function AppHeader({ tab, onTab, savedCount, session }) {
           </a>
 
           <div className="appbar-account">
-            <button className="help-btn" onClick={openWelcome} aria-label="За системата" title="За системата"><Icon name="info" size={18} /></button>
+            <button className="help-btn" onClick={openWelcome} aria-label={tr("footer.aboutSystem")} title={tr("footer.aboutSystem")}><Icon name="info" size={18} /></button>
             {session && <UserMenu session={session} />}
           </div>
         </div>
 
-        <nav className="nav" aria-label="Основна навигация" ref={navRef}>
-          {TABS.map((t) => (
-            <button key={t.key} className="nav-tab" aria-current={tab === t.key ? "page" : undefined} onClick={() => onTab(t.key)}>
-              <Icon name={TAB_ICON[t.key]} size={16} />
-              {t.label}
-              {t.key === "saved" && savedCount > 0 && <span className="count-dot">{savedCount}</span>}
+        <nav className="nav" aria-label={tr("navigation.ariaLabel")} ref={navRef}>
+          {TABS.map((item) => (
+            <button key={item.key} className="nav-tab" aria-current={tab === item.key ? "page" : undefined} onClick={() => onTab(item.key)}>
+              <Icon name={TAB_ICON[item.key]} size={16} />
+              {tr("navigation." + item.key)}
+              {item.key === "saved" && savedCount > 0 && <span className="count-dot">{savedCount}</span>}
             </button>
           ))}
         </nav>
 
         <div className="nav-swipe-hint" aria-hidden="true">
-          <Icon name="chevronRight" size={12} style={{ transform: "rotate(180deg)" }} /> плъзни за смяна <Icon name="chevronRight" size={12} />
+          <Icon name="chevronRight" size={12} style={{ transform: "rotate(180deg)" }} /> {tr("navigation.swipeHint")} <Icon name="chevronRight" size={12} />
         </div>
       </div>
     </header>

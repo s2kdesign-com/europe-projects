@@ -32,18 +32,18 @@ export default function SiteFooter({ session: sessionProp }) {
           <div className="sf-brand">
             <span className="brand-mark" aria-hidden="true"><Icon name="euro" size={20} /></span>
             <span className="brand-name">Европроекти</span>
-            <span className="sf-ai-badge"><Icon name="sparkle" size={13} aria-hidden="true" /> Платформа с изкуствен интелект</span>
+            <span className="sf-ai-badge"><Icon name="sparkle" size={13} aria-hidden="true" /> {t("footer.aiBadge")}</span>
           </div>
-          <p className="sf-desc">AI платформа за откриване, анализ и проследяване на европейско и национално финансиране в България.</p>
-          <p className="sf-desc">Наличната информация за процедурите, документите, бюджетите и сроковете се структурира и анализира с помощта на изкуствен интелект.</p>
-          <p className="sf-status"><Icon name="sparkle" size={14} aria-hidden="true" /> AI анализ и автоматично ежедневно обновяване</p>
+          <p className="sf-desc">{t("footer.brandDesc1")}</p>
+          <p className="sf-desc">{t("footer.brandDesc2")}</p>
+          <p className="sf-status"><Icon name="sparkle" size={14} aria-hidden="true" /> {t("footer.aiStatus")}</p>
           <div className="sf-tags" aria-hidden="true">
-            <span className="sf-tag"><span className="live-dot" /> AI анализ</span>
-            <span className="sf-tag"><span className="live-dot" /> Ежедневно обновяване</span>
+            <span className="sf-tag"><span className="live-dot" /> {t("footer.tagAiAnalysis")}</span>
+            <span className="sf-tag"><span className="live-dot" /> {t("footer.tagDailyUpdate")}</span>
           </div>
           <div className="sf-links">
-            <button className="sf-link" onClick={() => emit("open-welcome")}>За системата</button>
-            <button className="sf-link" onClick={() => emit("open-welcome")}>Източници на данни</button>
+            <button className="sf-link" onClick={() => emit("open-welcome")}>{t("footer.aboutSystem")}</button>
+            <button className="sf-link" onClick={() => emit("open-welcome")}>{t("footer.dataSources")}</button>
           </div>
         </div>
 
@@ -51,24 +51,24 @@ export default function SiteFooter({ session: sessionProp }) {
         <div className="sf-col">
           {session.authenticated ? (
             <>
-              <h4 className="sf-title">Вашият профил</h4>
+              <h4 className="sf-title">{t("footer.yourProfile")}</h4>
               <div className="sf-user">
                 {session.user?.avatar_url ? <img className="um-avatar" src={session.user.avatar_url} alt="" width={36} height={36} referrerPolicy="no-referrer" /> : <span className="um-avatar um-initials">{(session.user?.display_name || "?").charAt(0).toUpperCase()}</span>}
                 <div style={{ minWidth: 0 }}><div className="sf-user-name">{session.user?.display_name}</div><div className="sf-user-email">{session.user?.email}</div></div>
               </div>
               <div className="sf-links">
-                <a className="sf-link" href="/profile">Преглед на профила</a>
-                <a className="sf-link" href={session.isAdmin ? "/admin" : "/profile?section=preferences"}>Настройки</a>
-                <button className="sf-link" onClick={() => session.logout()}>Изход</button>
+                <a className="sf-link" href="/profile">{t("footer.profileView")}</a>
+                <a className="sf-link" href={session.isAdmin ? "/admin" : "/profile?section=preferences"}>{t("footer.settings")}</a>
+                <button className="sf-link" onClick={() => session.logout()}>{t("footer.logout")}</button>
               </div>
             </>
           ) : (
             <>
-              <h4 className="sf-title">Запазвайте възможностите си</h4>
-              <p className="sf-desc">Влезте, за да синхронизирате запазените процедури, профила и известията между устройствата си.</p>
-              <button className="btn btn-google" onClick={() => session.login()}><GoogleG /> <span>Вход с Google</span></button>
+              <h4 className="sf-title">{t("footer.guestTitle")}</h4>
+              <p className="sf-desc">{t("footer.guestDesc")}</p>
+              <button className="btn btn-google" onClick={() => session.login()}><GoogleG /> <span>{t("footer.googleLogin")}</span></button>
               <div className="sf-links" style={{ marginTop: 10 }}>
-                <button className="sf-link" onClick={() => emit("open-welcome")}>Защо да създам профил?</button>
+                <button className="sf-link" onClick={() => emit("open-welcome")}>{t("footer.whyProfile")}</button>
               </div>
             </>
           )}
@@ -84,35 +84,35 @@ export default function SiteFooter({ session: sessionProp }) {
 
         {/* Колона 3 — връзки */}
         <div className="sf-col">
-          <h4 className="sf-title">Полезни връзки</h4>
+          <h4 className="sf-title">{t("footer.usefulLinks")}</h4>
           <div className="sf-links sf-links-grid">
-            <a className="sf-link" href="/?tab=overview">Обзор</a>
-            <a className="sf-link" href="/?tab=procedures">Процедури</a>
-            <a className="sf-link" href="/?tab=calendar">Календар</a>
-            <a className="sf-link" href="/?tab=saved">Запазени</a>
-            <a className="sf-link" href="/changelog">Changelog{hasNew && <span className="new-dot" aria-label="нова версия" />}</a>
-            <button className="sf-link" onClick={() => emit("open-welcome")}>За системата</button>
-            <button className="sf-link" onClick={openAiInfo}>Как работи AI</button>
-            <a className="sf-link" href="/terms">Условия за ползване</a>
-            <a className="sf-link" href="/privacy">Политика за поверителност</a>
-            <a className="sf-link" href="/cookies">Политика за бисквитките</a>
-            <button className="sf-link" onClick={() => emit("open-cookie-settings")}>Настройки на бисквитките</button>
-            <button className="sf-link" onClick={() => emit("open-feedback")}>Подай сигнал за проблем</button>
+            <a className="sf-link" href="/?tab=overview">{t("navigation.overview")}</a>
+            <a className="sf-link" href="/?tab=procedures">{t("navigation.procedures")}</a>
+            <a className="sf-link" href="/?tab=calendar">{t("navigation.calendar")}</a>
+            <a className="sf-link" href="/?tab=saved">{t("navigation.saved")}</a>
+            <a className="sf-link" href="/changelog">{t("navigation.changelog")}{hasNew && <span className="new-dot" aria-label="нова версия" />}</a>
+            <button className="sf-link" onClick={() => emit("open-welcome")}>{t("footer.aboutSystem")}</button>
+            <button className="sf-link" onClick={openAiInfo}>{t("footer.howAiWorks")}</button>
+            <a className="sf-link" href="/terms">{t("footer.terms")}</a>
+            <a className="sf-link" href="/privacy">{t("footer.privacy")}</a>
+            <a className="sf-link" href="/cookies">{t("footer.cookies")}</a>
+            <button className="sf-link" onClick={() => emit("open-cookie-settings")}>{t("footer.cookieSettings")}</button>
+            <button className="sf-link" onClick={() => emit("open-feedback")}>{t("footer.reportProblem")}</button>
           </div>
         </div>
       </div>
 
       <div className="sf-trust">
         <div className="container">
-          <p className="sf-trust-main">Информацията се обработва с помощта на AI и се сверява с официални публични източници.</p>
-          <p className="sf-trust-sub">AI анализът не заменя официалната документация или професионалната експертна оценка.</p>
+          <p className="sf-trust-main">{t("footer.trustMain")}</p>
+          <p className="sf-trust-sub">{t("footer.trustSub")}</p>
         </div>
       </div>
 
       <div className="sf-bottom">
         <div className="container sf-bottom-inner">
           Made with Love <span className="heart" aria-hidden="true">💗</span> by{" "}
-          <a href="https://s2kdesign.com" target="_blank" rel="noopener noreferrer">s2kdesign.com</a> © {year} All Rights Reserved
+          <a href="https://s2kdesign.com" target="_blank" rel="noopener noreferrer">s2kdesign.com</a> © {year} {t("footer.rights")}
           <span className="sf-version">v{APP_VERSION}</span>
         </div>
       </div>
