@@ -46,7 +46,7 @@ export default function ChangeFeed({ items, onOpen, period, onPeriod, limit = 0 
         <div className="feed-period seg-group" role="group" aria-label={t("feed.periodAria")}>
           <div className="segmented">
             {PERIODS.map((p) => (
-              <button key={p.key} aria-pressed={period === p.key} onClick={() => onPeriod(p.key)}>{p.label}</button>
+              <button key={p.key} aria-pressed={period === p.key} onClick={() => onPeriod(p.key)}>{t("period." + p.key, p.label)}</button>
             ))}
           </div>
         </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
+import { useTranslatedProject } from "./i18n/TranslatedProjects.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import { daysLeft, countdownLabel, formatDate } from "../lib/project-utils.js";
 import { deadlineProgress, changedAfterSave } from "../lib/overview-utils.js";
@@ -23,6 +24,9 @@ function Timeline({ p, now }) {
 }
 
 function Row({ p, now, saved, savedMeta, onOpen, onToggleSave, onCalendar }) {
+  const { t } = useTranslation();
+  const tp = useTranslatedProject(p.id);
+  const name = (tp && tp.name) || p.name;
   const dl = daysLeft(p.deadline_date, now);
   const hasDocs = (p.doc_count || 0) > 0;
   const changed = saved && changedAfterSave(p, savedMeta);
@@ -30,7 +34,7 @@ function Row({ p, now, saved, savedMeta, onOpen, onToggleSave, onCalendar }) {
     <div className="dl-row">
       <div className="dl-main">
         <button className="dl-title" onClick={() => onOpen(p.id)} aria-haspopup="dialog">
-          {p.name}
+          {name}
         </button>
         <div className="dl-sub">
           {p.program}
@@ -41,15 +45,15 @@ function Row({ p, now, saved, savedMeta, onOpen, onToggleSave, onCalendar }) {
       <div className="dl-side">
         <span className={"countdown" + ((dl ?? 99) <= URGENT_DAYS ? " hot" : "")}>{countdownLabel(dl)}</span>
         <div className="dl-flags">
-          <span className={"flag " + (hasDocs ? "ok" : "warn")} title={hasDocs ? "Има публикувани документи" : "Няма публикувани условия"}>
+          <span className={"flag " + (hasDocs ? "ok" : "warn")} title={hasDocs ? t("dl.hasDocs") : t("dl.noDocs")}>
             <Icon name="document" size={13} /> {hasDocs ? p.doc_count : "0"}
           </span>
-          {saved && <span className="flag ok" title="Запазена"><Icon name="bookmarkFilled" size={13} /></span>}
-          {changed && <span className="flag warn" title="Променена след запазване"><Icon name="refresh" size={13} /> промяна</span>}
+          {saved && <span className="flag ok" title={t("dl.saved")}><Icon name="bookmarkFilled" size={13} /></span>}
+          {changed && <span className="flag warn" title={t("dl.changedAfterSave")}><Icon name="refresh" size={13} /> {t("dl.change")}</span>}
         </div>
         <div className="dl-actions">
-          <button className="iconbtn" aria-label="Запази" aria-pressed={saved} onClick={() => onToggleSave(p)}><Icon name={saved ? "bookmarkFilled" : "bookmark"} size={16} /></button>
-          {p.deadline_date && <button className="iconbtn" aria-label="Добави в календар" onClick={() => onCalendar(p)}><Icon name="calendar" size={16} /></button>}
+          <button className="iconbtn" aria-label={t("dl.save")} aria-pressed={saved} onClick={() => onToggleSave(p)}><Icon name={saved ? "bookmarkFilled" : "bookmark"} size={16} /></button>
+          {p.deadline_date && <button className="iconbtn" aria-label={t("dl.addToCalendar")} onClick={() => onCalendar(p)}><Icon name="calendar" size={16} /></button>}
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import { formatDate } from "../lib/project-utils.js";
 import { TARGET_GROUP_LIST } from "../lib/constants.js";
+import { useTranslateContent } from "./i18n/useTranslateContent.js";
 
 function greetingKey(now) {
   const h = now.getHours();
@@ -14,6 +15,9 @@ function greetingKey(now) {
 
 export default function OverviewHeader({ now, snapshot, sinceVisit, programs, overviewFilter, onOverviewFilter }) {
   const { t } = useTranslation();
+  const summaryItems = snapshot?.summary ? [{ key: "summary", text: snapshot.summary }] : [];
+  const { map: summaryMap } = useTranslateContent(summaryItems);
+  const summaryText = snapshot?.summary ? (summaryMap.get("summary")?.text || snapshot.summary) : "";
   return (
     <section className="ov-header" aria-label={t("navigation.overview")}>
       <div className="ov-greet">
@@ -24,9 +28,9 @@ export default function OverviewHeader({ now, snapshot, sinceVisit, programs, ov
         <div className="ov-status">
           <span className="updated">
             <span className="live-dot" />
-            {snapshot?.run_date ? <>Обновено: <strong>&nbsp;{formatDate(snapshot.run_date)}</strong></> : "Данните се обновяват автоматично"}
+            {snapshot?.run_date ? <>{t("overview.updated")} <strong>&nbsp;{formatDate(snapshot.run_date)}</strong></> : t("overview.autoUpdating")}
           </span>
-          <span className="ov-auto">Автоматично обновяване всеки ден</span>
+          <span className="ov-auto">{t("overview.dailyUpdate")}</span>
         </div>
       </div>
 
@@ -35,12 +39,9 @@ export default function OverviewHeader({ now, snapshot, sinceVisit, programs, ov
           <Icon name="sparkle" size={18} />
           <p>
             {sinceVisit && (sinceVisit.new > 0 || sinceVisit.changed > 0) ? (
-              <>
-                От последното ти посещение: <strong>{sinceVisit.new}</strong> нови и{" "}
-                <strong>{sinceVisit.changed}</strong> обновени процедури.{" "}
-              </>
+              <>{t("overview.sinceVisit", { new: sinceVisit.new, changed: sinceVisit.changed })}{" "}</>
             ) : null}
-            {snapshot?.summary}
+            {summaryText}
           </p>
         </div>
       )}
