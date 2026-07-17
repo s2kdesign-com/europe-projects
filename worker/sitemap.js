@@ -35,9 +35,27 @@ function isoDate(s) {
   return isNaN(d) ? null : d.toISOString().slice(0, 10);
 }
 
+// Пътища с езикови варианти (/en, /de) → добавяме xhtml:link алтернативи.
+const LANG_VARIANT_PATHS = new Set(["/", "/procedures", "/calendar", "/about", "/how-ai-works"]);
+const PREFIX_LOCALES = ["en", "de"];
+
+function langAlternates(path) {
+  const loc = (l) => (l === "bg" ? SITE + path : `${SITE}/${l}${path === "/" ? "" : path}`);
+  let x = `    <xhtml:link rel="alternate" hreflang="bg" href="${loc("bg")}"/>\n`;
+  for (const l of PREFIX_LOCALES) x += `    <xhtml:link rel="alternate" hreflang="${l}" href="${loc(l)}"/>\n`;
+  x += `    <xhtml:link rel="alternate" hreflang="x-default" href="${loc("bg")}"/>\n`;
+  return x;
+}
+function urlEntryLang(path, changefreq, priority) {
+  return `  <url>\n    <loc>${SITE}${path}</loc>\n${langAlternates(path)}    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>\n`;
+}
+
 export async function generateSitemap(env) {
-  let body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
-  for (const s of STATIC) body += urlEntry(`${SITE}${s.path}`, null, s.changefreq, s.priority);
+  let body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n`;
+  for (const s of STATIC) {
+    if (LANG_VARIANT_PATHS.has(s.path)) body += urlEntryLang(s.path, s.changefreq, s.priority);
+    else body += urlEntry(`${SITE}${s.path}`, null, s.changefreq, s.priority);
+  }
   // Curated landing страници.
   body += urlEntry(`${SITE}/procedures/programs`, null, "weekly", "0.6");
   for (const slug of STATUS_SLUGS) body += urlEntry(`${SITE}/procedures/status/${slug}`, null, "daily", "0.6");

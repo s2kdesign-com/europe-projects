@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 
 export function GoogleG({ size = 18 }) {
@@ -15,6 +16,7 @@ export function GoogleG({ size = 18 }) {
 }
 
 export default function UserMenu({ session }) {
+  const { t } = useTranslation();
   const { authenticated, user, loading, login, logout, isAdmin } = session;
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -33,19 +35,19 @@ export default function UserMenu({ session }) {
 
   if (!authenticated) {
     return (
-      <button className="btn btn-google" onClick={() => login()} aria-label="Вход с Google">
-        <GoogleG /> <span className="um-login-label">Вход с Google</span>
+      <button className="btn btn-google" onClick={() => login()} aria-label={t("menu.login")}>
+        <GoogleG /> <span className="um-login-label">{t("menu.login")}</span>
       </button>
     );
   }
 
   const initials = (user?.display_name || user?.email || "?").trim().charAt(0).toUpperCase();
   const menu = [
-    { href: "/profile", label: "Моят профил", icon: "users" },
-    { href: "/?tab=saved", label: "Моите запазени", icon: "bookmark" },
+    { href: "/profile", label: t("menu.myProfile"), icon: "users" },
+    { href: "/saved", label: t("menu.mySaved"), icon: "bookmark" },
   ];
   // „Настройки" (админ конзола) — само за администратори.
-  if (isAdmin) menu.push({ href: "/admin", label: "Настройки", icon: "filter" });
+  if (isAdmin) menu.push({ href: "/admin", label: t("menu.settings"), icon: "filter" });
 
   return (
     <div className="um" ref={ref}>
@@ -61,14 +63,14 @@ export default function UserMenu({ session }) {
       {open && (
         <div className="um-menu" role="menu">
           <div className="um-head">
-            <div className="um-head-name">{user?.display_name}{isAdmin && <span className="role-chip">админ</span>}</div>
+            <div className="um-head-name">{user?.display_name}{isAdmin && <span className="role-chip">{t("menu.adminChip")}</span>}</div>
             <div className="um-head-email">{user?.email}</div>
           </div>
           {menu.map((m) => (
             <a key={m.href} href={m.href} role="menuitem" className="um-item"><Icon name={m.icon} size={16} /> {m.label}</a>
           ))}
           <button role="menuitem" className="um-item um-danger" onClick={() => { setOpen(false); logout(); }}>
-            <Icon name="external" size={16} /> Изход
+            <Icon name="external" size={16} /> {t("menu.logout")}
           </button>
         </div>
       )}

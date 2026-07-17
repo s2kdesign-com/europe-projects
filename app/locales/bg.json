@@ -16,6 +16,14 @@
     "greetingEvening": "Добра вечер",
     "tagline": "Табло за финансиране"
   },
+  "menu": {
+    "login": "Вход с Google",
+    "myProfile": "Моят профил",
+    "mySaved": "Моите запазени",
+    "settings": "Настройки",
+    "logout": "Изход",
+    "adminChip": "админ"
+  },
   "toast": {
     "linkCopied": "Връзката е копирана",
     "copyFailed": "Копирането не бе успешно",

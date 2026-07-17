@@ -127,8 +127,9 @@ h1, h2, h3, h4 { color: var(--ink); }
   min-height: 40px; padding: 6px 14px; border-radius: var(--r-pill);
   border: 1px solid transparent; background: none; color: var(--ink-2);
   font-size: 14px; font-weight: 600; cursor: pointer;
+  text-decoration: none;
 }
-.nav-tab:hover { background: var(--surface-2); color: var(--ink); }
+.nav-tab:hover { background: var(--surface-2); color: var(--ink); text-decoration: none; }
 .nav-tab[aria-current="page"] { background: var(--primary-weak); color: var(--primary-ink); border-color: #cfe3f0; }
 .nav-tab .count-dot {
   min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill);
