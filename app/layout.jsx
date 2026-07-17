@@ -50,6 +50,12 @@ export const metadata = {
   category: "finance",
   applicationCategory: "BusinessApplication",
   alternates: { canonical: "/", languages: { "bg-BG": "/", "x-default": "/" } },
+  // Верификация за Google Search Console / Bing (задава се чрез env при билд;
+  // ако липсва — просто не се извежда). Не hardcode-ваме кодове.
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+    other: process.env.BING_SITE_VERIFICATION ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION } : undefined,
+  },
   robots: { index: true, follow: true, nocache: false, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
   openGraph: {
     type: "website", locale: "bg_BG", url: "/", siteName: "Европроекти", title: TITLE, description: DESCRIPTION,

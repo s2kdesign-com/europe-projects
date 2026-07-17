@@ -3,6 +3,18 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.14.0] — 2026-07-17
+
+### Добавено (landing страници + съдържание)
+- **По програма:** `/procedures/programs` (индекс) и `/procedures/programs/<slug>`.
+- **По кандидат:** `/procedures/candidates/business`, `/procedures/candidates/youth`.
+- **По срок:** `/procedures/deadlines/next-7-days | next-30-days | next-90-days`.
+- Всяка landing страница: собствено заглавие, описание, canonical, breadcrumbs,
+  intro и `ItemList` JSON-LD (Worker SSR).
+- Съдържателни страници **/about** и **/how-ai-works** (индексируеми, с текст + disclaimer).
+- `sitemap.xml` включва всички нови адреси; добавена **Google/Bing verification**
+  (чрез env `GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION`).
+
 ## [2.13.0] — 2026-07-17
 
 ### Добавено

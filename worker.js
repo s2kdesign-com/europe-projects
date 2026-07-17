@@ -3,7 +3,7 @@
 
 import { handleAuth } from "./worker/handlers.js";
 import { logError } from "./worker/db.js";
-import { handleProcedurePage, handleStatusLanding } from "./worker/procedure-page.js";
+import { handleProcedurePage, handleStatusLanding, handleProgramsIndex, handleProgramLanding, handleCandidateLanding, handleDeadlineLanding } from "./worker/procedure-page.js";
 import { generateSitemap } from "./worker/sitemap.js";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" };
@@ -75,10 +75,15 @@ export default {
       try { return await generateSitemap(env); } catch { /* пада към статичния файл */ }
     }
 
-    // Landing по статус (/procedures/status/:slug) + procedure detail (/procedures/:slug).
+    // Landing (програми/кандидати/срокове/статус) + procedure detail.
     if (request.method === "GET" && /^\/procedures\/[^/]+/.test(pathname)) {
       try {
-        const landing = await handleStatusLanding(request, env, url);
+        const landing =
+          (await handleProgramsIndex(request, env, url)) ||
+          (await handleProgramLanding(request, env, url)) ||
+          (await handleCandidateLanding(request, env, url)) ||
+          (await handleDeadlineLanding(request, env, url)) ||
+          (await handleStatusLanding(request, env, url));
         if (landing) return landing;
         const resp = await handleProcedurePage(request, env, url);
         if (resp) return resp;

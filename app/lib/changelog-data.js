@@ -13,6 +13,18 @@ export const CATEGORIES = [
 
 export const CHANGELOG_ENTRIES = [
   {
+    version: "2.14.0", category: "feature", published_at: "2026-07-17", affected_route: null,
+    title: "Обзорни страници по програма, кандидат и срок + „За системата“",
+    summary: "Нови публични страници: процедури по програма, по тип кандидат и по краен срок, плюс страници „За системата“ и „Как работи AI“. Всички са в картата на сайта.",
+    content: [
+      "Страници по програма: /procedures/programs и /procedures/programs/<програма>.",
+      "Страници по кандидат: /procedures/candidates/business и /youth.",
+      "Страници по срок: /procedures/deadlines/next-7-days, next-30-days, next-90-days.",
+      "Нови съдържателни страници „За системата“ (/about) и „Как работи AI“ (/how-ai-works).",
+      "Картата на сайта включва всички нови адреси; добавена е конфигурация за Google/Bing верификация.",
+    ],
+  },
+  {
     version: "2.13.0", category: "feature", published_at: "2026-07-17", affected_route: null,
     title: "Динамична карта на сайта и страници по статус",
     summary: "Картата на сайта вече включва автоматично всяка процедура (с дата на промяна), а има и обзорни страници по статус — отворени, изтичащи, предстоящи и приключени процедури.",

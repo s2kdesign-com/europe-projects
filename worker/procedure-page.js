@@ -156,8 +156,7 @@ function renderListHTML({ title, description, canonicalPath, h1, intro, crumbLab
   const url = `${SITE}${canonicalPath}`;
   const listHtml = items.length
     ? `<ul class="plist">${items.map((p) =>
-        `<li><a href="${SITE}/procedures/${canonicalSlug(p)}">${esc(p.name)}</a>` +
-        `<span class="meta">${esc(STATUS_LABEL[p.status] || "")}${p.program ? " · " + esc(p.program) : ""}${p.deadline ? " · срок: " + esc(p.deadline) : ""}</span></li>`
+        `<li><a href="${esc(p.href)}">${esc(p.name)}</a>${p.meta ? `<span class="meta">${esc(p.meta)}</span>` : ""}</li>`
       ).join("")}</ul>`
     : `<p>Няма процедури в тази категория в момента.</p>`;
 
@@ -165,7 +164,7 @@ function renderListHTML({ title, description, canonicalPath, h1, intro, crumbLab
     "@context": "https://schema.org", "@type": "ItemList", name: h1, url,
     numberOfItems: items.length,
     itemListElement: items.slice(0, 100).map((p, i) => ({
-      "@type": "ListItem", position: i + 1, url: `${SITE}/procedures/${canonicalSlug(p)}`, name: trunc(p.name, 100),
+      "@type": "ListItem", position: i + 1, url: p.href, name: trunc(p.name, 100),
     })),
   };
   const crumbs = {
@@ -216,7 +215,7 @@ export async function handleStatusLanding(request, env, url) {
     "SELECT id, name, program, status, deadline FROM projects WHERE status = ?1 ORDER BY deadline_date"
   ).bind(status).all();
   const label = STATUS_LABEL[status] || status;
-  const html = renderListHTML({
+  const html = renderProcedureList({
     title: trunc(`${label} процедури за европейско финансиране | Европроекти`, 65),
     description: trunc(STATUS_INTRO[status], 165),
     canonicalPath: `/procedures/status/${slug}`,
@@ -227,6 +226,98 @@ export async function handleStatusLanding(request, env, url) {
   });
   return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" } });
 }
+
+// ---------------------------------------------------------------------------
+// Landing по програма / кандидат / срок (curated, indexable)
+// ---------------------------------------------------------------------------
+function htmlResponse(html, status = 200, maxAge = 600) {
+  return new Response(html, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": `public, max-age=${maxAge}` } });
+}
+
+// Програми: индекс със списък програми (връзки към landing на всяка програма).
+export async function handleProgramsIndex(request, env, url) {
+  if (url.pathname !== "/procedures/programs" && url.pathname !== "/procedures/programs/") return null;
+  const { results } = await env.DB.prepare(
+    "SELECT program, COUNT(*) AS n FROM projects WHERE program IS NOT NULL AND program != '' GROUP BY program ORDER BY n DESC"
+  ).all();
+  const items = (results || []).map((r) => ({
+    href: `${SITE}/procedures/programs/${codeSlug(r.program)}`,
+    name: r.program,
+    meta: `${r.n} процедури`,
+  }));
+  return htmlResponse(renderGenericList({
+    title: "Програми за европейско финансиране | Европроекти",
+    description: "Оперативни програми и национални източници за финансиране в България — прегледайте активните процедури по програма.",
+    canonicalPath: "/procedures/programs", h1: "Програми за финансиране",
+    intro: "Изберете програма, за да видите активните и предстоящите процедури по нея.",
+    crumbLabel: "Програми", items,
+  }));
+}
+
+export async function handleProgramLanding(request, env, url) {
+  const m = /^\/procedures\/programs\/([^/]+)\/?$/.exec(url.pathname);
+  if (!m) return null;
+  const slug = decodeURIComponent(m[1]).toLowerCase();
+  const { results } = await env.DB.prepare("SELECT id, name, program, status, deadline FROM projects").all();
+  const match = (results || []).filter((p) => codeSlug(p.program) === slug);
+  if (!match.length) return htmlResponse(render404(), 404);
+  const program = match[0].program;
+  return htmlResponse(renderProcedureList({
+    title: trunc(`${program} — активни процедури и финансиране | Европроекти`, 65),
+    description: trunc(`Активни и предстоящи процедури по програма ${program} за България — статус, срокове и допустими кандидати.`, 165),
+    canonicalPath: `/procedures/programs/${slug}`,
+    h1: `${program} — процедури за финансиране`,
+    intro: `Процедури за кандидатстване по програма ${program}.`,
+    crumbLabel: trunc(program, 60), items: match,
+  }));
+}
+
+const CANDIDATE = {
+  business: { where: "category != 'youth' OR category IS NULL", h1: "Процедури за бизнес и предприятия", intro: "Процедури за европейско и национално финансиране, подходящи за фирми, МСП и предприемачи в България." },
+  youth: { where: "category = 'youth'", h1: "Процедури за младежка заетост", intro: "Процедури с фокус върху младежката заетост и подкрепа за млади хора в България." },
+};
+export async function handleCandidateLanding(request, env, url) {
+  const m = /^\/procedures\/candidates\/([^/]+)\/?$/.exec(url.pathname);
+  if (!m) return null;
+  const slug = decodeURIComponent(m[1]).toLowerCase();
+  const c = CANDIDATE[slug];
+  if (!c) return htmlResponse(render404(), 404);
+  const { results } = await env.DB.prepare(`SELECT id, name, program, status, deadline FROM projects WHERE ${c.where} ORDER BY deadline_date`).all();
+  return htmlResponse(renderProcedureList({
+    title: trunc(`${c.h1} | Европроекти`, 65), description: trunc(c.intro, 165),
+    canonicalPath: `/procedures/candidates/${slug}`, h1: c.h1, intro: c.intro, crumbLabel: c.h1, items: results || [],
+  }));
+}
+
+const DEADLINE = { "next-7-days": 7, "next-30-days": 30, "next-90-days": 90 };
+export async function handleDeadlineLanding(request, env, url) {
+  const m = /^\/procedures\/deadlines\/([^/]+)\/?$/.exec(url.pathname);
+  if (!m) return null;
+  const slug = decodeURIComponent(m[1]).toLowerCase();
+  const days = DEADLINE[slug];
+  if (!days) return htmlResponse(render404(), 404);
+  const today = new Date(); const to = new Date(today.getTime() + days * 86400000);
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const { results } = await env.DB.prepare(
+    "SELECT id, name, program, status, deadline FROM projects WHERE deadline_date >= ?1 AND deadline_date <= ?2 AND status IN ('open','closing_soon') ORDER BY deadline_date"
+  ).bind(iso(today), iso(to)).all();
+  const h1 = `Процедури с краен срок до ${days} дни`;
+  const intro = `Активни процедури за европейско финансиране, чийто краен срок изтича до ${days} дни. Планирайте кандидатстването навреме.`;
+  return htmlResponse(renderProcedureList({
+    title: trunc(`${h1} | Европроекти`, 65), description: trunc(intro, 165),
+    canonicalPath: `/procedures/deadlines/${slug}`, h1, intro, crumbLabel: `Срок до ${days} дни`, items: results || [],
+  }));
+}
+
+// Обвивки над renderListHTML: procedure-списък (връзки към detail) и общ списък.
+function renderProcedureList(opts) {
+  return renderListHTML({ ...opts, items: opts.items.map((p) => ({
+    href: `${SITE}/procedures/${canonicalSlug(p)}`,
+    name: p.name,
+    meta: `${STATUS_LABEL[p.status] || ""}${p.program ? " · " + p.program : ""}${p.deadline ? " · срок: " + p.deadline : ""}`,
+  })) });
+}
+function renderGenericList(opts) { return renderListHTML(opts); }
 
 // Главен handler: връща Response за /procedures/:slug или null (не е такъв път).
 export async function handleProcedurePage(request, env, url) {
