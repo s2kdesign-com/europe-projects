@@ -125,4 +125,23 @@ export function DonutChart({ title, data }) {
               >
                 <title>{`${d.label}: ${d.value}`}</title>
               </circle>
-  
+            );
+            offset += len;
+            return seg;
+          })}
+          <text x={cx} y={cy - 2} textAnchor="middle" fontSize="22" fontWeight="800" fill="var(--ink)">{total}</text>
+          <text x={cx} y={cy + 14} textAnchor="middle" fontSize="9" fill="var(--muted)">общо</text>
+        </svg>
+        <div className="chart-legend col">
+          {data.map((d, i) => (
+            <span key={i} className="legend-item">
+              <span className="legend-dot" style={{ background: d.color || PALETTE[i % PALETTE.length] }} />
+              {d.label} <strong>{d.value}</strong>
+            </span>
+          ))}
+        </div>
+      </div>
+      <SrTable title={title} rows={data} />
+    </figure>
+  );
+}

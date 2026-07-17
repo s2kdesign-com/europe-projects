@@ -468,4 +468,10 @@ main { padding-bottom: var(--s7); }
   .kpi-n { font-size: 26px; }
   .drawer, .compare-panel { width: 100%; }
   .cal-cell { min-height: 56px; }
-  .cal-ev { font-s
+  .cal-ev { font-size: 0; padding: 4px; }
+  .cal-ev::before { content: "•"; font-size: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}

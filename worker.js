@@ -18,6 +18,26 @@ export default {
     const url = new URL(request.url);
     const { pathname } = url;
 
+    // Информация за текущия deployment — винаги прясна (no-cache), за да могат
+    // старите отворени клиенти да разберат, че има нов build. Кешираме статичните
+    // asset-и нормално; само този endpoint е без кеш.
+    if (pathname === "/version.json") {
+      let body = '{"version":"0.0.0","buildId":"unknown"}';
+      try {
+        const res = await env.ASSETS.fetch(new URL("/version.json", url.origin));
+        if (res.ok) body = await res.text();
+      } catch { /* ако липсва asset, връщаме резервна стойност */ }
+      return new Response(body, {
+        status: 200,
+        headers: {
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "no-store, no-cache, must-revalidate",
+          "pragma": "no-cache",
+          "expires": "0",
+        },
+      });
+    }
+
     try {
       if (pathname === "/api/projects") {
         if (request.method !== "GET") return json({ ok: false, error: "method_not_allowed" }, 405);

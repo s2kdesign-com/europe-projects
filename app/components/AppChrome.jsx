@@ -4,7 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import SystemWelcomeModal from "./SystemWelcomeModal.jsx";
 import CookieConsentBanner from "./CookieConsentBanner.jsx";
 import FeedbackModal from "./FeedbackModal.jsx";
+import AppUpdateNotification from "./AppUpdateNotification.jsx";
 import { useSession } from "../hooks/useSession.js";
+import { useAppUpdate } from "../hooks/useAppUpdate.js";
+import { trackUpdate } from "../services/versionService.js";
 import { SYSTEM_INTRO_KEY, CONSENT_KEY, CONSENT_VERSION, INTRO_DELAY_MS } from "../lib/version.js";
 
 function lsGet(k) { try { return window.localStorage.getItem(k); } catch { return null; } }
@@ -14,7 +17,9 @@ function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch { /* ign
 // Информационният модал и cookie интерфейсът НИКОГА не се показват едновременно.
 export default function AppChrome() {
   const session = useSession();
+  const appUpdate = useAppUpdate();
   const [showWelcome, setShowWelcome] = useState(false);
+  const [welcomeSection, setWelcomeSection] = useState(null);
   const [cookieMode, setCookieMode] = useState(null); // null | "banner" | "settings"
   const [consent, setConsent] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -51,7 +56,7 @@ export default function AppChrome() {
       timer = window.setTimeout(() => { introReadyRef.current = true; maybeOpenIntro(); }, INTRO_DELAY_MS);
     }
 
-    const onWelcome = () => setShowWelcome(true); // ръчно отваряне — моментално
+    const onWelcome = (e) => { setWelcomeSection((e && e.detail && e.detail.section) || null); setShowWelcome(true); }; // ръчно отваряне — моментално (по избор — директно на AI секцията)
     const onCookie = () => setCookieMode("settings");
     const onFeedback = () => setShowFeedback(true);
     window.addEventListener("open-welcome", onWelcome);
@@ -98,7 +103,7 @@ export default function AppChrome() {
   return (
     <>
       {showWelcome && (
-        <SystemWelcomeModal onClose={closeWelcome} onLogin={() => { closeWelcome(); session.login(); }} />
+        <SystemWelcomeModal initialSection={welcomeSection} onClose={closeWelcome} onLogin={() => { closeWelcome(); session.login(); }} />
       )}
 
       {/* Банерът се крие докато информационният модал е отворен — никога заедно. */}
@@ -115,6 +120,21 @@ export default function AppChrome() {
       )}
 
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
+
+      {/* Известие за нова версия — само когато cookie изборът е направен и няма
+          отворен модал/банер (не се припокрива с тях). */}
+      {appUpdate.update && !modalOpen && !(cookieMode === "banner" && !consent) && (
+        <AppUpdateNotification
+          update={appUpdate.update}
+          onRefresh={appUpdate.refresh}
+          onSnooze={appUpdate.snooze}
+          onChangelog={() => {
+            const u = appUpdate.update;
+            trackUpdate("app_update_changelog_clicked", { current_version: appUpdate.currentBuildId, available_version: u.buildId, critical: !!u.critical });
+            window.location.href = "/changelog?version=" + encodeURIComponent(u.version || "");
+          }}
+        />
+      )}
     </>
   );
 }

@@ -7,6 +7,8 @@ import { useSession } from "../hooks/useSession.js";
 import { APP_VERSION, CHANGELOG_SEEN_KEY } from "../lib/version.js";
 
 const emit = (name) => window.dispatchEvent(new CustomEvent(name));
+// „Как работи AI" — отваря посрещащия модал директно на AI секцията (без втори модал).
+const openAiInfo = () => window.dispatchEvent(new CustomEvent("open-welcome", { detail: { section: "ai" } }));
 
 export default function SiteFooter({ session: sessionProp }) {
   const own = useSession();
@@ -27,10 +29,15 @@ export default function SiteFooter({ session: sessionProp }) {
           <div className="sf-brand">
             <span className="brand-mark" aria-hidden="true"><Icon name="euro" size={20} /></span>
             <span className="brand-name">Европроекти</span>
+            <span className="sf-ai-badge"><Icon name="sparkle" size={13} aria-hidden="true" /> Платформа с изкуствен интелект</span>
           </div>
-          <p className="sf-tagline">Табло за европейско и национално финансиране в България.</p>
-          <p className="sf-desc">Актуални и предстоящи процедури, срокове и препоръки — на едно място.</p>
-          <p className="sf-status"><span className="live-dot" /> Данните се обновяват автоматично всеки ден</p>
+          <p className="sf-desc">AI платформа за откриване, анализ и проследяване на европейско и национално финансиране в България.</p>
+          <p className="sf-desc">Наличната информация за процедурите, документите, бюджетите и сроковете се структурира и анализира с помощта на изкуствен интелект.</p>
+          <p className="sf-status"><Icon name="sparkle" size={14} aria-hidden="true" /> AI анализ и автоматично ежедневно обновяване</p>
+          <div className="sf-tags" aria-hidden="true">
+            <span className="sf-tag"><span className="live-dot" /> AI анализ</span>
+            <span className="sf-tag"><span className="live-dot" /> Ежедневно обновяване</span>
+          </div>
           <div className="sf-links">
             <button className="sf-link" onClick={() => emit("open-welcome")}>За системата</button>
             <button className="sf-link" onClick={() => emit("open-welcome")}>Източници на данни</button>
@@ -74,6 +81,7 @@ export default function SiteFooter({ session: sessionProp }) {
             <a className="sf-link" href="/?tab=saved">Запазени</a>
             <a className="sf-link" href="/changelog">Changelog{hasNew && <span className="new-dot" aria-label="нова версия" />}</a>
             <button className="sf-link" onClick={() => emit("open-welcome")}>За системата</button>
+            <button className="sf-link" onClick={openAiInfo}>Как работи AI</button>
             <a className="sf-link" href="/terms">Условия за ползване</a>
             <a className="sf-link" href="/privacy">Политика за поверителност</a>
             <a className="sf-link" href="/cookies">Политика за бисквитките</a>
@@ -83,10 +91,18 @@ export default function SiteFooter({ session: sessionProp }) {
         </div>
       </div>
 
+      <div className="sf-trust">
+        <div className="container">
+          <p className="sf-trust-main">Информацията се обработва с помощта на AI и се сверява с официални публични източници.</p>
+          <p className="sf-trust-sub">AI анализът не заменя официалната документация или професионалната експертна оценка.</p>
+        </div>
+      </div>
+
       <div className="sf-bottom">
         <div className="container sf-bottom-inner">
           Made with Love <span className="heart" aria-hidden="true">💗</span> by{" "}
           <a href="https://s2kdesign.com" target="_blank" rel="noopener noreferrer">s2kdesign.com</a> © {year} All Rights Reserved
+          <span className="sf-version">v{APP_VERSION}</span>
         </div>
       </div>
     </footer>

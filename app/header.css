@@ -21,4 +21,43 @@
   .appbar-top {
     display: flex; align-items: center; gap: var(--s4); width: 100%; order: 1; min-width: 0;
     max-height: 72px; opacity: 1; transform: translateY(0); overflow: visible;
-    transition: max-height 220ms ease, opacity 160ms ease, transfor
+    transition: max-height 220ms ease, opacity 160ms ease, transform 220ms ease, padding 220ms ease, margin 220ms ease;
+  }
+  .brand { order: 0; min-width: 0; }
+  .appbar-account { order: 1; margin-left: auto; }
+
+  /* Хоризонтална навигация — скролира се само тя, без да разширява страницата. */
+  .nav {
+    order: 2; flex: 0 0 100%; width: 100%; max-width: 100%; min-width: 0; margin-left: 0;
+    display: flex; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-tab { flex: 0 0 auto; white-space: nowrap; }
+
+  .nav-swipe-hint {
+    order: 3; display: flex; flex: 0 0 100%;
+    align-items: center; justify-content: center; gap: 6px;
+    font-size: 11px; color: var(--faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+
+  /* Компактен режим: скрий САМО горния ред; навигацията остава sticky на върха
+     (целият .appbar вече е position:sticky, затова се свива до реда с табовете). */
+  .mobile-header.is-compact .appbar-top {
+    max-height: 0; opacity: 0; transform: translateY(-12px);
+    padding-block: 0; margin: 0; overflow: hidden; pointer-events: none;
+  }
+  .mobile-header.is-compact .appbar-inner { row-gap: 0; }
+  .mobile-header.is-compact .nav-swipe-hint { display: none; }
+}
+
+/* Много тесни екрани: скъси надписа на бутона за вход. */
+@media (max-width: 400px) {
+  .um-login-label { display: none; }
+  .btn-google::after { content: "Вход"; font-weight: 700; }
+}
+
+/* Уважавай „намалено движение" — без анимация на свиването. */
+@media (prefers-reduced-motion: reduce) {
+  .appbar-top { transition: none; }
+}

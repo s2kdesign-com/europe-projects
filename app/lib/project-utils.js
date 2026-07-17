@@ -382,3 +382,92 @@ export function generateICS(project, now = new Date()) {
   const end = new Date(start.getTime() + 86400000); // all-day, exclusive end
   const uid = `${project.id}@evroproekti.dashboard`;
   const descParts = [
+    project.program ? `Програма: ${project.program}` : "",
+    project.budget ? `Бюджет: ${project.budget}` : "",
+    project.eligible ? `Допустими: ${project.eligible}` : "",
+    project.link || "",
+  ].filter(Boolean);
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Европроекти//Дашборд//BG",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${icsStamp(now)}`,
+    `DTSTART;VALUE=DATE:${icsDate(start)}`,
+    `DTEND;VALUE=DATE:${icsDate(end)}`,
+    foldICSLine(`SUMMARY:Краен срок: ${escapeICS(project.name)}`),
+    foldICSLine(`DESCRIPTION:${escapeICS(descParts.join("\n"))}`),
+    project.link ? foldICSLine(`URL:${escapeICS(project.link)}`) : "",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].filter(Boolean);
+  return lines.join("\r\n") + "\r\n";
+}
+
+// ---------------------------------------------------------------------------
+// CSV експорт
+// ---------------------------------------------------------------------------
+
+function csvCell(v) {
+  const s = v == null ? "" : String(v);
+  return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+/** CSV с BOM за коректни български букви в Excel. */
+export function projectsToCSV(projects, now = new Date()) {
+  const headers = [
+    "Име",
+    "Програма",
+    "Приоритет",
+    "Статус",
+    "Срок (текст)",
+    "Крайна дата",
+    "Дни до срок",
+    "Бюджет",
+    "Допустими кандидати",
+    "Целева група",
+    "Ново/променено",
+    "Линк",
+  ];
+  const rows = (projects || []).map((p) => {
+    const dl = daysLeft(p.deadline_date, now);
+    return [
+      p.name,
+      p.program,
+      p.priority,
+      statusMeta(p.status).label,
+      p.deadline,
+      p.deadline_date,
+      dl == null ? "" : dl,
+      p.budget,
+      p.eligible,
+      targetGroup(p) === "youth" ? "Младежка заетост" : "Общи / бизнес",
+      isNovel(p) ? "да" : "не",
+      p.link,
+    ].map(csvCell).join(",");
+  });
+  return "﻿" + [headers.join(","), ...rows].join("\r\n") + "\r\n";
+}
+
+// ---------------------------------------------------------------------------
+// Статистики за KPI картите
+// ---------------------------------------------------------------------------
+
+export function computeStats(projects, savedCount = 0, now = new Date(), closingSoonDays = 30) {
+  let open = 0;
+  let closingWindow = 0;
+  let novel = 0;
+  for (const p of projects || []) {
+    const isOpen = p.status === "open" || p.status === "closing_soon";
+    if (isOpen) open++;
+    if (isOpen) {
+      const dl = daysLeft(p.deadline_date, now);
+      if (dl != null && dl >= 0 && dl <= closingSoonDays) closingWindow++;
+    }
+    if (isNovel(p)) novel++;
+  }
+  return { open, closingWindow, novel, saved: savedCount, total: (projects || []).length };
+}

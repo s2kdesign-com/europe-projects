@@ -8,7 +8,6 @@ export default function QuickActions({ onSearch, onProfile, onSaved, onCalendar,
     { icon: "filter", label: "Настрой профил", onClick: onProfile },
     { icon: "bookmark", label: "Прегледай запазените", onClick: onSaved },
     { icon: "calendar", label: "Отвори календара", onClick: onCalendar },
-    { icon: "download", label: "Експортирай сроковете", onClick: onExport },
     { icon: "clock", label: "Създай напомняне", onClick: onReminder },
     { icon: "compare", label: "Сравни процедури", onClick: onCompare },
   ];

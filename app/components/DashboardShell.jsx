@@ -294,4 +294,18 @@ export default function DashboardShell({ initialData = null, fetchList = default
 
       {compareProjects.length > 0 && !showCompare && (
         <div className="compare-tray" role="region" aria-label="Сравнение">
-          <Icon na
+          <Icon name="compare" size={18} />
+          <strong>{compareProjects.length}</strong> за сравнение{compareProjects.length >= MAX_COMPARE ? " (макс. 3)" : ""}
+          <button className="btn btn-primary" onClick={() => setShowCompare(true)}>Сравни</button>
+          <button className="iconbtn" style={{ color: "#fff" }} onClick={fx.clearCompare} aria-label="Изчисти сравнението"><Icon name="close" size={18} /></button>
+        </div>
+      )}
+
+      {showCompare && compareProjects.length > 0 && (
+        <CompareDrawer projects={compareProjects} onClose={() => setShowCompare(false)} onRemove={(id) => fx.toggleCompare(id)} />
+      )}
+
+      {toast && <div className="toast" role="status"><Icon name="check" size={16} /> {toast}</div>}
+    </>
+  );
+}

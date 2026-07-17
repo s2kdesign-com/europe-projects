@@ -82,4 +82,13 @@ export const LS_VIEW = "evroproekti:view:v1";
 export const LS_PROFILE = "evroproekti:profile:v1";
 export const LS_LAST_VISIT = "evroproekti:lastVisit:v1";
 
-// П
+// Профил (за препоръки/филтриране). Ползваме само полета, които реално
+// съществуват в данните — програма и целева група. Без бюджет/сектор, защото
+// тези данни са свободен текст и не са структурирани.
+export const PROFILE_DEFAULT = {
+  programs: [], // предпочитани програми
+  target: "", // "youth" | "general" | ""
+  onlyOpen: false, // показвай само отворени
+};
+
+export const DATA_SOURCES = ["eufunds.bg", "esf.bg", "az.government.bg", "ПКИП"];

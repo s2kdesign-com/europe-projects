@@ -259,4 +259,20 @@ describe("projectsToCSV", () => {
   });
 });
 
-describe("computeStats — за KPI картите",
+describe("computeStats — за KPI картите", () => {
+  const projects = [
+    P({ status: "open", deadline_date: "2026-07-20" }), // изтича до 30 дни
+    P({ status: "open", deadline_date: "2026-12-31" }), // отворена, но извън 30 дни
+    P({ status: "closing_soon", deadline_date: "2026-07-14" }),
+    P({ status: "upcoming", is_new: 1 }),
+    P({ status: "closed" }),
+  ];
+  it("брои отворени, изтичащи до 30 дни, нови, запазени", () => {
+    const s = computeStats(projects, 2, NOW, 30);
+    expect(s.open).toBe(3); // 2 open + 1 closing_soon
+    expect(s.closingWindow).toBe(2); // 2026-07-20 и 2026-07-14
+    expect(s.novel).toBe(1);
+    expect(s.saved).toBe(2);
+    expect(s.total).toBe(5);
+  });
+});

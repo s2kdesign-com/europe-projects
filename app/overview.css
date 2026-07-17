@@ -139,4 +139,91 @@
 .act-titles { min-width: 0; }
 .act-sub { margin: 2px 0 0; font-size: 13px; color: var(--muted); font-weight: 500; }
 .act-period { margin-left: auto; display: flex; }
-.act-period .segmented 
+.act-period .segmented button { min-height: 38px; padding: 0 12px; }
+
+.act-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s3); margin: 0 0 var(--s3); }
+.act-stat { display: flex; flex-direction: column; gap: 2px; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; min-width: 0; }
+.act-stat-n { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.act-stat-l { font-size: 12px; color: var(--muted); font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+.act-trend { font-size: 17px; font-weight: 800; display: inline-flex; align-items: center; gap: 5px; }
+.act-trend.up { color: var(--green-ink); }
+.act-trend.down { color: var(--red-ink); }
+.act-trend.flat { color: var(--muted); font-size: 14px; }
+.dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; flex: none; }
+.dot.violet { background: var(--violet); }
+.dot.blue { background: var(--blue); }
+.act-insight { display: flex; gap: 6px; align-items: flex-start; font-size: 13px; color: var(--ink-2); background: var(--primary-weak); border-radius: var(--r-sm); padding: 8px 10px; margin: 0 0 var(--s3); }
+.act-insight .icon { color: var(--primary); flex: none; margin-top: 2px; }
+
+.act-chart { min-width: 0; }
+.act-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 8px; }
+.act-legend .lg { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); font-weight: 600; }
+
+.act-plot { position: relative; height: 240px; padding: 6px 4px 0 30px; overflow: hidden; }
+.act-grid { position: absolute; left: 30px; right: 4px; top: 6px; bottom: 0; }
+.act-grid-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--line); }
+.act-grid-line:first-child { border-top-style: solid; border-top-color: var(--line-strong); }
+.act-tick { position: absolute; left: -28px; top: 0; transform: translateY(-50%); width: 24px; text-align: right; font-size: 10px; color: var(--faint); }
+.act-cols { position: absolute; left: 30px; right: 4px; top: 6px; bottom: 0; display: flex; align-items: flex-end; gap: 2px; }
+.act-col { flex: 1 1 0; min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
+.act-bars { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 100%; width: 100%; }
+.act-bar { width: 14px; max-width: 46%; min-width: 0; border: none; padding: 0; border-radius: 4px 4px 0 0; cursor: pointer; transition: filter 0.12s; }
+.act-bar.new { background: var(--violet); }
+.act-bar.changed { background: var(--blue); }
+.act-bar:not(:disabled) { min-height: 3px; }
+.act-bar:disabled { cursor: default; }
+.act-bar:not(:disabled):hover, .act-col.hot .act-bar:not(:disabled) { filter: brightness(1.1); }
+.act-bar:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+.act-tip { position: absolute; top: 2px; transform: translateX(-50%); z-index: 5; background: var(--ink); color: #fff; border-radius: var(--r-sm); padding: 8px 10px; font-size: 12px; line-height: 1.5; box-shadow: var(--sh-2); pointer-events: none; display: flex; flex-direction: column; gap: 2px; max-width: min(220px, 78%); }
+.act-tip strong { font-size: 12.5px; margin-bottom: 2px; }
+.act-tip span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.act-tip .dot { width: 8px; height: 8px; }
+.act-tip-total { border-top: 1px solid rgba(255,255,255,0.22); margin-top: 3px; padding-top: 3px; font-weight: 700; }
+
+.act-xaxis { display: flex; gap: 2px; padding: 6px 4px 0 30px; }
+.act-xcell { flex: 1 1 0; min-width: 0; text-align: center; }
+.act-xlabel { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.act-empty-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+.act-skeleton .act-plot { background: linear-gradient(90deg, var(--surface-2), var(--surface-sunken), var(--surface-2)); border-radius: var(--r); animation: actpulse 1.4s ease-in-out infinite; }
+@keyframes actpulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+@media (max-width: 768px) {
+  .act-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .act-plot { height: 250px; }
+}
+@media (max-width: 640px) {
+  .act-head { flex-direction: column; gap: 10px; }
+  .act-period { margin-left: 0; width: 100%; }
+  .act-period .segmented { display: flex; width: 100%; }
+  .act-period .segmented button { flex: 1 1 0; justify-content: center; }
+  .act-plot { height: 230px; }
+  .act-bar { width: 10px; }
+  .act-xlabel.hide-sm { display: none; }
+}
+.chart-note .icon { color: var(--faint); flex: none; margin-top: 2px; }
+
+/* ---- Quick actions ---- */
+.quick-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--s3); }
+.quick-btn { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); font-weight: 700; font-size: 14px; color: var(--ink); cursor: pointer; text-align: left; box-shadow: var(--sh-1); }
+.quick-btn:hover { border-color: var(--primary); background: var(--primary-weak); }
+.quick-ico { width: 34px; height: 34px; border-radius: 9px; background: var(--primary-weak); color: var(--primary); display: grid; place-items: center; flex: none; }
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .ov-greet h1 { font-size: 20px; }
+  .barrow { grid-template-columns: 90px 1fr auto; }
+  .chart-grid { grid-template-columns: 1fr; }
+  /* Тип кандидат (1-ви ред) и Програма (2-ри ред) един под друг, пълна ширина. */
+  .ov-filters-grid { grid-template-columns: 1fr; gap: var(--s4); }
+  /* „Период" минава на втори ред под заглавието и заема цялата ширина. */
+  .feed-period { margin-left: 0; width: 100%; }
+  .feed-period .segmented { display: flex; width: 100%; }
+  .feed-period .segmented button { flex: 1 1 0; justify-content: center; }
+}
+@media (max-width: 560px) {
+  .dl-row, .saved-row { grid-template-columns: 1fr; }
+  .dl-side { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; }
+  .ov-filters { gap: var(--s3); }
+  .ov-kpi { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}

@@ -236,4 +236,108 @@ const isoDate = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.ge
 
 function mondayOf(date) {
   const x = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  
+  const dow = (x.getDay() + 6) % 7; // понеделник=0 … неделя=6
+  x.setDate(x.getDate() - dow);
+  return x;
+}
+
+// Български етикети за седмичен диапазон (пълен / кратък / за tooltip).
+export function formatWeekLabel(start, end) {
+  const sd = start.getDate(), ed = end.getDate(), sm = start.getMonth(), em = end.getMonth();
+  const sameMonth = sm === em;
+  const full = sameMonth ? `${sd}–${ed} ${BG_MONTHS_FULL[em]}` : `${sd} ${BG_MONTHS_FULL[sm]}–${ed} ${BG_MONTHS_FULL[em]}`;
+  const short = sameMonth ? `${pad2(sd)}–${pad2(ed)}.${pad2(em + 1)}` : `${pad2(sd)}.${pad2(sm + 1)}–${pad2(ed)}.${pad2(em + 1)}`;
+  const tooltip = sameMonth ? `${sd}–${ed} ${BG_MONTHS_FULL[em]} ${end.getFullYear()}` : `${sd} ${BG_MONTHS_FULL[sm]} – ${ed} ${BG_MONTHS_FULL[em]} ${end.getFullYear()}`;
+  return { full, short, tooltip };
+}
+
+export function weeklyActivity(projects, now = new Date(), periodDays = 90) {
+  const N = Math.max(1, Math.ceil(periodDays / 7));
+  const curMonday = mondayOf(now);
+  const weeks = [];
+  for (let i = 2 * N - 1; i >= 0; i--) {
+    const start = new Date(curMonday); start.setDate(curMonday.getDate() - i * 7);
+    const end = new Date(start); end.setDate(start.getDate() + 6);
+    const endInclusive = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999);
+    weeks.push({ start, end, endInclusive, new: 0, changed: 0 });
+  }
+  const weekIndex = (d) => weeks.findIndex((w) => d >= w.start && d <= w.endInclusive);
+
+  for (const p of projects || []) {
+    const fs = parseDeadline(p.first_seen);
+    const lu = parseDeadline(p.last_updated);
+    const fi = fs ? weekIndex(fs) : -1;
+    if (fi >= 0) weeks[fi].new++;
+    const changed = lu && p.last_updated && p.first_seen && p.last_updated !== p.first_seen;
+    if (changed) {
+      const li = weekIndex(lu);
+      if (li >= 0 && li !== fi) weeks[li].changed++; // различна седмица → не двойно броене
+    }
+  }
+
+  const cur = weeks.slice(N).map((w) => {
+    const l = formatWeekLabel(w.start, w.end);
+    return { start: isoDate(w.start), end: isoDate(w.end), label: l.full, labelShort: l.short, tooltip: l.tooltip, new: w.new, changed: w.changed, total: w.new + w.changed };
+  });
+  const prev = weeks.slice(0, N);
+
+  const newTotal = cur.reduce((a, w) => a + w.new, 0);
+  const changedTotal = cur.reduce((a, w) => a + w.changed, 0);
+  const total = newTotal + changedTotal;
+  const prevTotal = prev.reduce((a, w) => a + w.new + w.changed, 0);
+
+  let trend;
+  if (total === 0 && prevTotal === 0) trend = { kind: "none" };
+  else if (prevTotal === 0) trend = { kind: "nobase" };
+  else { const pct = Math.round(((total - prevTotal) / prevTotal) * 100); trend = { kind: pct > 0 ? "up" : pct < 0 ? "down" : "flat", pct }; }
+
+  let mostActive = null;
+  for (const w of cur) if (w.total > 0 && (!mostActive || w.total > mostActive.total)) mostActive = w;
+
+  return { weeks: cur, summary: { newTotal, changedTotal, total, prevTotal, trend, weeksCount: N }, mostActive, hasData: total > 0 };
+}
+
+// Автоматично текстово заключение (генерирано от данните, без hardcode).
+export function activityInsight(a) {
+  if (!a || !a.hasData) return "Все още няма достатъчно данни за надеждна тенденция.";
+  const parts = [];
+  if (a.mostActive) parts.push(`Най-активната седмица е ${a.mostActive.label} с ${a.mostActive.total} нови или актуализирани процедури.`);
+  const t = a.summary.trend;
+  if (t.kind === "up") parts.push(`Активността е с ${t.pct}% по-висока спрямо предходния период.`);
+  else if (t.kind === "down") parts.push(`Активността е с ${Math.abs(t.pct)}% по-ниска спрямо предходния период.`);
+  else if (t.kind === "nobase" || t.kind === "none") parts.push("Все още няма достатъчно данни за надеждна тенденция.");
+  return parts.join(" ");
+}
+
+function countMap(arr, keyFn) {
+  const m = {};
+  for (const x of arr || []) {
+    const k = keyFn(x);
+    if (k == null) continue;
+    m[k] = (m[k] || 0) + 1;
+  }
+  return m;
+}
+function countBy(arr, keyFn) {
+  const m = countMap(arr, keyFn);
+  return Object.entries(m)
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value);
+}
+
+// ---- Разширени KPI (само реални стойности) ----
+export function overviewStats(projects, savedCount, now = new Date()) {
+  let open = 0, exp7 = 0, exp30 = 0, newWeek = 0, changedWeek = 0, withDocs = 0, noDocs = 0;
+  for (const p of projects || []) {
+    const isOpen = p.status === "open" || p.status === "closing_soon";
+    if (isOpen) open++;
+    const dl = daysLeft(p.deadline_date, now);
+    if (isOpen && dl != null && dl >= 0 && dl <= 7) exp7++;
+    if (isOpen && dl != null && dl >= 0 && dl <= 30) exp30++;
+    if (isNewSince(p, now)) newWeek++;
+    else if (isChangedSince(p, now)) changedWeek++;
+    if ((p.doc_count || 0) > 0) withDocs++;
+    else if (isOpen) noDocs++;
+  }
+  return { open, exp7, exp30, newWeek, changedWeek, withDocs, noDocs, saved: savedCount, total: (projects || []).length };
+}

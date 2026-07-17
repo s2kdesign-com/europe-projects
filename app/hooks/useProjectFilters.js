@@ -80,4 +80,35 @@ export function useProjectFilters() {
 
   const toggleCompare = useCallback((id) => {
     setFilters((f) => {
-      const arr = f
+      const arr = f.compare || [];
+      if (arr.includes(id)) return { ...f, compare: arr.filter((x) => x !== id) };
+      if (arr.length >= 3) return f; // лимит 3 — игнорираме над него
+      return { ...f, compare: [...arr, id] };
+    });
+  }, []);
+
+  const clearCompare = useCallback(() => patch({ compare: [] }), [patch]);
+
+  return useMemo(
+    () => ({
+      filters,
+      setFilters,
+      patch,
+      toggleInArray,
+      clearAll,
+      setQuery,
+      setSort,
+      setView,
+      setPeriod,
+      setActivityPeriod,
+      filterByWeek,
+      clearChangeWeek,
+      setTab,
+      openProject,
+      closeProject,
+      toggleCompare,
+      clearCompare,
+    }),
+    [filters, patch, toggleInArray, clearAll, setQuery, setSort, setView, setPeriod, setActivityPeriod, filterByWeek, clearChangeWeek, setTab, openProject, closeProject, toggleCompare, clearCompare]
+  );
+}

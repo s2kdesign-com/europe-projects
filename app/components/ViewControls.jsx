@@ -105,4 +105,22 @@ export default function ViewControls({
         <span className="result-count" aria-live="polite">
           <strong>{resultCount}</strong> от {totalCount} процедури
         </span>
-        {chips.length > 0 && 
+        {chips.length > 0 && (
+          <div className="chips">
+            {chips.map((c) => (
+              <span className="chip" key={c.key}>
+                {c.label}
+                <button onClick={() => onRemoveChip(c)} aria-label={`Премахни филтър: ${c.label}`}>
+                  <Icon name="close" size={14} />
+                </button>
+              </span>
+            ))}
+            <button className="btn btn-ghost" style={{ minHeight: 32, padding: "2px 10px" }} onClick={onClearAll}>
+              Изчисти всички
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}

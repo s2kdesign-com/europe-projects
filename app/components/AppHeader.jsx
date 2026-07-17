@@ -42,4 +42,81 @@ export default function AppHeader({ tab, onTab, savedCount, session }) {
     let lockUntil = 0;  // кратко заключване след смяна на режима
     let cur = false;    // текущ компактен режим (без stale state)
 
-    // Смяната на режима мени височината на s
+    // Смяната на режима мени височината на sticky header-а → браузърът мести
+    // scrollY (scroll anchoring). Заключваме за момент, за да не броим този
+    // индуциран скрол като движение на потребителя (иначе се получава трептене).
+    const apply = (v) => {
+      if (v === cur) return;
+      cur = v;
+      setCompact(v);
+      lockUntil = performance.now() + COMPACT_LOCK_MS;
+    };
+
+    const evaluate = () => {
+      ticking = false;
+      if (!isMobile()) { apply(false); return; }
+      const y = window.scrollY;
+      const dy = y - lastY;
+      lastY = y;
+      // Не пипай режима, докато е отворен dropdown/модал (пази взаимодействието).
+      if (document.querySelector(".um-menu, .overlay")) return;
+      if (y <= TOP_RESET_AT) { apply(false); accum = 0; return; } // близо до върха → винаги пълен
+      if (performance.now() < lockUntil) { accum = 0; return; }   // поглъщаме индуцирания скрол
+      if (dy === 0) return;
+      // Смяна на посоката → нулираме натрупването (по-стабилно при momentum).
+      if ((dy > 0) !== (accum > 0)) accum = 0;
+      accum += dy;
+      if (accum >= DIR_THRESHOLD && y > COMPACT_AFTER) { apply(true); accum = 0; }
+      else if (accum <= -DIR_THRESHOLD) { apply(false); accum = 0; }
+    };
+    const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(evaluate); } };
+    const onResize = () => { if (!isMobile()) apply(false); };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+    return () => { window.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onResize); };
+  }, []);
+
+  // Скритият горен ред не трябва да е фокусируем (inert само на клиента, за да няма hydration разлика).
+  useEffect(() => {
+    const el = topRef.current;
+    if (!el) return;
+    if (compact) el.setAttribute("inert", ""); else el.removeAttribute("inert");
+  }, [compact]);
+
+  return (
+    <header className={"appbar mobile-header" + (compact ? " is-compact" : "")}>
+      <div className="appbar-inner">
+        <div className="appbar-top" ref={topRef}>
+          <a className="brand" href="/" onClick={goHome} aria-label="Европроекти — начало">
+            <span className="brand-mark" aria-hidden="true"><Icon name="euro" size={20} /></span>
+            <span>
+              <span className="brand-name">Европроекти</span>
+              <br />
+              <span className="brand-sub">Табло за финансиране</span>
+            </span>
+          </a>
+
+          <div className="appbar-account">
+            <button className="help-btn" onClick={openWelcome} aria-label="За системата" title="За системата"><Icon name="info" size={18} /></button>
+            {session && <UserMenu session={session} />}
+          </div>
+        </div>
+
+        <nav className="nav" aria-label="Основна навигация" ref={navRef}>
+          {TABS.map((t) => (
+            <button key={t.key} className="nav-tab" aria-current={tab === t.key ? "page" : undefined} onClick={() => onTab(t.key)}>
+              <Icon name={TAB_ICON[t.key]} size={16} />
+              {t.label}
+              {t.key === "saved" && savedCount > 0 && <span className="count-dot">{savedCount}</span>}
+            </button>
+          ))}
+        </nav>
+
+        <div className="nav-swipe-hint" aria-hidden="true">
+          <Icon name="chevronRight" size={12} style={{ transform: "rotate(180deg)" }} /> плъзни за смяна <Icon name="chevronRight" size={12} />
+        </div>
+      </div>
+    </header>
+  );
+}

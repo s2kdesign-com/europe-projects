@@ -32,4 +32,17 @@ export default function ChangeFeed({ items, onOpen, period, onPeriod, limit = 8 
             <li className="feed-item" key={it.id}>
               <span className={"feed-dot " + it.tone} aria-hidden="true"><Icon name={TYPE_ICON[it.type] || "info"} size={14} /></span>
               <div className="feed-body">
-                <div className="feed-to
+                <div className="feed-top">
+                  <span className={"badge " + it.tone}><Icon name={TYPE_ICON[it.type]} size={12} /> {it.label}</span>
+                  {it.date && <time className="feed-date" dateTime={it.date}>{formatDate(it.date)}</time>}
+                </div>
+                <button className="feed-title" onClick={() => onOpen(it.project.id)} aria-haspopup="dialog">{it.project.name}</button>
+                <p className="feed-exp">{it.explanation} <span className="feed-prog">· {it.project.program}</span></p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}

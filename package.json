@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/gen-version.mjs",
     "build": "next build",
+    "gen-version": "node scripts/gen-version.mjs",
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "deploy": "next build && wrangler deploy",
+    "deploy": "npm run build && wrangler deploy",
     "deploy:only": "wrangler deploy"
   },
   "dependencies": {
