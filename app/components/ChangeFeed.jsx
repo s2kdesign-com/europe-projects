@@ -10,7 +10,10 @@ const TYPE_ICON = { new: "sparkle", changed: "refresh" };
 // Периодът (30/60/90 дни) филтрира този поток по дата на добавяне/промяна и живее
 // в заглавния ред на секцията. Бутон за сравнение с предишна версия НЕ се показва,
 // защото не пазим история на версиите (вижте ограниченията).
-export default function ChangeFeed({ items, onOpen, period, onPeriod, limit = 8 }) {
+export default function ChangeFeed({ items, onOpen, period, onPeriod, limit = 0 }) {
+  // limit = 0 → показваме всички записи в избрания период (периодът е контролът
+  // за обема на потока). Ако е подаден лимит > 0, режем до него.
+  const shown = limit > 0 ? items.slice(0, limit) : items;
   return (
     <section className="ov-section" aria-labelledby="feed-h">
       <div className="ov-section-head">
@@ -28,7 +31,7 @@ export default function ChangeFeed({ items, onOpen, period, onPeriod, limit = 8 
         <div className="state ov-empty"><Icon name="info" size={26} /><h3>Няма нови промени</h3><p>В избрания период няма нови или обновени процедури.</p></div>
       ) : (
         <ol className="feed">
-          {items.slice(0, limit).map((it) => (
+          {shown.map((it) => (
             <li className="feed-item" key={it.id}>
               <span className={"feed-dot " + it.tone} aria-hidden="true"><Icon name={TYPE_ICON[it.type] || "info"} size={14} /></span>
               <div className="feed-body">

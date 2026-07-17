@@ -32,9 +32,7 @@ import {
 import { overviewStats, attentionProjects, changeFeed, urgencyBuckets, weeklyActivity } from "../lib/overview-utils.js";
 import { recommend, canRecommend } from "../lib/recommend.js";
 import { downloadTextFile, copyText, slugFilename } from "../lib/browser.js";
-import { LS_VIEW, MAX_COMPARE, DEFAULT_VIEW, DEFAULT_PERIOD, DEFAULT_ACTIVITY_PERIOD, ACTIVITY_PERIOD_DAYS, TABS } from "../lib/constants.js";
-
-const PERIOD_DAYS = { "30": 30, "60": 60, "90": 90 };
+import { LS_VIEW, MAX_COMPARE, DEFAULT_VIEW, DEFAULT_PERIOD, DEFAULT_ACTIVITY_PERIOD, ACTIVITY_PERIOD_DAYS, PERIOD_DAYS, TABS } from "../lib/constants.js";
 
 async function defaultFetchList(signal) {
   const r = await fetch("/api/projects", { signal });

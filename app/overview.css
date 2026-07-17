@@ -86,7 +86,9 @@
 .dl-actions { display: flex; gap: 2px; }
 
 /* ---- Change feed ---- */
-.feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; max-height: 560px; overflow-y: auto; }
+.feed::-webkit-scrollbar { width: 8px; }
+.feed::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
 .feed-item { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
 .feed-item:first-child { border-top: none; }
 .feed-dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none; }
