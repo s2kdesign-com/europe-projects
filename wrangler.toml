@@ -24,9 +24,11 @@ database_id = "d5f1bb40-3729-4c11-ae06-efbd4b5c9760"
 # ---------------------------------------------------------------------------
 # Автентикация (Google OAuth). НЕ слагайте тайни тук — това е под version control.
 #
-# Публичен, не-таен параметър — може да остане тук за продукция:
+# Публичен, не-таен параметър — каноничният домейн на приложението.
+# От него се гради OAuth redirect_uri (…/api/auth/google/callback), затова
+# трябва да съвпада с адреса, регистриран в Google Cloud Console.
 [vars]
-APP_URL = "https://evroproekti-dashboard.autumn-limit-8eff.workers.dev"
+APP_URL = "https://euro-funds.eu"
 #
 # Тайните се задават с `wrangler secret put`:
 #   wrangler secret put GOOGLE_CLIENT_ID

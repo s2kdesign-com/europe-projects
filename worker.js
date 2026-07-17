@@ -13,10 +13,30 @@ const PROJECT_COLUMNS =
   "id, name, program, priority, category, status, deadline, deadline_date, " +
   "budget, eligible, link, notes, is_new, first_seen, last_updated, year";
 
+// Каноничен домейн (от APP_URL). Всяка заявка към стария workers.dev адрес се
+// пренасочва тук — за да работи логинът/сайтът само на euro-funds.eu.
+function canonicalRedirect(url, env) {
+  if (!env.APP_URL) return null;
+  let canonical;
+  try {
+    canonical = new URL(env.APP_URL);
+  } catch {
+    return null;
+  }
+  if (url.hostname === canonical.hostname) return null;
+  if (!url.hostname.endsWith(".workers.dev")) return null;
+  const dest = new URL(url.pathname + url.search, canonical.origin);
+  return Response.redirect(dest.toString(), 301);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const { pathname } = url;
+
+    // Пренасочване на стария домейн към каноничния (euro-funds.eu).
+    const redirect = canonicalRedirect(url, env);
+    if (redirect) return redirect;
 
     // Информация за текущия deployment — винаги прясна (no-cache), за да могат
     // старите отворени клиенти да разберат, че има нов build. Кешираме статичните
