@@ -3,6 +3,15 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.13.0] — 2026-07-17
+
+### Добавено
+- **Динамичен `sitemap.xml`** от D1: статичните маршрути + всяка процедура
+  (`/procedures/<slug>` с `lastmod`) + landing по статус. Без лични страници.
+- **Landing страници по статус** (Worker SSR): `/procedures/status/open`,
+  `/closing-soon`, `/upcoming`, `/closed` — със заглавие, описание, canonical,
+  breadcrumbs и `ItemList` JSON-LD.
+
 ## [2.12.0] — 2026-07-17
 
 ### Добавено (procedure detail страници — Worker SSR)

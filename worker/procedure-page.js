@@ -141,6 +141,93 @@ ${jsonLd(p, url)}
   return `<!doctype html><html lang="bg" dir="ltr"><head>${head}</head><body>${body}</body></html>`;
 }
 
+// ---------------------------------------------------------------------------
+// Landing страници по статус: /procedures/status/:slug (curated, indexable)
+// ---------------------------------------------------------------------------
+const STATUS_SLUG_MAP = { open: "open", "closing-soon": "closing_soon", upcoming: "upcoming", closed: "closed" };
+const STATUS_INTRO = {
+  open: "Активни (отворени) процедури за европейско и национално финансиране в България, които приемат проектни предложения в момента.",
+  closing_soon: "Процедури, чийто краен срок наближава. Проверете условията и документите навреме.",
+  upcoming: "Предстоящи процедури, които предстои да отворят прием на проектни предложения.",
+  closed: "Приключени процедури — архив с оригиналните срокове и условия за справка.",
+};
+
+function renderListHTML({ title, description, canonicalPath, h1, intro, crumbLabel, items }) {
+  const url = `${SITE}${canonicalPath}`;
+  const listHtml = items.length
+    ? `<ul class="plist">${items.map((p) =>
+        `<li><a href="${SITE}/procedures/${canonicalSlug(p)}">${esc(p.name)}</a>` +
+        `<span class="meta">${esc(STATUS_LABEL[p.status] || "")}${p.program ? " · " + esc(p.program) : ""}${p.deadline ? " · срок: " + esc(p.deadline) : ""}</span></li>`
+      ).join("")}</ul>`
+    : `<p>Няма процедури в тази категория в момента.</p>`;
+
+  const itemList = {
+    "@context": "https://schema.org", "@type": "ItemList", name: h1, url,
+    numberOfItems: items.length,
+    itemListElement: items.slice(0, 100).map((p, i) => ({
+      "@type": "ListItem", position: i + 1, url: `${SITE}/procedures/${canonicalSlug(p)}`, name: trunc(p.name, 100),
+    })),
+  };
+  const crumbs = {
+    "@context": "https://schema.org", "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Начало", item: SITE + "/" },
+      { "@type": "ListItem", position: 2, name: "Процедури", item: SITE + "/procedures" },
+      { "@type": "ListItem", position: 3, name: crumbLabel, item: url },
+    ],
+  };
+  const css = `:root{--ink:#1e293b;--muted:#64748b;--line:#e2e8f0;--pri:#0b6ea3}
+  *{box-sizing:border-box}body{margin:0;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:#f5f7fa}
+  a{color:var(--pri)}main,header.site,.crumbs,.site-foot{max-width:820px;margin-inline:auto;padding-inline:20px}
+  header.site{display:flex;justify-content:space-between;align-items:center;padding-block:16px}
+  .brand{font-weight:800;text-decoration:none;font-size:20px;color:var(--ink)}
+  .crumbs{font-size:14px;color:var(--muted);padding-block:8px}
+  h1{font-size:26px;margin:16px 0 8px;letter-spacing:-.02em}.intro{color:var(--muted);margin:0 0 16px}
+  .plist{list-style:none;margin:0;padding:0}.plist li{padding:14px 0;border-top:1px solid var(--line)}
+  .plist a{font-weight:700;text-decoration:none}.plist .meta{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+  .site-foot{font-size:13px;color:var(--muted);padding-block:24px}`;
+  const head = `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(title)}</title><meta name="description" content="${esc(description)}">
+<link rel="canonical" href="${url}"><meta name="robots" content="index,follow">
+<link rel="alternate" hreflang="bg" href="${url}"><link rel="alternate" hreflang="x-default" href="${url}">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Европроекти">
+<meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}">
+<meta property="og:url" content="${url}"><meta property="og:image" content="${OG_IMAGE}"><meta property="og:locale" content="bg_BG">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(description)}"><meta name="twitter:image" content="${OG_IMAGE}">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">${JSON.stringify(itemList)}</script>
+<script type="application/ld+json">${JSON.stringify(crumbs)}</script>
+<style>${css}</style>`;
+  const body = `<header class="site"><a class="brand" href="${SITE}/">Европроекти</a><a href="${SITE}/procedures">Всички процедури →</a></header>
+  <nav class="crumbs" aria-label="breadcrumbs"><a href="${SITE}/">Начало</a> › <a href="${SITE}/procedures">Процедури</a> › <span aria-current="page">${esc(crumbLabel)}</span></nav>
+  <main><h1>${esc(h1)}</h1><p class="intro">${esc(intro)}</p>${listHtml}
+  <p style="font-size:13px;color:#64748b;margin-top:24px">Информацията се структурира и анализира с помощта на изкуствен интелект и не заменя официалната документация.</p></main>
+  <footer class="site-foot">© Европроекти · <a href="${SITE}/terms">Условия</a> · <a href="${SITE}/privacy">Поверителност</a></footer>`;
+  return `<!doctype html><html lang="bg" dir="ltr"><head>${head}</head><body>${body}</body></html>`;
+}
+
+export async function handleStatusLanding(request, env, url) {
+  const m = /^\/procedures\/status\/([^/]+)\/?$/.exec(url.pathname);
+  if (!m) return null;
+  const slug = decodeURIComponent(m[1]).toLowerCase();
+  const status = STATUS_SLUG_MAP[slug];
+  if (!status) return new Response(render404(), { status: 404, headers: { "content-type": "text/html; charset=utf-8" } });
+  const { results } = await env.DB.prepare(
+    "SELECT id, name, program, status, deadline FROM projects WHERE status = ?1 ORDER BY deadline_date"
+  ).bind(status).all();
+  const label = STATUS_LABEL[status] || status;
+  const html = renderListHTML({
+    title: trunc(`${label} процедури за европейско финансиране | Европроекти`, 65),
+    description: trunc(STATUS_INTRO[status], 165),
+    canonicalPath: `/procedures/status/${slug}`,
+    h1: `${label} процедури за европейско финансиране`,
+    intro: STATUS_INTRO[status],
+    crumbLabel: label,
+    items: results || [],
+  });
+  return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=600" } });
+}
+
 // Главен handler: връща Response за /procedures/:slug или null (не е такъв път).
 export async function handleProcedurePage(request, env, url) {
   const m = /^\/procedures\/([^/]+)\/?$/.exec(url.pathname);

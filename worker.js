@@ -3,7 +3,8 @@
 
 import { handleAuth } from "./worker/handlers.js";
 import { logError } from "./worker/db.js";
-import { handleProcedurePage } from "./worker/procedure-page.js";
+import { handleProcedurePage, handleStatusLanding } from "./worker/procedure-page.js";
+import { generateSitemap } from "./worker/sitemap.js";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" };
 function json(body, status = 200) {
@@ -69,9 +70,16 @@ export default {
     const legacy = legacyRedirect(url);
     if (legacy) return legacy;
 
-    // Server-side procedure detail страница (/procedures/:slug) от D1.
-    if (request.method === "GET" && /^\/procedures\/[^/]+\/?$/.test(pathname)) {
+    // Динамичен sitemap от D1.
+    if (request.method === "GET" && pathname === "/sitemap.xml") {
+      try { return await generateSitemap(env); } catch { /* пада към статичния файл */ }
+    }
+
+    // Landing по статус (/procedures/status/:slug) + procedure detail (/procedures/:slug).
+    if (request.method === "GET" && /^\/procedures\/[^/]+/.test(pathname)) {
       try {
+        const landing = await handleStatusLanding(request, env, url);
+        if (landing) return landing;
         const resp = await handleProcedurePage(request, env, url);
         if (resp) return resp;
       } catch (e) {
