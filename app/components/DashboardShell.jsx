@@ -36,6 +36,7 @@ import { recommend, canRecommend } from "../lib/recommend.js";
 import { downloadTextFile, copyText, slugFilename } from "../lib/browser.js";
 import { LS_VIEW, MAX_COMPARE, DEFAULT_VIEW, DEFAULT_PERIOD, DEFAULT_ACTIVITY_PERIOD, ACTIVITY_PERIOD_DAYS, PERIOD_DAYS, TABS } from "../lib/constants.js";
 import { tabFromPath, pathForTab } from "../lib/routes.js";
+import TranslatedProjectsProvider from "./i18n/TranslatedProjects.jsx";
 
 async function defaultFetchList(signal) {
   const r = await fetch("/api/projects", { signal });
@@ -293,9 +294,9 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
   }
 
   return (
-    <>
+    <TranslatedProjectsProvider projects={projects}>
       <a href="#main" className="skip-link">{t("common.skipToContent")}</a>
-      <AppHeader tab={activeTab} onTab={fx.setTab} savedCount={saved.savedCount} session={session} />
+      <AppHeader tab={activeTab} onTab={navigateTab} savedCount={saved.savedCount} session={session} />
       <main id="main">{content}</main>
 
       {selectedProject && (
@@ -316,6 +317,6 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
       )}
 
       {toast && <div className="toast" role="status"><Icon name="check" size={16} /> {toast}</div>}
-    </>
+    </TranslatedProjectsProvider>
   );
 }

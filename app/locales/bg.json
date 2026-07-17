@@ -215,6 +215,13 @@
     "compare": "Сравни",
     "addCompare": "Добави за сравнение",
     "removeCompare": "Премахни от сравнението",
-    "copyLink": "Копирай връзка"
+    "copyLink": "Копирай връзка",
+    "new": "Ново",
+    "youth": "Младежи",
+    "deadlineLabel": "Срок:",
+    "budgetLabel": "Бюджет:",
+    "candidatesLabel": "Кандидати:",
+    "updatedLabel": "Обновено:",
+    "autoTranslated": "Преведено автоматично"
   }
 }

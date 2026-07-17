@@ -93,6 +93,9 @@
 .crumbs { font-size: 14px; color: var(--muted, #64748b); margin-bottom: 8px; }
 .crumbs a { color: var(--primary, #0b6ea3); text-decoration: none; }
 
+/* Индикатор за преведена карта */
+.card-translated { font-size: 11px; color: var(--muted, #64748b); margin: 2px 0 6px; }
+
 /* Индикатор „Преведено автоматично" */
 .auto-translated { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .auto-translated-badge { font-size: 11px; color: var(--muted, #64748b); background: var(--neutral-bg, #f1f5f9); padding: 2px 8px; border-radius: 999px; }
