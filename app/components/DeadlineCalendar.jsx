@@ -1,18 +1,34 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
-import { daysLeft, countdownLabel } from "../lib/project-utils.js";
+import { daysLeft, countdownLabel, intlLocale } from "../lib/project-utils.js";
 import { URGENT_DAYS } from "../lib/constants.js";
 
-const DOW = ["пн", "вт", "ср", "чт", "пт", "сб", "нд"];
-const DOW1 = ["П", "В", "С", "Ч", "П", "С", "Н"];
-const MONTHS = [
-  "януари", "февруари", "март", "април", "май", "юни",
-  "юли", "август", "септември", "октомври", "ноември", "декември",
-];
+// Локализирани имена (Intl), кеширани по локал. Седмицата започва от понеделник.
+const _calCache = {};
+function calNames() {
+  const loc = intlLocale();
+  if (_calCache[loc]) return _calCache[loc];
+  const mFull = [], dow = [], dow1 = [];
+  const mf = new Intl.DateTimeFormat(loc, { month: "long" });
+  const df = new Intl.DateTimeFormat(loc, { weekday: "short" });
+  for (let m = 0; m < 12; m++) mFull.push(mf.format(new Date(2021, m, 1)));
+  // 2021-03-01 е понеделник → 7 поредни дни за етикетите на седмицата.
+  for (let i = 0; i < 7; i++) {
+    const name = df.format(new Date(2021, 2, 1 + i));
+    dow.push(name.toLowerCase());
+    dow1.push(name.charAt(0).toUpperCase());
+  }
+  const res = { MONTHS: mFull, DOW: dow, DOW1: dow1 };
+  _calCache[loc] = res;
+  return res;
+}
 
 export default function DeadlineCalendar({ projects, now = new Date(), onOpen }) {
+  const { t } = useTranslation();
+  const { MONTHS, DOW, DOW1 } = calNames();
   const [mode, setMode] = useState("month"); // "month" | "year"
   const [view, setView] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
 
@@ -62,22 +78,22 @@ export default function DeadlineCalendar({ projects, now = new Date(), onOpen })
   return (
     <div>
       <div className="cal-head">
-        <button className="iconbtn" onClick={() => shift(-1)} aria-label={mode === "year" ? "Предишна година" : "Предишен месец"}>
+        <button className="iconbtn" onClick={() => shift(-1)} aria-label={mode === "year" ? t("calendar.prevYear") : t("calendar.prevMonth")}>
           <Icon name="chevronRight" size={18} style={{ transform: "rotate(180deg)" }} />
         </button>
         <h3>{mode === "year" ? view.getFullYear() : `${MONTHS[view.getMonth()]} ${view.getFullYear()}`}</h3>
-        <button className="iconbtn" onClick={() => shift(1)} aria-label={mode === "year" ? "Следваща година" : "Следващ месец"}>
+        <button className="iconbtn" onClick={() => shift(1)} aria-label={mode === "year" ? t("calendar.nextYear") : t("calendar.nextMonth")}>
           <Icon name="chevronRight" size={18} />
         </button>
-        <button className="btn btn-ghost" onClick={() => { setView(new Date(now.getFullYear(), now.getMonth(), 1)); }}>Днес</button>
-        <div className="segmented cal-modes" role="group" aria-label="Изглед на календара">
-          <button aria-pressed={mode === "month"} onClick={() => setMode("month")}>Месец</button>
-          <button aria-pressed={mode === "year"} onClick={() => setMode("year")}>Година</button>
+        <button className="btn btn-ghost" onClick={() => { setView(new Date(now.getFullYear(), now.getMonth(), 1)); }}>{t("calendar.today")}</button>
+        <div className="segmented cal-modes" role="group" aria-label={t("calendar.viewAria")}>
+          <button aria-pressed={mode === "month"} onClick={() => setMode("month")}>{t("calendar.month")}</button>
+          <button aria-pressed={mode === "year"} onClick={() => setMode("year")}>{t("calendar.year")}</button>
         </div>
       </div>
 
       {mode === "month" ? (
-        <MonthGrid view={view} byDate={byDate} now={now} todayKey={todayKey} onOpen={onOpen} />
+        <MonthGrid view={view} byDate={byDate} now={now} todayKey={todayKey} onOpen={onOpen} DOW={DOW} gridAria={t("calendar.gridAria")} />
       ) : (
         <div className="cal-year">
           {Array.from({ length: 12 }).map((_, m) => {
@@ -103,7 +119,7 @@ export default function DeadlineCalendar({ projects, now = new Date(), onOpen })
                     const hot = ev.some((p) => (daysLeft(p.deadline_date, now) ?? 99) <= URGENT_DAYS);
                     const cls = "cal-mini-day" + (ev.length ? " has-event" : "") + (hot ? " hot" : "") + (key === todayKey ? " today" : "");
                     return ev.length ? (
-                      <button key={key} className={cls} onClick={() => onDayClick(d)} title={`${d.getDate()} ${MONTHS[m]} · ${ev.length} срок(а)`} aria-label={`${d.getDate()} ${MONTHS[m]}, ${ev.length} срока`}>
+                      <button key={key} className={cls} onClick={() => onDayClick(d)} title={`${d.getDate()} ${MONTHS[m]} · ${t("calendar.deadlinesCount", { count: ev.length })}`} aria-label={`${d.getDate()} ${MONTHS[m]}, ${t("calendar.deadlinesCount", { count: ev.length })}`}>
                         {d.getDate()}
                       </button>
                     ) : (
@@ -118,8 +134,8 @@ export default function DeadlineCalendar({ projects, now = new Date(), onOpen })
       )}
 
       <div className="cal-agenda">
-        <h3 style={{ fontSize: 16, margin: "0 0 8px" }}>Предстоящи срокове</h3>
-        {agenda.length === 0 && <p className="prose">Няма предстоящи крайни срокове в проследяваните данни.</p>}
+        <h3 style={{ fontSize: 16, margin: "0 0 8px" }}>{t("calendar.upcoming")}</h3>
+        {agenda.length === 0 && <p className="prose">{t("calendar.noUpcoming")}</p>}
         {agenda.map((p) => {
           const dl = daysLeft(p.deadline_date, now);
           const d = new Date(p.deadline_date + "T12:00:00");
@@ -144,10 +160,10 @@ export default function DeadlineCalendar({ projects, now = new Date(), onOpen })
   );
 }
 
-function MonthGrid({ view, byDate, now, todayKey, onOpen }) {
+function MonthGrid({ view, byDate, now, todayKey, onOpen, DOW, gridAria }) {
   const cells = buildMonth(view);
   return (
-    <div className="cal-grid" role="grid" aria-label="Календар с крайни срокове">
+    <div className="cal-grid" role="grid" aria-label={gridAria}>
       {DOW.map((d) => (
         <div className="cal-dow" key={d} role="columnheader">{d}</div>
       ))}

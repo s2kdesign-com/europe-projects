@@ -6,12 +6,12 @@ import Icon from "./Icon.jsx";
 export default function QuickActions({ onSearch, onProfile, onSaved, onCalendar, onExport, onReminder, onCompare }) {
   const { t } = useTranslation();
   const actions = [
-    { icon: "search", label: "Търси процедури", onClick: onSearch },
-    { icon: "filter", label: "Настрой профил", onClick: onProfile },
-    { icon: "bookmark", label: "Прегледай запазените", onClick: onSaved },
-    { icon: "calendar", label: "Отвори календара", onClick: onCalendar },
-    { icon: "clock", label: "Създай напомняне", onClick: onReminder },
-    { icon: "compare", label: "Сравни процедури", onClick: onCompare },
+    { icon: "search", label: t("quick.search"), onClick: onSearch },
+    { icon: "filter", label: t("quick.profile"), onClick: onProfile },
+    { icon: "bookmark", label: t("quick.saved"), onClick: onSaved },
+    { icon: "calendar", label: t("quick.calendar"), onClick: onCalendar },
+    { icon: "clock", label: t("quick.reminder"), onClick: onReminder },
+    { icon: "compare", label: t("quick.compare"), onClick: onCompare },
   ];
   return (
     <section className="ov-section" aria-labelledby="qa-h">

@@ -11,8 +11,8 @@ const STATUS_COLOR = { open: "var(--green)", closing_soon: "var(--amber)", upcom
 export default function FundingCharts({ projects, now }) {
   const { t } = useTranslation();
   const programs = byProgram(projects).slice(0, 7);
-  const statuses = byStatus(projects).map((s) => ({ label: STATUS[s.key]?.label || s.key, value: s.value, color: STATUS_COLOR[s.key] }));
-  const targets = byTargetGroup(projects).map((t) => ({ label: t.label, value: t.value, color: t.key === "youth" ? "var(--green)" : "var(--blue)" }));
+  const statuses = byStatus(projects).map((s) => ({ label: t(`status.${s.key}`, STATUS[s.key]?.label || s.key), value: s.value, color: STATUS_COLOR[s.key] }));
+  const targets = byTargetGroup(projects).map((g) => ({ label: g.key === "youth" ? t("filters.targetYouth") : t("filters.targetGeneral"), value: g.value, color: g.key === "youth" ? "var(--green)" : "var(--blue)" }));
   const months = deadlinesByMonth(projects, now, 6);
 
   return (
@@ -21,14 +21,13 @@ export default function FundingCharts({ projects, now }) {
         <h2 id="charts-h"><Icon name="layers" size={18} /> {t("sections.funding")}</h2>
       </div>
       <div className="chart-grid">
-        <div className="chart-card"><ColumnChart title="Срокове по месеци" data={months} /></div>
-        <div className="chart-card"><BarChart title="Процедури по програма" data={programs} /></div>
-        <div className="chart-card"><DonutChart title="По статус" data={statuses} /></div>
-        <div className="chart-card"><DonutChart title="По тип кандидат" data={targets} /></div>
+        <div className="chart-card"><ColumnChart title={t("charts.byMonth")} data={months} /></div>
+        <div className="chart-card"><BarChart title={t("charts.byProgram")} data={programs} /></div>
+        <div className="chart-card"><DonutChart title={t("charts.byStatus")} data={statuses} /></div>
+        <div className="chart-card"><DonutChart title={t("charts.byCandidate")} data={targets} /></div>
       </div>
       <p className="chart-note">
-        <Icon name="info" size={13} /> Сумарен бюджет и разбивка по сектор не се показват — бюджетът е свободен текст,
-        а поле „сектор" липсва в данните. Използва се програмата като налично измерение.
+        <Icon name="info" size={13} /> {t("charts.note")}
       </p>
     </section>
   );

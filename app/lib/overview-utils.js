@@ -2,8 +2,21 @@
 // Всичко тук се смята от РЕАЛНИ полета. Където данните не стигат (напр. сума на
 // бюджета, сектор), НЕ измисляме стойност — връщаме null / „нужна проверка".
 
-import { daysLeft, targetGroup, parseDeadline } from "./project-utils.js";
+import { daysLeft, targetGroup, parseDeadline, intlLocale } from "./project-utils.js";
 import { NEW_WINDOW_DAYS, URGENCY_BUCKETS } from "./constants.js";
+
+// Локализирани имена на месеци (Intl). Кеш по локал за производителност.
+const _monthCache = {};
+function monthNames(style) {
+  const loc = intlLocale();
+  const ck = loc + ":" + style;
+  if (_monthCache[ck]) return _monthCache[ck];
+  const fmt = new Intl.DateTimeFormat(loc, { month: style });
+  const arr = [];
+  for (let m = 0; m < 12; m++) arr.push(fmt.format(new Date(2021, m, 1)));
+  _monthCache[ck] = arr;
+  return arr;
+}
 
 // ---- Новост / промяна (от first_seen / last_updated) ----
 export function isNewSince(project, now = new Date(), days = NEW_WINDOW_DAYS) {
@@ -190,7 +203,7 @@ export function byTargetGroup(projects) {
   ].filter((x) => x.value > 0);
 }
 export function deadlinesByMonth(projects, now = new Date(), months = 6) {
-  const MONTHS = ["яну", "фев", "мар", "апр", "май", "юни", "юли", "авг", "сеп", "окт", "ное", "дек"];
+  const MONTHS = monthNames("short");
   const buckets = [];
   for (let i = 0; i < months; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
@@ -230,7 +243,6 @@ export function newChangedOverWeeks(projects, now = new Date(), weeks = 6) {
 // Седмица = понеделник–неделя (BG locale). Смятат се 2×N седмици, за да имаме и
 // непосредствено предходния период за сравнение (тенденция).
 
-const BG_MONTHS_FULL = ["януари", "февруари", "март", "април", "май", "юни", "юли", "август", "септември", "октомври", "ноември", "декември"];
 const pad2 = (n) => String(n).padStart(2, "0");
 const isoDate = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
@@ -243,11 +255,12 @@ function mondayOf(date) {
 
 // Български етикети за седмичен диапазон (пълен / кратък / за tooltip).
 export function formatWeekLabel(start, end) {
+  const M = monthNames("long");
   const sd = start.getDate(), ed = end.getDate(), sm = start.getMonth(), em = end.getMonth();
   const sameMonth = sm === em;
-  const full = sameMonth ? `${sd}–${ed} ${BG_MONTHS_FULL[em]}` : `${sd} ${BG_MONTHS_FULL[sm]}–${ed} ${BG_MONTHS_FULL[em]}`;
+  const full = sameMonth ? `${sd}–${ed} ${M[em]}` : `${sd} ${M[sm]}–${ed} ${M[em]}`;
   const short = sameMonth ? `${pad2(sd)}–${pad2(ed)}.${pad2(em + 1)}` : `${pad2(sd)}.${pad2(sm + 1)}–${pad2(ed)}.${pad2(em + 1)}`;
-  const tooltip = sameMonth ? `${sd}–${ed} ${BG_MONTHS_FULL[em]} ${end.getFullYear()}` : `${sd} ${BG_MONTHS_FULL[sm]} – ${ed} ${BG_MONTHS_FULL[em]} ${end.getFullYear()}`;
+  const tooltip = sameMonth ? `${sd}–${ed} ${M[em]} ${end.getFullYear()}` : `${sd} ${M[sm]} – ${ed} ${M[em]} ${end.getFullYear()}`;
   return { full, short, tooltip };
 }
 

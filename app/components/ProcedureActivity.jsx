@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import { ACTIVITY_PERIODS } from "../lib/constants.js";
-import { activityInsight } from "../lib/overview-utils.js";
 
 // Изчислява „приятен" максимум и целочислени деления за Y оста.
 function niceTicks(maxVal) {
@@ -19,20 +19,33 @@ function niceTicks(maxVal) {
   return { niceMax, ticks };
 }
 
-function TrendPill({ trend }) {
-  if (!trend || trend.kind === "none") return <span className="act-trend flat"><span aria-hidden="true">—</span> Няма данни</span>;
-  if (trend.kind === "nobase") return <span className="act-trend flat"><span aria-hidden="true">—</span> Няма база</span>;
+function TrendPill({ trend, t }) {
+  if (!trend || trend.kind === "none") return <span className="act-trend flat"><span aria-hidden="true">—</span> {t("activity.noData")}</span>;
+  if (trend.kind === "nobase") return <span className="act-trend flat"><span aria-hidden="true">—</span> {t("activity.noBase")}</span>;
   const glyph = trend.kind === "up" ? "▲" : trend.kind === "down" ? "▼" : "▬";
   const sign = trend.pct > 0 ? "+" : "";
-  const word = trend.kind === "up" ? "нагоре" : trend.kind === "down" ? "надолу" : "без промяна";
+  const word = trend.kind === "up" ? t("activity.up") : trend.kind === "down" ? t("activity.down") : t("activity.flat");
   return (
     <span className={"act-trend " + trend.kind}>
-      <span aria-hidden="true">{glyph}</span> {sign}{trend.pct}% <span className="sr-only">({word} спрямо предходния период)</span>
+      <span aria-hidden="true">{glyph}</span> {sign}{trend.pct}% <span className="sr-only">{t("activity.trendSr", { word })}</span>
     </span>
   );
 }
 
+// Текстово заключение (локализирано; числата се вмъкват в компонента).
+function insightText(activity, t) {
+  if (!activity || !activity.hasData) return t("activity.insightNoData");
+  const parts = [];
+  if (activity.mostActive) parts.push(t("activity.insightMostActive", { week: activity.mostActive.label, count: activity.mostActive.total }));
+  const tr = activity.summary.trend;
+  if (tr.kind === "up") parts.push(t("activity.insightUp", { pct: tr.pct }));
+  else if (tr.kind === "down") parts.push(t("activity.insightDown", { pct: Math.abs(tr.pct) }));
+  else if (tr.kind === "nobase" || tr.kind === "none") parts.push(t("activity.insightNoData"));
+  return parts.join(" ");
+}
+
 export default function ProcedureActivity({ activity, period, onPeriod, onSelectWeek, onSeeAll, onLonger, loading, error, onRetry }) {
+  const { t } = useTranslation();
   const [hover, setHover] = useState(-1);
   const weeks = activity ? activity.weeks : [];
   const s = activity ? activity.summary : { newTotal: 0, changedTotal: 0, total: 0, trend: { kind: "none" } };
@@ -49,14 +62,14 @@ export default function ProcedureActivity({ activity, period, onPeriod, onSelect
 
   const ariaDesc =
     activity && activity.hasData
-      ? `Активност по седмици за избрания период: ${s.newTotal} нови и ${s.changedTotal} актуализирани процедури, общо ${s.total}.`
-      : "Няма нови или актуализирани процедури за избрания период.";
+      ? t("activity.ariaDesc", { new: s.newTotal, changed: s.changedTotal, total: s.total })
+      : t("activity.ariaEmpty");
 
   const periodControl = (
-    <div className="act-period seg-group" role="group" aria-label="Период на активността">
+    <div className="act-period seg-group" role="group" aria-label={t("activity.periodAria")}>
       <div className="segmented">
         {ACTIVITY_PERIODS.map((p) => (
-          <button key={p.key} aria-pressed={period === p.key} onClick={() => onPeriod(p.key)}>{p.label}</button>
+          <button key={p.key} aria-pressed={period === p.key} onClick={() => onPeriod(p.key)}>{t(`period.${p.key}`)}</button>
         ))}
       </div>
     </div>
@@ -66,21 +79,21 @@ export default function ProcedureActivity({ activity, period, onPeriod, onSelect
     <section className="ov-section act-section" aria-labelledby="act-h">
       <div className="ov-section-head act-head">
         <div className="act-titles">
-          <h2 id="act-h"><Icon name="sparkle" size={18} /> Активност на процедурите</h2>
-          <p className="act-sub">Нови и актуализирани възможности през избрания период</p>
+          <h2 id="act-h"><Icon name="sparkle" size={18} /> {t("activity.title")}</h2>
+          <p className="act-sub">{t("activity.subtitle")}</p>
         </div>
         {periodControl}
       </div>
 
       {/* Обобщаващи показатели */}
-      <div className="act-summary" role="group" aria-label="Обобщение">
-        <div className="act-stat"><span className="act-stat-n">{s.newTotal}</span><span className="act-stat-l"><span className="dot violet" aria-hidden="true" /> Нови</span></div>
-        <div className="act-stat"><span className="act-stat-n">{s.changedTotal}</span><span className="act-stat-l"><span className="dot blue" aria-hidden="true" /> Актуализирани</span></div>
-        <div className="act-stat"><span className="act-stat-n">{s.total}</span><span className="act-stat-l">Общо промени</span></div>
-        <div className="act-stat"><span className="act-stat-n"><TrendPill trend={s.trend} /></span><span className="act-stat-l">Тенденция</span></div>
+      <div className="act-summary" role="group" aria-label={t("activity.summaryAria")}>
+        <div className="act-stat"><span className="act-stat-n">{s.newTotal}</span><span className="act-stat-l"><span className="dot violet" aria-hidden="true" /> {t("activity.new")}</span></div>
+        <div className="act-stat"><span className="act-stat-n">{s.changedTotal}</span><span className="act-stat-l"><span className="dot blue" aria-hidden="true" /> {t("activity.updated")}</span></div>
+        <div className="act-stat"><span className="act-stat-n">{s.total}</span><span className="act-stat-l">{t("activity.totalChanges")}</span></div>
+        <div className="act-stat"><span className="act-stat-n"><TrendPill trend={s.trend} t={t} /></span><span className="act-stat-l">{t("activity.trend")}</span></div>
       </div>
 
-      {activity && activity.hasData && <p className="act-insight"><Icon name="info" size={14} /> {activityInsight(activity)}</p>}
+      {activity && activity.hasData && <p className="act-insight"><Icon name="info" size={14} /> {insightText(activity, t)}</p>}
 
       {/* Тяло: skeleton / грешка / празно / диаграма */}
       {loading ? (
@@ -88,32 +101,32 @@ export default function ProcedureActivity({ activity, period, onPeriod, onSelect
       ) : error ? (
         <div className="state ov-empty">
           <Icon name="alert" size={26} />
-          <h3>Данните не се заредиха</h3>
-          <p>Възникна грешка при изчисляване на активността.</p>
-          <button className="btn btn-primary" onClick={onRetry}>Опитай отново</button>
+          <h3>{t("activity.loadError")}</h3>
+          <p>{t("activity.loadErrorText")}</p>
+          <button className="btn btn-primary" onClick={onRetry}>{t("activity.retry")}</button>
         </div>
       ) : !activity || !activity.hasData ? (
         <div className="state ov-empty">
           <Icon name="sparkle" size={26} />
-          <h3>Няма нови или актуализирани процедури за избрания период.</h3>
-          <p>Изберете по-дълъг период или разгледайте всички процедури.</p>
+          <h3>{t("activity.emptyTitle")}</h3>
+          <p>{t("activity.emptyText")}</p>
           <div className="act-empty-actions">
-            {period !== "90" && <button className="btn" onClick={() => onPeriod("90")}>Покажи 90 дни</button>}
-            <button className="btn btn-primary" onClick={onSeeAll}>Разгледай процедурите</button>
+            {period !== "90" && <button className="btn" onClick={() => onPeriod("90")}>{t("activity.show90")}</button>}
+            <button className="btn btn-primary" onClick={onSeeAll}>{t("activity.browse")}</button>
           </div>
         </div>
       ) : (
         <div className="act-chart">
           <div className="act-legend" aria-hidden="true">
-            <span className="lg"><span className="dot violet" /> Нови процедури</span>
-            <span className="lg"><span className="dot blue" /> Актуализирани процедури</span>
+            <span className="lg"><span className="dot violet" /> {t("activity.legendNew")}</span>
+            <span className="lg"><span className="dot blue" /> {t("activity.legendUpdated")}</span>
           </div>
 
           <div className="act-plot" role="img" aria-label={ariaDesc}>
             <div className="act-grid">
-              {ticks.map((t) => (
-                <div key={t} className="act-grid-line" style={{ bottom: `${(t / niceMax) * 100}%` }}>
-                  <span className="act-tick">{t}</span>
+              {ticks.map((tk) => (
+                <div key={tk} className="act-grid-line" style={{ bottom: `${(tk / niceMax) * 100}%` }}>
+                  <span className="act-tick">{tk}</span>
                 </div>
               ))}
             </div>
@@ -131,7 +144,7 @@ export default function ProcedureActivity({ activity, period, onPeriod, onSelect
                       className="act-bar new"
                       style={{ height: `${(w.new / niceMax) * 100}%` }}
                       disabled={w.new === 0}
-                      aria-label={`${w.tooltip}: ${w.new} нови процедури — отвори`}
+                      aria-label={t("activity.barNewAria", { week: w.tooltip, count: w.new })}
                       onFocus={() => setHover(i)}
                       onClick={() => w.new > 0 && onSelectWeek("new", w.start, w.end)}
                     />
@@ -140,7 +153,7 @@ export default function ProcedureActivity({ activity, period, onPeriod, onSelect
                       className="act-bar changed"
                       style={{ height: `${(w.changed / niceMax) * 100}%` }}
                       disabled={w.changed === 0}
-                      aria-label={`${w.tooltip}: ${w.changed} актуализирани процедури — отвори`}
+                      aria-label={t("activity.barUpdatedAria", { week: w.tooltip, count: w.changed })}
                       onFocus={() => setHover(i)}
                       onClick={() => w.changed > 0 && onSelectWeek("changed", w.start, w.end)}
                     />
@@ -156,9 +169,9 @@ export default function ProcedureActivity({ activity, period, onPeriod, onSelect
                 role="status"
               >
                 <strong>{weeks[hover].tooltip}</strong>
-                <span><span className="dot violet" /> Нови процедури: {weeks[hover].new}</span>
-                <span><span className="dot blue" /> Актуализирани процедури: {weeks[hover].changed}</span>
-                <span className="act-tip-total">Общо: {weeks[hover].total}</span>
+                <span><span className="dot violet" /> {t("activity.tipNew")} {weeks[hover].new}</span>
+                <span><span className="dot blue" /> {t("activity.tipUpdated")} {weeks[hover].changed}</span>
+                <span className="act-tip-total">{t("activity.tipTotal")} {weeks[hover].total}</span>
               </div>
             )}
           </div>
@@ -177,9 +190,9 @@ export default function ProcedureActivity({ activity, period, onPeriod, onSelect
       {activity && activity.hasData && (
         <div className="sr-only">
           <table>
-            <caption>Активност на процедурите по седмици</caption>
+            <caption>{t("activity.srCaption")}</caption>
             <thead>
-              <tr><th scope="col">Седмица</th><th scope="col">Нови</th><th scope="col">Актуализирани</th><th scope="col">Общо</th></tr>
+              <tr><th scope="col">{t("activity.srWeek")}</th><th scope="col">{t("activity.srNew")}</th><th scope="col">{t("activity.srUpdated")}</th><th scope="col">{t("activity.srTotal")}</th></tr>
             </thead>
             <tbody>
               {weeks.map((w) => (

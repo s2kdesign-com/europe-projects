@@ -45,6 +45,9 @@ export function daysLeft(deadlineDate, now = new Date()) {
 // без да пипаме всяко място на извикване.
 let UI_LOCALE = "bg";
 export function setUiLocale(l) { UI_LOCALE = l || "bg"; }
+export function getUiLocale() { return UI_LOCALE; }
+/** BCP-47 локал за Intl (bg → bg-BG, иначе самия код). */
+export function intlLocale() { return UI_LOCALE === "bg" ? "bg-BG" : UI_LOCALE; }
 
 const COUNTDOWN = {
   bg: { expired: "срокът изтече", today: "днес", one: "остава 1 ден", many: (n) => `остават ${n} дни` },

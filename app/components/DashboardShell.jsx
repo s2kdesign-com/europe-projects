@@ -252,7 +252,7 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
               onSaved={() => navigateTab("saved")}
               onCalendar={() => navigateTab("calendar")}
               onExport={() => exportCSV(buckets.flatMap((b) => b.items), "srokove.csv")}
-              onReminder={() => { const next = buckets.flatMap((b) => b.items).find((p) => (daysLeft(p.deadline_date, now) ?? -1) >= 0); next ? downloadICS(next) : flash("Няма предстоящи срокове"); }}
+              onReminder={() => { const next = buckets.flatMap((b) => b.items).find((p) => (daysLeft(p.deadline_date, now) ?? -1) >= 0); next ? downloadICS(next) : flash(t("compare.noUpcoming")); }}
               onCompare={() => goProcedures({})}
             />
           </>
@@ -272,18 +272,18 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
 
         {activeTab === "calendar" && (
           <>
-            <div className="page-head"><h1>Календар на сроковете</h1><p>Крайни срокове по дни и предстоящи процедури.</p></div>
+            <div className="page-head"><h1>{t("calendar.title")}</h1><p>{t("calendar.subtitle")}</p></div>
             <DeadlineCalendar projects={projects} now={now} onOpen={openProcedure} />
           </>
         )}
 
         {activeTab === "saved" && (
           <>
-            <div className="page-head"><h1>Запазени процедури</h1><p>{session.authenticated ? "Синхронизирани с профила ви." : "Пазят се локално в браузъра. Влезте, за да ги синхронизирате."}</p></div>
+            <div className="page-head"><h1>{t("saved.title")}</h1><p>{session.authenticated ? t("saved.syncedProfile") : t("saved.localOnly")}</p></div>
             {!session.authenticated && (
               <div className="ov-since" style={{ marginBottom: 16 }}>
                 <Icon name="info" size={18} />
-                <p>Запазванията са само в този браузър. <a href="/login?returnTo=/">Влезте с Google</a>, за да ги пазите в акаунта си и на други устройства.</p>
+                <p>{t("saved.guestNote1")} <a href="/login?returnTo=/">{t("saved.guestLogin")}</a>{t("saved.guestNote2")}</p>
               </div>
             )}
             <SavedTracked savedProjects={savedProjects} now={now} savedMeta={saved.savedMeta} notes={saved.notes} onNote={saved.setNote} onOpen={openProcedure} onRemove={(id) => toggleSave(id)} />
@@ -304,11 +304,11 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
       )}
 
       {compareProjects.length > 0 && !showCompare && (
-        <div className="compare-tray" role="region" aria-label="Сравнение">
+        <div className="compare-tray" role="region" aria-label={t("compare.region")}>
           <Icon name="compare" size={18} />
-          <strong>{compareProjects.length}</strong> за сравнение{compareProjects.length >= MAX_COMPARE ? " (макс. 3)" : ""}
-          <button className="btn btn-primary" onClick={() => setShowCompare(true)}>Сравни</button>
-          <button className="iconbtn" style={{ color: "#fff" }} onClick={fx.clearCompare} aria-label="Изчисти сравнението"><Icon name="close" size={18} /></button>
+          <strong>{compareProjects.length}</strong> {t("compare.forCompare")}{compareProjects.length >= MAX_COMPARE ? t("compare.max") : ""}
+          <button className="btn btn-primary" onClick={() => setShowCompare(true)}>{t("compare.compareBtn")}</button>
+          <button className="iconbtn" style={{ color: "#fff" }} onClick={fx.clearCompare} aria-label={t("compare.clear")}><Icon name="close" size={18} /></button>
         </div>
       )}
 

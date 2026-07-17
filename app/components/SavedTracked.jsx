@@ -7,7 +7,7 @@ import StatusBadge from "./StatusBadge.jsx";
 import { daysLeft, countdownLabel, formatDate } from "../lib/project-utils.js";
 import { attentionReasons } from "../lib/overview-utils.js";
 
-function SavedRow({ p, now, savedIds, savedMeta, note, onNote, onOpen, onRemove }) {
+function SavedRow({ p, now, savedIds, savedMeta, note, onNote, onOpen, onRemove, t }) {
   const [editing, setEditing] = useState(false);
   const dl = daysLeft(p.deadline_date, now);
   return (
@@ -25,8 +25,8 @@ function SavedRow({ p, now, savedIds, savedMeta, note, onNote, onOpen, onRemove 
           <textarea
             className="note-input"
             defaultValue={note || ""}
-            placeholder="Твоя бележка (пази се локално)…"
-            aria-label="Персонална бележка"
+            placeholder={t("saved.notePlaceholder")}
+            aria-label={t("saved.noteAria")}
             onBlur={(e) => { onNote(p.id, e.target.value); setEditing(false); }}
             autoFocus
           />
@@ -35,8 +35,8 @@ function SavedRow({ p, now, savedIds, savedMeta, note, onNote, onOpen, onRemove 
         ) : null}
       </div>
       <div className="saved-side">
-        <button className="iconbtn" title="Бележка" aria-label="Добави/редактирай бележка" onClick={() => setEditing(true)}><Icon name="document" size={16} /></button>
-        <button className="iconbtn saved" title="Премахни от запазени" aria-label="Премахни от запазени" onClick={() => onRemove(p.id)}><Icon name="bookmarkFilled" size={16} /></button>
+        <button className="iconbtn" title={t("saved.note")} aria-label={t("saved.noteAdd")} onClick={() => setEditing(true)}><Icon name="document" size={16} /></button>
+        <button className="iconbtn saved" title={t("saved.remove")} aria-label={t("saved.remove")} onClick={() => onRemove(p.id)}><Icon name="bookmarkFilled" size={16} /></button>
       </div>
     </div>
   );
@@ -58,7 +58,7 @@ export default function SavedTracked({ savedProjects, now, savedMeta, notes, onN
         <div className="saved-block-head"><span className={"badge " + tone}>{title}</span><span className="count-dot">{items.length}</span></div>
         <div className="saved-list">
           {items.map((p) => (
-            <SavedRow key={p.id} p={p} now={now} savedIds={savedIds} savedMeta={savedMeta} note={notes[p.id]} onNote={onNote} onOpen={onOpen} onRemove={onRemove} />
+            <SavedRow key={p.id} p={p} now={now} savedIds={savedIds} savedMeta={savedMeta} note={notes[p.id]} onNote={onNote} onOpen={onOpen} onRemove={onRemove} t={t} />
           ))}
         </div>
       </div>
@@ -71,12 +71,12 @@ export default function SavedTracked({ savedProjects, now, savedMeta, notes, onN
         <span className="count-dot">{savedProjects.length}</span>
       </div>
       {savedProjects.length === 0 ? (
-        <div className="state ov-empty"><Icon name="bookmark" size={26} /><h3>Все още няма запазени</h3><p>Натисни иконата за отметка на процедура, за да я следиш тук и да получаваш индикатор при промяна.</p></div>
+        <div className="state ov-empty"><Icon name="bookmark" size={26} /><h3>{t("saved.emptyTitle")}</h3><p>{t("saved.emptyText")}</p></div>
       ) : (
         <>
-          <Block title="Изискват внимание" tone="amber" items={groups.attention} />
-          <Block title="Без промени" tone="green" items={groups.stable} />
-          <Block title="Приключили" tone="neutral" items={groups.done} />
+          <Block title={t("saved.attention")} tone="amber" items={groups.attention} />
+          <Block title={t("saved.noChanges")} tone="green" items={groups.stable} />
+          <Block title={t("saved.done")} tone="neutral" items={groups.done} />
         </>
       )}
     </section>
