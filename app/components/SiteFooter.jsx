@@ -86,10 +86,10 @@ export default function SiteFooter({ session: sessionProp }) {
         <div className="sf-col">
           <h4 className="sf-title">{t("footer.usefulLinks")}</h4>
           <div className="sf-links sf-links-grid">
-            <a className="sf-link" href="/?tab=overview">{t("navigation.overview")}</a>
-            <a className="sf-link" href="/?tab=procedures">{t("navigation.procedures")}</a>
-            <a className="sf-link" href="/?tab=calendar">{t("navigation.calendar")}</a>
-            <a className="sf-link" href="/?tab=saved">{t("navigation.saved")}</a>
+            <a className="sf-link" href="/">{t("navigation.overview")}</a>
+            <a className="sf-link" href="/procedures">{t("navigation.procedures")}</a>
+            <a className="sf-link" href="/calendar">{t("navigation.calendar")}</a>
+            <a className="sf-link" href="/saved">{t("navigation.saved")}</a>
             <a className="sf-link" href="/changelog">{t("navigation.changelog")}{hasNew && <span className="new-dot" aria-label="нова версия" />}</a>
             <button className="sf-link" onClick={() => emit("open-welcome")}>{t("footer.aboutSystem")}</button>
             <button className="sf-link" onClick={openAiInfo}>{t("footer.howAiWorks")}</button>

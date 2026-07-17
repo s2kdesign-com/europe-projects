@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import ProjectActions from "./ProjectActions.jsx";
@@ -44,10 +45,11 @@ export default function RecommendedSection({
   onLogin, onOpenProfile,
   isSaved, inCompare, onOpen, onToggleSave, onToggleCompare, onCopyLink, onCalendar,
 }) {
+  const { t } = useTranslation();
   return (
     <section className="ov-section" aria-labelledby="rec-h">
       <div className="ov-section-head">
-        <h2 id="rec-h"><Icon name="users" size={18} /> Най-подходящи за вас</h2>
+        <h2 id="rec-h"><Icon name="users" size={18} /> {t("sections.recommended")}</h2>
         {authenticated && profileComplete && <span className="count-dot">{items.length}</span>}
         {authenticated && <button className="btn btn-ghost see-all" onClick={onOpenProfile}><Icon name="filter" size={14} /> Профил</button>}
       </div>

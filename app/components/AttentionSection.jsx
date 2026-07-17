@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import ProjectActions from "./ProjectActions.jsx";
@@ -53,13 +54,14 @@ function AttentionCard({ p, reasons, now, isSaved, inCompare, onOpen, onToggleSa
 }
 
 export default function AttentionSection({ items, now, isSaved, inCompare, onOpen, onToggleSave, onToggleCompare, onCopyLink, onCalendar, onSeeAll, limit = 6 }) {
+  const { t } = useTranslation();
   return (
     <section className="ov-section" aria-labelledby="att-h">
       <div className="ov-section-head">
-        <h2 id="att-h"><Icon name="alert" size={18} /> Изискват внимание</h2>
+        <h2 id="att-h"><Icon name="alert" size={18} /> {t("sections.attention")}</h2>
         <span className="count-dot">{items.length}</span>
         {items.length > limit && (
-          <button className="btn btn-ghost see-all" onClick={onSeeAll}>Виж всички <Icon name="arrowRight" size={14} /></button>
+          <button className="btn btn-ghost see-all" onClick={onSeeAll}>{t("sections.viewAll")} <Icon name="arrowRight" size={14} /></button>
         )}
       </div>
       {items.length === 0 ? (

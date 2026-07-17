@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import { daysLeft, countdownLabel, formatDate } from "../lib/project-utils.js";
@@ -42,6 +43,7 @@ function SavedRow({ p, now, savedIds, savedMeta, note, onNote, onOpen, onRemove 
 }
 
 export default function SavedTracked({ savedProjects, now, savedMeta, notes, onNote, onOpen, onRemove }) {
+  const { t } = useTranslation();
   const savedIds = savedProjects.map((p) => p.id);
   const groups = { attention: [], stable: [], done: [] };
   for (const p of savedProjects) {
@@ -65,7 +67,7 @@ export default function SavedTracked({ savedProjects, now, savedMeta, notes, onN
   return (
     <section className="ov-section" aria-labelledby="saved-h">
       <div className="ov-section-head">
-        <h2 id="saved-h"><Icon name="bookmark" size={18} /> Запазени и следени</h2>
+        <h2 id="saved-h"><Icon name="bookmark" size={18} /> {t("sections.savedTracked")}</h2>
         <span className="count-dot">{savedProjects.length}</span>
       </div>
       {savedProjects.length === 0 ? (

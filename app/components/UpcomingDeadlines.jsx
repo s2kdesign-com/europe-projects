@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import { daysLeft, countdownLabel, formatDate } from "../lib/project-utils.js";
@@ -56,13 +57,14 @@ function Row({ p, now, saved, savedMeta, onOpen, onToggleSave, onCalendar }) {
 }
 
 export default function UpcomingDeadlines({ buckets, now, isSaved, savedMeta, onOpen, onToggleSave, onCalendar, onOpenCalendar }) {
+  const { t } = useTranslation();
   const [view, setView] = useState("grouped");
   const total = buckets.reduce((a, b) => a + b.items.length, 0);
 
   return (
     <section className="ov-section" aria-labelledby="dl-h">
       <div className="ov-section-head">
-        <h2 id="dl-h"><Icon name="clock" size={18} /> Наближаващи срокове</h2>
+        <h2 id="dl-h"><Icon name="clock" size={18} /> {t("sections.upcoming")}</h2>
         <span className="count-dot">{total}</span>
         <div className="segmented ov-view" role="group" aria-label="Изглед">
           <button aria-pressed={view === "grouped"} onClick={() => setView("grouped")} title="По спешност"><Icon name="layers" size={15} /></button>

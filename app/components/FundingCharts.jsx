@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import { BarChart, DonutChart, ColumnChart } from "./Chart.jsx";
 import { STATUS } from "../lib/constants.js";
@@ -8,6 +9,7 @@ import { byProgram, byStatus, byTargetGroup, deadlinesByMonth } from "../lib/ove
 const STATUS_COLOR = { open: "var(--green)", closing_soon: "var(--amber)", upcoming: "var(--blue)", closed: "var(--neutral)" };
 
 export default function FundingCharts({ projects, now }) {
+  const { t } = useTranslation();
   const programs = byProgram(projects).slice(0, 7);
   const statuses = byStatus(projects).map((s) => ({ label: STATUS[s.key]?.label || s.key, value: s.value, color: STATUS_COLOR[s.key] }));
   const targets = byTargetGroup(projects).map((t) => ({ label: t.label, value: t.value, color: t.key === "youth" ? "var(--green)" : "var(--blue)" }));
@@ -16,7 +18,7 @@ export default function FundingCharts({ projects, now }) {
   return (
     <section className="ov-section" aria-labelledby="charts-h">
       <div className="ov-section-head">
-        <h2 id="charts-h"><Icon name="layers" size={18} /> Финансиране по направления</h2>
+        <h2 id="charts-h"><Icon name="layers" size={18} /> {t("sections.funding")}</h2>
       </div>
       <div className="chart-grid">
         <div className="chart-card"><ColumnChart title="Срокове по месеци" data={months} /></div>

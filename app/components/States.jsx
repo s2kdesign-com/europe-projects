@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 
 export function SkeletonGrid({ count = 6 }) {
@@ -19,19 +20,21 @@ export function SkeletonGrid({ count = 6 }) {
 }
 
 export function LoadingState() {
+  const { t } = useTranslation();
   return (
     <div className="page">
-      <p className="sr-only" role="status">Зареждане на процедурите…</p>
+      <p className="sr-only" role="status">{t("states.loadingProcedures")}</p>
       <SkeletonGrid count={6} />
     </div>
   );
 }
 
-export function EmptyState({ title = "Няма резултати", message, action }) {
+export function EmptyState({ title, message, action }) {
+  const { t } = useTranslation();
   return (
     <div className="state">
       <Icon name="search" size={30} />
-      <h3>{title}</h3>
+      <h3>{title || t("states.noResults")}</h3>
       {message && <p>{message}</p>}
       {action}
     </div>
@@ -39,17 +42,15 @@ export function EmptyState({ title = "Няма резултати", message, act
 }
 
 export function ErrorState({ onRetry }) {
+  const { t } = useTranslation();
   return (
     <div className="state error" role="alert">
       <Icon name="alert" size={30} />
-      <h3>Данните не се заредиха</h3>
-      <p>
-        Възможно е връзката с базата да е временно недостъпна. Ако разглеждате локално
-        (без Cloudflare Worker), API-то не е налично.
-      </p>
+      <h3>{t("states.loadError")}</h3>
+      <p>{t("states.loadErrorHint")}</p>
       {onRetry && (
         <button className="btn btn-primary" onClick={onRetry}>
-          <Icon name="refresh" size={16} /> Опитай пак
+          <Icon name="refresh" size={16} /> {t("common.retry")}
         </button>
       )}
     </div>

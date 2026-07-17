@@ -13,6 +13,32 @@ const PROJECT_COLUMNS =
   "id, name, program, priority, category, status, deadline, deadline_date, " +
   "budget, eligible, link, notes, is_new, first_seen, last_updated, year";
 
+// Legacy навигация: старите ?tab= / ?page= адреси → чисти маршрути (301), като
+// запазват само query параметрите, приложими за целевата страница.
+const LEGACY_TAB = { overview: "/", procedures: "/procedures", calendar: "/calendar", saved: "/saved", changelog: "/changelog" };
+const LEGACY_PAGE = { terms: "/terms", privacy: "/privacy", cookies: "/cookies", changelog: "/changelog" };
+const TAB_KEEP = {
+  overview: ["period", "activityPeriod", "candidateType", "program"],
+  procedures: ["q", "status", "deadline", "program", "target", "sort", "view"],
+  calendar: ["month", "year", "view"],
+  saved: [],
+  changelog: ["category", "version", "search"],
+};
+function legacyRedirect(url) {
+  if (url.pathname !== "/") return null;
+  const tab = url.searchParams.get("tab");
+  const page = url.searchParams.get("page");
+  let target = null, keep = [];
+  if (page && LEGACY_PAGE[page]) { target = LEGACY_PAGE[page]; keep = []; }
+  else if (tab && LEGACY_TAB[tab]) { target = LEGACY_TAB[tab]; keep = TAB_KEEP[tab] || []; }
+  if (!target) return null;
+  const kept = new URLSearchParams();
+  for (const k of keep) { const v = url.searchParams.get(k); if (v) kept.set(k, v); }
+  const qs = kept.toString();
+  const dest = new URL(qs ? `${target}?${qs}` : target, url.origin).toString();
+  return Response.redirect(dest, 301);
+}
+
 // Каноничен домейн (от APP_URL). Всяка заявка към стария workers.dev адрес се
 // пренасочва тук — за да работи логинът/сайтът само на euro-funds.eu.
 function canonicalRedirect(url, env) {
@@ -37,6 +63,10 @@ export default {
     // Пренасочване на стария домейн към каноничния (euro-funds.eu).
     const redirect = canonicalRedirect(url, env);
     if (redirect) return redirect;
+
+    // Legacy ?tab= / ?page= → чисти маршрути (301).
+    const legacy = legacyRedirect(url);
+    if (legacy) return legacy;
 
     // Информация за текущия deployment — винаги прясна (no-cache), за да могат
     // старите отворени клиенти да разберат, че има нов build. Кешираме статичните

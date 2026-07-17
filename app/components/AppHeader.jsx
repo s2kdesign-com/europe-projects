@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import UserMenu from "./UserMenu.jsx";
 import { TABS } from "../lib/constants.js";
+import { pathForTab } from "../lib/routes.js";
 
 const TAB_ICON = { overview: "grid", procedures: "list", calendar: "calendar", saved: "bookmark" };
 
@@ -107,11 +108,17 @@ export default function AppHeader({ tab, onTab, savedCount, session }) {
 
         <nav className="nav" aria-label={tr("navigation.ariaLabel")} ref={navRef}>
           {TABS.map((item) => (
-            <button key={item.key} className="nav-tab" aria-current={tab === item.key ? "page" : undefined} onClick={() => onTab(item.key)}>
+            <a
+              key={item.key}
+              href={pathForTab(item.key)}
+              className="nav-tab"
+              aria-current={tab === item.key ? "page" : undefined}
+              onClick={(e) => { if (!e.metaKey && !e.ctrlKey && e.button === 0) { e.preventDefault(); onTab(item.key); } }}
+            >
               <Icon name={TAB_ICON[item.key]} size={16} />
               {tr("navigation." + item.key)}
               {item.key === "saved" && savedCount > 0 && <span className="count-dot">{savedCount}</span>}
-            </button>
+            </a>
           ))}
         </nav>
 

@@ -1,8 +1,10 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 
 export default function QuickActions({ onSearch, onProfile, onSaved, onCalendar, onExport, onReminder, onCompare }) {
+  const { t } = useTranslation();
   const actions = [
     { icon: "search", label: "Търси процедури", onClick: onSearch },
     { icon: "filter", label: "Настрой профил", onClick: onProfile },
@@ -13,7 +15,7 @@ export default function QuickActions({ onSearch, onProfile, onSaved, onCalendar,
   ];
   return (
     <section className="ov-section" aria-labelledby="qa-h">
-      <div className="ov-section-head"><h2 id="qa-h"><Icon name="sparkle" size={18} /> Бързи действия</h2></div>
+      <div className="ov-section-head"><h2 id="qa-h"><Icon name="sparkle" size={18} /> {t("sections.quickActions")}</h2></div>
       <div className="quick-actions">
         {actions.map((a) => (
           <button key={a.label} className="quick-btn" onClick={a.onClick}>

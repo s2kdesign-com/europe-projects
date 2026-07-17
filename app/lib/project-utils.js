@@ -271,7 +271,7 @@ export function serializeFilters(filters) {
   if (f.docs) p.set("docs", "1");
   if (f.sort && f.sort !== EMPTY_FILTERS.sort) p.set("sort", f.sort);
   if (f.view && f.view !== EMPTY_FILTERS.view) p.set("view", f.view);
-  if (f.tab && f.tab !== EMPTY_FILTERS.tab) p.set("tab", f.tab);
+  // „tab" вече е реален маршрут (/procedures, /calendar…), не query параметър.
   // Периодът за „Какво е ново" се записва винаги, за да е споделяемо/възстановимо
   // (напр. ?tab=overview&period=30).
   p.set("period", normalizePeriod(f.period));

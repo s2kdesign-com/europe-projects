@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import { statusMeta } from "../lib/project-utils.js";
 
@@ -12,11 +13,12 @@ const STATUS_ICON = {
 };
 
 export default function StatusBadge({ status }) {
+  const { t } = useTranslation();
   const meta = statusMeta(status);
   return (
     <span className={"badge " + meta.tone}>
       <Icon name={STATUS_ICON[meta.key] || "info"} size={14} />
-      {meta.label}
+      {t("status." + meta.key, meta.label)}
     </span>
   );
 }

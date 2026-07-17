@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import AppHeader from "./AppHeader.jsx";
 import FilterPanel from "./FilterPanel.jsx";
 import ViewControls from "./ViewControls.jsx";
@@ -33,6 +34,7 @@ import { overviewStats, attentionProjects, changeFeed, urgencyBuckets, weeklyAct
 import { recommend, canRecommend } from "../lib/recommend.js";
 import { downloadTextFile, copyText, slugFilename } from "../lib/browser.js";
 import { LS_VIEW, MAX_COMPARE, DEFAULT_VIEW, DEFAULT_PERIOD, DEFAULT_ACTIVITY_PERIOD, ACTIVITY_PERIOD_DAYS, PERIOD_DAYS, TABS } from "../lib/constants.js";
+import { tabFromPath, pathForTab } from "../lib/routes.js";
 
 async function defaultFetchList(signal) {
   const r = await fetch("/api/projects", { signal });
@@ -45,7 +47,15 @@ async function defaultLoadDetail(id, signal) {
   return r.json();
 }
 
-export default function DashboardShell({ initialData = null, fetchList = defaultFetchList, loadDetail = defaultLoadDetail, now = new Date(), session: sessionOverride = null }) {
+export default function DashboardShell({ initialTab = "overview", initialData = null, fetchList = defaultFetchList, loadDetail = defaultLoadDetail, now = new Date(), session: sessionOverride = null }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  // Активният таб идва от реалния маршрут (pathname), не от ?tab. initialTab е
+  // резервен за SSR/тест, когато pathname още не е наличен.
+  const activeTab = pathname ? tabFromPath(pathname) : initialTab;
+  // Навигация между табовете = реална смяна на маршрут (SPA client navigation).
+  // Не пренасяме query параметри на друг маршрут (чист URL).
+  const navigateTab = useCallback((key) => router.push(pathForTab(key)), [router]);
   const [state, setState] = useState(initialData ? { phase: "ready" } : { phase: "loading" });
   const [data, setData] = useState(initialData || { projects: [], snapshot: null, ok: true });
   const [retry, setRetry] = useState(0);
@@ -119,14 +129,14 @@ export default function DashboardShell({ initialData = null, fetchList = default
       if (x0 == null) return;
       const t = e.changedTouches[0]; const dx = t.clientX - x0, dy = t.clientY - y0, dt = Date.now() - t0; x0 = null;
       if (dt > 700 || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
-      const order = TABS.map((x) => x.key); const i = order.indexOf(filters.tab);
-      if (dx < 0 && i < order.length - 1) fx.setTab(order[i + 1]);
-      else if (dx > 0 && i > 0) fx.setTab(order[i - 1]);
+      const order = TABS.map((x) => x.key); const i = order.indexOf(activeTab);
+      if (dx < 0 && i < order.length - 1) navigateTab(order[i + 1]);
+      else if (dx > 0 && i > 0) navigateTab(order[i - 1]);
     };
     el.addEventListener("touchstart", start, { passive: true });
     el.addEventListener("touchend", end, { passive: true });
     return () => { el.removeEventListener("touchstart", start); el.removeEventListener("touchend", end); };
-  }, [filters.tab, fx]);
+  }, [activeTab, fx]);
 
   const projects = data.projects;
 
@@ -176,9 +186,9 @@ export default function DashboardShell({ initialData = null, fetchList = default
   const downloadICS = useCallback((p) => { const ics = generateICS(p, now); if (!ics) return flash("Няма крайна дата за календар"); downloadTextFile(slugFilename(p.name, "ics"), ics, "text/calendar;charset=utf-8"); flash("Свален календарен файл (.ics)"); }, [now, flash]);
   const exportCSV = useCallback((list, name = "evroproekti.csv") => { downloadTextFile(name, projectsToCSV(list, now), "text/csv;charset=utf-8"); flash(`Свалени ${list.length} процедури (CSV)`); }, [now, flash]);
 
-  const goProcedures = useCallback((patch) => { fx.setTab("procedures"); if (patch) fx.patch(patch); }, [fx]);
+  const goProcedures = useCallback((patch) => { navigateTab("procedures"); if (patch) fx.patch(patch); }, [fx]);
   const onKpiSelect = useCallback((key) => {
-    if (key === "saved") return fx.setTab("saved");
+    if (key === "saved") return navigateTab("saved");
     if (key === "open") return goProcedures({ status: ["open", "closing_soon"], deadline: [], target: [] });
     if (key === "exp7") return goProcedures({ status: ["open", "closing_soon"], deadline: ["7"] });
     if (key === "exp30") return goProcedures({ status: ["open", "closing_soon"], deadline: ["30"] });
@@ -188,7 +198,7 @@ export default function DashboardShell({ initialData = null, fetchList = default
     return goProcedures({});
   }, [fx, goProcedures]);
 
-  useEffect(() => setSheetOpen(false), [filters.tab]);
+  useEffect(() => setSheetOpen(false), [activeTab]);
 
   const renderCard = (p) => (
     <ProjectCard key={p.id} p={p} now={now} isSaved={isSavedFn(p.id)} inCompare={inCompareFn(p.id)} onOpen={openProcedure} onToggleSave={toggleSave} onToggleCompare={fx.toggleCompare} onCopyLink={copyLink} onCalendar={downloadICS} />
@@ -216,28 +226,28 @@ export default function DashboardShell({ initialData = null, fetchList = default
         {stale && <StaleBanner text={`Данните са от ${formatDate(data.snapshot?.run_date)} и може да не са актуални.`} />}
         {!data.ok && <StaleBanner text="Показани са ограничени данни — връзката с базата е частична." />}
 
-        {filters.tab === "overview" && (
+        {activeTab === "overview" && (
           <>
             <OverviewHeader now={now} snapshot={data.snapshot} sinceVisit={null} programs={programs} overviewFilter={overviewFilter} onOverviewFilter={(patch) => setOverviewFilter((f) => ({ ...f, ...patch }))} />
             <OverviewKPIs stats={ovStats} recommendedCount={recommendations.length} hasProfile={session.authenticated && profileComplete} active={null} onSelect={onKpiSelect} />
             <AttentionSection items={attention} now={now} isSaved={isSavedFn} inCompare={inCompareFn} onOpen={openProcedure} onToggleSave={toggleSave} onToggleCompare={fx.toggleCompare} onCopyLink={copyLink} onCalendar={downloadICS} onSeeAll={() => goProcedures({ sort: "urgent" })} />
             <RecommendedSection authenticated={session.authenticated} profileComplete={profileComplete} completion={acctProfile ? acctProfile.profile_completion_percentage : session.profileCompletion} items={recommendations} onLogin={() => session.login("/")} onOpenProfile={() => (window.location.href = "/profile?onboarding=1")} isSaved={isSavedFn} inCompare={inCompareFn} onOpen={openProcedure} onToggleSave={toggleSave} onToggleCompare={fx.toggleCompare} onCopyLink={copyLink} onCalendar={downloadICS} />
-            <UpcomingDeadlines buckets={buckets} now={now} isSaved={isSavedFn} savedMeta={saved.savedMeta} onOpen={openProcedure} onToggleSave={toggleSave} onCalendar={downloadICS} onOpenCalendar={() => fx.setTab("calendar")} />
+            <UpcomingDeadlines buckets={buckets} now={now} isSaved={isSavedFn} savedMeta={saved.savedMeta} onOpen={openProcedure} onToggleSave={toggleSave} onCalendar={downloadICS} onOpenCalendar={() => navigateTab("calendar")} />
             <ChangeFeed items={feed} onOpen={openProcedure} period={period} onPeriod={fx.setPeriod} />
             <SavedTracked savedProjects={savedProjects} now={now} savedMeta={saved.savedMeta} notes={saved.notes} onNote={saved.setNote} onOpen={openProcedure} onRemove={(id) => toggleSave(id)} />
             <ProcedureActivity
               activity={activity}
               period={activityPeriod}
               onPeriod={fx.setActivityPeriod}
-              onSelectWeek={(changeType, from, to) => fx.filterByWeek(changeType, from, to)}
+              onSelectWeek={(changeType, from, to) => { fx.filterByWeek(changeType, from, to); navigateTab("procedures"); }}
               onSeeAll={() => goProcedures({})}
             />
             <FundingCharts projects={ovProjects} now={now} />
             <QuickActions
               onSearch={() => goProcedures({})}
               onProfile={() => (window.location.href = session.authenticated ? "/profile" : "/login?returnTo=/profile")}
-              onSaved={() => fx.setTab("saved")}
-              onCalendar={() => fx.setTab("calendar")}
+              onSaved={() => navigateTab("saved")}
+              onCalendar={() => navigateTab("calendar")}
               onExport={() => exportCSV(buckets.flatMap((b) => b.items), "srokove.csv")}
               onReminder={() => { const next = buckets.flatMap((b) => b.items).find((p) => (daysLeft(p.deadline_date, now) ?? -1) >= 0); next ? downloadICS(next) : flash("Няма предстоящи срокове"); }}
               onCompare={() => goProcedures({})}
@@ -245,7 +255,7 @@ export default function DashboardShell({ initialData = null, fetchList = default
           </>
         )}
 
-        {filters.tab === "procedures" && (
+        {activeTab === "procedures" && (
           <div className="workspace">
             <aside className={"rail" + (sheetOpen ? " as-sheet" : " hidden-sheet")} onMouseDown={(e) => sheetOpen && e.target === e.currentTarget && setSheetOpen(false)}>
               <FilterPanel filters={filters} programs={programs} counts={counts} onToggle={(k, v) => (v === undefined ? fx.toggleInArray("docs") : fx.toggleInArray(k, v))} onClear={fx.clearAll} onCloseSheet={() => setSheetOpen(false)} isSheet={sheetOpen} />
@@ -257,14 +267,14 @@ export default function DashboardShell({ initialData = null, fetchList = default
           </div>
         )}
 
-        {filters.tab === "calendar" && (
+        {activeTab === "calendar" && (
           <>
             <div className="page-head"><h1>Календар на сроковете</h1><p>Крайни срокове по дни и предстоящи процедури.</p></div>
             <DeadlineCalendar projects={projects} now={now} onOpen={openProcedure} />
           </>
         )}
 
-        {filters.tab === "saved" && (
+        {activeTab === "saved" && (
           <>
             <div className="page-head"><h1>Запазени процедури</h1><p>{session.authenticated ? "Синхронизирани с профила ви." : "Пазят се локално в браузъра. Влезте, за да ги синхронизирате."}</p></div>
             {!session.authenticated && (
@@ -283,7 +293,7 @@ export default function DashboardShell({ initialData = null, fetchList = default
   return (
     <>
       <a href="#main" className="skip-link">Към съдържанието</a>
-      <AppHeader tab={filters.tab} onTab={fx.setTab} savedCount={saved.savedCount} session={session} />
+      <AppHeader tab={activeTab} onTab={fx.setTab} savedCount={saved.savedCount} session={session} />
       <main id="main">{content}</main>
 
       {selectedProject && (
