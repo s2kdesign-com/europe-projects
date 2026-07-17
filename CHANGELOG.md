@@ -3,6 +3,21 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.12.0] — 2026-07-17
+
+### Добавено (procedure detail страници — Worker SSR)
+- Всяка процедура има **собствена страница** `/procedures/<id>`, рендирана server-side
+  от Worker-а (D1): заглавие, статус, програма, срок, бюджет, кандидати, документи,
+  източник, breadcrumbs, AI бележка + disclaimer.
+- Пълни SEO метаданни в raw HTML: title, description, canonical, `og:type=article`,
+  Twitter card, **JSON-LD** `MonetaryGrant` + `BreadcrumbList`.
+- Картите съдържат **реален `<a href>`** към страницата (нов таб/сподели работят);
+  in-app клик отваря drawer.
+- Липсваща процедура → **404**; стар slug → **301** към каноничния.
+
+### Предстои
+- Динамичен sitemap с procedure URL-ите (`lastmod`), landing pages, езикови /en //de/.
+
 ## [2.11.1] — 2026-07-17
 
 ### Поправено

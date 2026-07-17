@@ -10,9 +10,15 @@ export default function ProjectActions({ p, isSaved, inCompare, onOpen, onToggle
   const docCount = p.doc_count || 0;
   return (
     <div className="card-actions">
-      <button className="details" style={{ marginRight: 0 }} onClick={() => onOpen(p.id, "overview")} aria-haspopup="dialog">
+      <a
+        className="details"
+        href={"/procedures/" + p.id}
+        style={{ marginRight: 0 }}
+        onClick={(e) => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) { e.preventDefault(); onOpen(p.id, "overview"); } }}
+        aria-haspopup="dialog"
+      >
         <Icon name="arrowRight" size={16} /> {t("card.details")}
-      </button>
+      </a>
       <button
         className="details"
         onClick={() => onOpen(p.id, "documents")}

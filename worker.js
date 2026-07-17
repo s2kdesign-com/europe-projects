@@ -3,6 +3,7 @@
 
 import { handleAuth } from "./worker/handlers.js";
 import { logError } from "./worker/db.js";
+import { handleProcedurePage } from "./worker/procedure-page.js";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" };
 function json(body, status = 200) {
@@ -67,6 +68,16 @@ export default {
     // Legacy ?tab= / ?page= → чисти маршрути (301).
     const legacy = legacyRedirect(url);
     if (legacy) return legacy;
+
+    // Server-side procedure detail страница (/procedures/:slug) от D1.
+    if (request.method === "GET" && /^\/procedures\/[^/]+\/?$/.test(pathname)) {
+      try {
+        const resp = await handleProcedurePage(request, env, url);
+        if (resp) return resp;
+      } catch (e) {
+        await logError(env, { source: "server", method: "GET", path: pathname, status: 500, message: String((e && e.message) || e), detail: String((e && e.stack) || "") }).catch(() => {});
+      }
+    }
 
     // Информация за текущия deployment — винаги прясна (no-cache), за да могат
     // старите отворени клиенти да разберат, че има нов build. Кешираме статичните
