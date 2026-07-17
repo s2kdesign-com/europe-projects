@@ -88,29 +88,63 @@ export default function AdminPage() {
 
 function SystemTab({ session }) {
   const [stats, setStats] = useState(null);
+  const [sys, setSys] = useState(null);
+  const [build, setBuild] = useState(null);
   useEffect(() => {
     fetch("/api/projects").then((r) => r.json()).then((d) => {
       const p = d.projects || [];
       setStats({ total: p.length, open: p.filter((x) => x.status === "open" || x.status === "closing_soon").length, docs: p.filter((x) => x.doc_count > 0).length, snapshot: d.snapshot?.run_date || "—" });
     }).catch(() => setStats({ total: "—", open: "—", docs: "—", snapshot: "—" }));
+    fetch("/api/admin/system", { credentials: "same-origin" }).then((r) => r.json()).then((d) => setSys(d.system || null)).catch(() => setSys(null));
+    fetch("/version.json", { cache: "no-store" }).then((r) => r.json()).then(setBuild).catch(() => setBuild(null));
   }, []);
+  const tr = sys?.translation;
+  const c = sys?.counts;
   return (
-    <section className="prof-card">
-      <h2 className="prof-section-title">Системна информация</h2>
-      <dl className="sys-grid">
-        <div><dt>Версия</dt><dd>{APP_VERSION}</dd></div>
-        <div><dt>Влезли сте като</dt><dd>{session.user?.email} <span className="role-chip">админ</span></dd></div>
-        <div><dt>Съхранение</dt><dd>Cloudflare D1</dd></div>
-        <div><dt>Източници</dt><dd>eufunds.bg, esf.bg, az.government.bg, ПКИП</dd></div>
-        <div><dt>Общо процедури</dt><dd>{stats ? stats.total : "…"}</dd></div>
-        <div><dt>Отворени</dt><dd>{stats ? stats.open : "…"}</dd></div>
-        <div><dt>С документи</dt><dd>{stats ? stats.docs : "…"}</dd></div>
-        <div><dt>Последно обновяване</dt><dd>{stats ? stats.snapshot : "…"}</dd></div>
-      </dl>
-      <h2 className="prof-section-title" style={{ marginTop: 20 }}>Роли</h2>
-      <p className="prose">Достъпът се управлява чрез роли: <strong>Потребител</strong> (базов достъп + профил и запазени), <strong>Премиум</strong> (за бъдещи разширени функции) и <strong>Администратор</strong> (тази конзола). Управлявайте ролите в раздел „Потребители".</p>
-      <p className="chart-note"><Icon name="info" size={13} /> Данните за процедурите се обновяват автоматично всеки ден от насрочената задача. Тук няма деструктивни действия върху публичните данни.</p>
-    </section>
+    <>
+      <section className="prof-card">
+        <h2 className="prof-section-title">Системна информация</h2>
+        <dl className="sys-grid">
+          <div><dt>Версия</dt><dd>{APP_VERSION}</dd></div>
+          <div><dt>Влезли сте като</dt><dd>{session.user?.email} <span className="role-chip">админ</span></dd></div>
+          <div><dt>Билд (build ID)</dt><dd className="mono">{build?.buildId || "…"}</dd></div>
+          <div><dt>Домейн</dt><dd className="mono">{sys?.appUrl ? sys.appUrl.replace(/^https?:\/\//, "") : "euro-funds.eu"}</dd></div>
+          <div><dt>Съхранение</dt><dd>Cloudflare D1 + Worker</dd></div>
+          <div><dt>Източници</dt><dd>eufunds.bg, esf.bg, az.government.bg, ПКИП</dd></div>
+          <div><dt>Общо процедури</dt><dd>{stats ? stats.total : "…"}</dd></div>
+          <div><dt>Отворени</dt><dd>{stats ? stats.open : "…"}</dd></div>
+          <div><dt>С документи</dt><dd>{stats ? stats.docs : "…"}</dd></div>
+          <div><dt>Последно обновяване</dt><dd>{stats ? stats.snapshot : "…"}</dd></div>
+        </dl>
+      </section>
+
+      <section className="prof-card">
+        <h2 className="prof-section-title">Многоезичност и превод</h2>
+        <dl className="sys-grid">
+          <div><dt>Статус на превода</dt><dd>{tr ? (tr.configured ? <span className="role-chip" style={{ background: "var(--green-bg,#dcfce7)", color: "var(--green-ink,#15803d)" }}>активен</span> : <span className="role-chip" style={{ background: "var(--amber-bg,#fef3c7)", color: "var(--amber-ink,#92400e)" }}>неактивен</span>) : "…"}</dd></div>
+          <div><dt>Доставчик</dt><dd>{tr?.provider || "…"}</dd></div>
+          <div><dt>Поддържани езици</dt><dd>{tr ? tr.languages : "…"}</dd></div>
+          <div><dt>Локация</dt><dd className="mono">{tr?.location || "…"}</dd></div>
+          <div><dt>Речник (glossary)</dt><dd>{tr ? (tr.glossaryEnabled ? `включен · v${tr.glossaryVersion}` : `изключен · v${tr.glossaryVersion}`) : "…"}</dd></div>
+          <div><dt>Кеширани преводи</dt><dd>{tr ? tr.cacheEntries : "…"}</dd></div>
+          <div><dt>Езици в кеша</dt><dd>{tr ? tr.cacheLanguages : "…"}</dd></div>
+        </dl>
+        {tr && !tr.configured && <p className="chart-note"><Icon name="alert" size={13} /> Секретите за Google Cloud Translation не са зададени — интерфейсът ползва български fallback. Виж TRANSLATION-SETUP.md.</p>}
+      </section>
+
+      <section className="prof-card">
+        <h2 className="prof-section-title">База данни</h2>
+        <dl className="sys-grid">
+          <div><dt>Потребители</dt><dd>{c ? c.users : "…"}</dd></div>
+          <div><dt>Запазени процедури</dt><dd>{c ? c.saved : "…"}</dd></div>
+          <div><dt>Документи</dt><dd>{c ? c.documents : "…"}</dd></div>
+          <div><dt>Записи в changelog</dt><dd>{c ? c.changelog : "…"}</dd></div>
+        </dl>
+        <h2 className="prof-section-title" style={{ marginTop: 20 }}>Роли</h2>
+        <p className="prose">Достъпът се управлява чрез роли: <strong>Потребител</strong> (базов достъп + профил и запазени), <strong>Премиум</strong> (за бъдещи разширени функции) и <strong>Администратор</strong> (тази конзола). Управлявайте ролите в раздел „Потребители".</p>
+        <p className="chart-note"><Icon name="info" size={13} /> Данните за процедурите се обновяват автоматично всеки ден от насрочената задача. Тук няма деструктивни действия върху публичните данни.</p>
+      </section>
+    </>
   );
 }
 

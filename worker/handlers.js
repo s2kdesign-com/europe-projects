@@ -7,6 +7,36 @@ import { listChangelog, addFeedback, listFeedback } from "./changelog.js";
 import * as data from "./db.js";
 import { LOCALE_CODES } from "../app/lib/i18n/locales.js";
 import { getSupportedLanguages, translateBatch } from "./translation.js";
+import { isTranslationConfigured } from "./gauth.js";
+import { GLOSSARY_VERSION } from "../app/lib/i18n/glossary.js";
+
+async function systemInfo(env) {
+  const one = async (sql) => { try { const r = await env.DB.prepare(sql).first(); return r ? Object.values(r)[0] : 0; } catch { return null; } };
+  const [cacheEntries, cacheLangs, users, changelog, saved, documents, projects, lastRun] = await Promise.all([
+    one("SELECT COUNT(*) FROM translation_cache"),
+    one("SELECT COUNT(DISTINCT target_language) FROM translation_cache"),
+    one("SELECT COUNT(*) FROM users"),
+    one("SELECT COUNT(*) FROM changelog_entries"),
+    one("SELECT COUNT(*) FROM saved_procedures"),
+    one("SELECT COUNT(*) FROM documents"),
+    one("SELECT COUNT(*) FROM projects"),
+    one("SELECT run_date FROM snapshots ORDER BY id DESC LIMIT 1"),
+  ]);
+  return {
+    translation: {
+      configured: isTranslationConfigured(env),
+      provider: "Google Cloud Translation v3",
+      location: env.GOOGLE_TRANSLATE_LOCATION || "global",
+      glossaryEnabled: !!env.GOOGLE_TRANSLATE_GLOSSARY_ID,
+      glossaryVersion: GLOSSARY_VERSION,
+      languages: LOCALE_CODES.length,
+      cacheEntries, cacheLanguages: cacheLangs,
+    },
+    counts: { users, changelog, saved, documents, projects },
+    dailyTask: { lastRun: lastRun || null },
+    appUrl: env.APP_URL || null,
+  };
+}
 
 const OAUTH_COOKIE = "evp_oauth";
 
@@ -156,6 +186,7 @@ export async function handleAuth(request, env, url) {
       if (r.error) return err(r.error, r.status || 400);
       return ok({});
     }
+    if (pathname === "/api/admin/system" && method === "GET") return ok({ system: await systemInfo(env) });
     if (pathname === "/api/admin/errors" && method === "GET") return ok({ errors: await data.listErrors(env, url.searchParams.get("limit")) });
     if (pathname === "/api/admin/errors" && method === "DELETE") return ok(await data.clearErrors(env));
     if (pathname === "/api/admin/feedback" && method === "GET") return ok({ feedback: await listFeedback(env, url.searchParams.get("limit")) });
