@@ -6,6 +6,7 @@ import { logError } from "./worker/db.js";
 import { handleProcedurePage, handleStatusLanding, handleProgramsIndex, handleProgramLanding, handleCandidateLanding, handleDeadlineLanding } from "./worker/procedure-page.js";
 import { generateSitemap } from "./worker/sitemap.js";
 import { handleLocalePage } from "./worker/i18n-pages.js";
+import { COUNTRY_CODES, DEFAULT_COUNTRY, normalizeCountry } from "./app/lib/country/countries.js";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" };
 function json(body, status = 200) {
@@ -14,7 +15,16 @@ function json(body, status = 200) {
 
 const PROJECT_COLUMNS =
   "id, name, program, priority, category, status, deadline, deadline_date, " +
-  "budget, eligible, link, notes, is_new, first_seen, last_updated, year";
+  "budget, eligible, link, notes, is_new, first_seen, last_updated, year, " +
+  "country_code, official_url, managing_authority, original_language, source_id";
+
+// Валидиран country код от заявката (?country=). При липса → BG (съвместимост).
+// Невалиден код → null (за 400).
+function requestedCountry(url) {
+  const raw = url.searchParams.get("country");
+  if (raw == null || raw === "") return DEFAULT_COUNTRY;
+  return normalizeCountry(raw); // null при невалиден
+}
 
 // Legacy навигация: старите ?tab= / ?page= адреси → чисти маршрути (301), като
 // запазват само query параметрите, приложими за целевата страница.
@@ -124,14 +134,33 @@ export default {
     }
 
     try {
+      // Приблизителна държава от Cloudflare (без raw IP). Само код на държавата.
+      if (pathname === "/api/geo") {
+        const cc = normalizeCountry(request.cf && request.cf.country);
+        return new Response(JSON.stringify({ country: cc, ok: true }), {
+          status: 200,
+          headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+        });
+      }
+
+      if (pathname === "/api/countries") {
+        const rows = await env.DB.prepare(
+          "SELECT code, slug, name_bg, native_name, english_name, default_language, currency_code, flag_asset, enabled, coverage_status, ingestion_status, priority, source_count, active_source_count, last_successful_sync_at FROM countries ORDER BY priority"
+        ).all();
+        return json({ countries: rows.results || [], ok: true });
+      }
+
       if (pathname === "/api/projects") {
         if (request.method !== "GET") return json({ ok: false, error: "method_not_allowed" }, 405);
-        const projects = await env.DB.prepare(`SELECT ${PROJECT_COLUMNS} FROM projects ORDER BY status, deadline_date`).all();
-        const counts = await env.DB.prepare("SELECT project_id, COUNT(*) AS n FROM documents GROUP BY project_id").all();
+        const country = requestedCountry(url);
+        if (!country) return json({ ok: false, error: "invalid_country" }, 400);
+        // Задължителен country филтър (backend, не само frontend).
+        const projects = await env.DB.prepare(`SELECT ${PROJECT_COLUMNS} FROM projects WHERE country_code = ?1 ORDER BY status, deadline_date`).bind(country).all();
+        const counts = await env.DB.prepare("SELECT d.project_id AS project_id, COUNT(*) AS n FROM documents d JOIN projects p ON p.id = d.project_id WHERE p.country_code = ?1 GROUP BY d.project_id").bind(country).all();
         const countMap = new Map((counts.results || []).map((r) => [r.project_id, r.n]));
         const snapshot = await env.DB.prepare("SELECT id, run_date, summary, created_at FROM snapshots ORDER BY id DESC LIMIT 1").first();
         const rows = (projects.results || []).map((p) => ({ ...p, doc_count: countMap.get(p.id) || 0 }));
-        return json({ projects: rows, snapshot: snapshot || null, ok: true });
+        return json({ projects: rows, snapshot: snapshot || null, country, ok: true });
       }
 
       if (pathname === "/api/project") {

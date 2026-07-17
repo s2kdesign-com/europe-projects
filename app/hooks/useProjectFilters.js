@@ -13,7 +13,7 @@ const COMMON_QUERY_KEYS = ["id", "compare"];
 
 // Оставя в URL само query параметрите, приложими за текущия маршрут (чист URL —
 // напр. period/activityPeriod не изтичат на /procedures).
-function routeScopedQuery(filters, pathname) {
+export function routeScopedQuery(filters, pathname) {
   const tab = tabFromPath(pathname);
   const allowed = new Set([...(ROUTE_QUERY_KEYS[tab] || []), ...COMMON_QUERY_KEYS]);
   const sp = new URLSearchParams(serializeFilters(filters));

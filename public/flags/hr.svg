@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40" role="img" aria-label="Croatia">
+  <!-- Опростен трикольор (без герба). За production: заменете с точен официален SVG. -->
+  <rect width="60" height="40" fill="#fff"/>
+  <rect width="60" height="13.333" fill="#FF0000"/>
+  <rect y="26.667" width="60" height="13.333" fill="#171796"/>
+</svg>

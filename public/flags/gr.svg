@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40" role="img" aria-label="Greece">
+  <rect width="60" height="40" fill="#0D5EAF"/>
+  <g fill="#fff">
+    <rect y="4.444" width="60" height="4.444"/>
+    <rect y="13.333" width="60" height="4.444"/>
+    <rect y="22.222" width="60" height="4.444"/>
+    <rect y="31.111" width="60" height="4.444"/>
+  </g>
+  <rect width="22.222" height="22.222" fill="#0D5EAF"/>
+  <g fill="#fff">
+    <rect x="8.889" width="4.444" height="22.222"/>
+    <rect y="8.889" width="22.222" height="4.444"/>
+  </g>
+</svg>

@@ -6,6 +6,7 @@ import { createSession, destroySessionByToken, getSession, sessionClearCookie, s
 import { listChangelog, addFeedback, listFeedback } from "./changelog.js";
 import * as data from "./db.js";
 import { LOCALE_CODES } from "../app/lib/i18n/locales.js";
+import { normalizeCountry } from "../app/lib/country/countries.js";
 import { getSupportedLanguages, translateBatch } from "./translation.js";
 import { isTranslationConfigured } from "./gauth.js";
 import { GLOSSARY_VERSION } from "../app/lib/i18n/glossary.js";
@@ -166,7 +167,7 @@ export async function handleAuth(request, env, url) {
   }
 
   const isPrivate =
-    pathname === "/api/profile" || pathname === "/api/profile/language" || pathname === "/api/preferences" ||
+    pathname === "/api/profile" || pathname === "/api/profile/language" || pathname === "/api/profile/country" || pathname === "/api/preferences" ||
     pathname === "/api/saved-procedures" || pathname.startsWith("/api/saved-procedures/") ||
     pathname === "/api/account" || pathname.startsWith("/api/admin/");
   if (!isPrivate) return null;
@@ -201,6 +202,32 @@ export async function handleAuth(request, env, url) {
       const r = await data.putProfile(env, userId, body);
       if (r.error) return err(r.error, 400);
       return ok({ profile: await data.getProfile(env, userId) });
+    }
+  }
+  if (pathname === "/api/profile/country") {
+    if (method === "GET") {
+      const row = await env.DB.prepare("SELECT preferred_country, country_mode, country_detection_enabled FROM user_profiles WHERE user_id=?1").bind(userId).first();
+      return ok({
+        authenticated: true,
+        country: (row && row.preferred_country) || null,
+        mode: (row && row.country_mode) || "auto",
+        detectionEnabled: row ? row.country_detection_enabled !== 0 : true,
+      });
+    }
+    if (method === "PATCH") {
+      const body = (await readJson(request)) || {};
+      const mode = body.mode === "manual" ? "manual" : "auto";
+      let country = null;
+      if (mode === "manual") {
+        country = normalizeCountry(body.country);
+        if (!country) return err("invalid_country", 400);
+      }
+      const detectionEnabled = body.detectionEnabled === false ? 0 : 1;
+      const now = nowISO();
+      await env.DB.prepare(
+        "UPDATE user_profiles SET preferred_country=?1, country_mode=?2, country_detection_enabled=?3, country_updated_at=?4, updated_at=?4 WHERE user_id=?5"
+      ).bind(country, mode, detectionEnabled, now, userId).run();
+      return ok({ country, mode, detectionEnabled: detectionEnabled === 1 });
     }
   }
   if (pathname === "/api/profile/language" && method === "PATCH") {

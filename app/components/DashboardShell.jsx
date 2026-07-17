@@ -24,12 +24,12 @@ import FundingCharts from "./FundingCharts.jsx";
 import ProcedureActivity from "./ProcedureActivity.jsx";
 import QuickActions from "./QuickActions.jsx";
 
-import { useProjectFilters } from "../hooks/useProjectFilters.js";
+import { useProjectFilters, routeScopedQuery } from "../hooks/useProjectFilters.js";
 import { useLocalStorage } from "../hooks/useLocalStorage.js";
 import { useSession } from "../hooks/useSession.js";
 import { useSavedSync } from "../hooks/useSavedSync.js";
 import {
-  filterProjects, sortProjects, groupByProgram, generateICS, projectsToCSV, buildShareUrl, targetGroup, formatDate, daysLeft,
+  filterProjects, sortProjects, groupByProgram, generateICS, projectsToCSV, buildShareUrl, targetGroup, formatDate, daysLeft, EMPTY_FILTERS,
 } from "../lib/project-utils.js";
 import { overviewStats, attentionProjects, changeFeed, urgencyBuckets, weeklyActivity } from "../lib/overview-utils.js";
 import { recommend, canRecommend } from "../lib/recommend.js";
@@ -189,7 +189,16 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
   const downloadICS = useCallback((p) => { const ics = generateICS(p, now); if (!ics) return flash(t("toast.noDeadline")); downloadTextFile(slugFilename(p.name, "ics"), ics, "text/calendar;charset=utf-8"); flash(t("toast.icsDownloaded")); }, [now, flash, t]);
   const exportCSV = useCallback((list, name = "evroproekti.csv") => { downloadTextFile(name, projectsToCSV(list, now), "text/csv;charset=utf-8"); flash(t("toast.csvDownloaded", { count: list.length })); }, [now, flash, t]);
 
-  const goProcedures = useCallback((patch) => { navigateTab("procedures"); if (patch) fx.patch(patch); }, [fx]);
+  // Навигация към „Процедури" с филтри в URL-а наведнъж. Смяната на маршрут
+  // премонтира DashboardShell, затова филтрите трябва да пътуват през URL (иначе
+  // fx.patch върху размонтиращата се инстанция се губи и ръчният pushState отменя
+  // навигацията). Целевата страница чете филтрите от search при монтиране.
+  const goProcedures = useCallback((patch) => {
+    const merged = { ...EMPTY_FILTERS, compare: fx.filters.compare, ...(patch || {}) };
+    const dest = pathForTab("procedures");
+    const qs = routeScopedQuery(merged, dest);
+    router.push(qs ? `${dest}?${qs}` : dest);
+  }, [router, fx.filters.compare]);
   const onKpiSelect = useCallback((key) => {
     if (key === "saved") return navigateTab("saved");
     if (key === "open") return goProcedures({ status: ["open", "closing_soon"], deadline: [], target: [] });
@@ -242,7 +251,7 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
               activity={activity}
               period={activityPeriod}
               onPeriod={fx.setActivityPeriod}
-              onSelectWeek={(changeType, from, to) => { fx.filterByWeek(changeType, from, to); navigateTab("procedures"); }}
+              onSelectWeek={(changeType, from, to) => goProcedures({ changeType, weekFrom: from, weekTo: to, sort: "updated" })}
               onSeeAll={() => goProcedures({})}
             />
             <FundingCharts projects={ovProjects} now={now} />
