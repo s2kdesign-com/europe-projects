@@ -6,9 +6,29 @@ import "./admin.css";
 import "./header.css";
 import "./footer.css";
 import "./site.css";
+import "./i18n.css";
 import ErrorReporter from "./components/ErrorReporter.jsx";
 import AppChrome from "./components/AppChrome.jsx";
 import SiteFooter from "./components/SiteFooter.jsx";
+import I18nProvider from "./components/i18n/I18nProvider.jsx";
+
+// No-flash: определя езика и задава <html lang/dir> ПРЕДИ хидратацията, за да не
+// мига интерфейсът от български към избрания език. Приоритет: URL ?lang → ръчен
+// guest избор → browser. Профилният език (за логнат потребител) се прилага след
+// зареждане на сесията. Списъкът с кодове е дублиран тук нарочно (inline скрипт
+// не може да импортира модули); синхронизиран е с app/lib/i18n/locales.js.
+const NO_FLASH = `(function(){try{
+var S=['bg','en','de','fr','es','it','ro','el','pl','cs','sk','hu','nl','pt','tr','uk','sr','hr','sl','sv','da','fi','et','lv','lt'];
+var R=['ar','he','fa','ur'];
+function n(x){if(!x)return null;x=String(x).toLowerCase().replace('_','-');if(S.indexOf(x)>-1)return x;var b=x.split('-')[0];return S.indexOf(b)>-1?b:null;}
+var l=null;
+try{l=n(new URLSearchParams(location.search).get('lang'));}catch(e){}
+if(!l){try{if(localStorage.getItem('evroproekti_language_mode')==='manual')l=n(localStorage.getItem('evroproekti_language'));}catch(e){}}
+if(!l){var a=(navigator.languages&&navigator.languages.length)?navigator.languages:[navigator.language];for(var i=0;i<a.length;i++){var m=n(a[i]);if(m){l=m;break;}}}
+if(!l)l='bg';
+document.documentElement.lang=l;document.documentElement.dir=R.indexOf(l)>-1?'rtl':'ltr';
+window.__I18N_INITIAL=l;
+}catch(e){}})();`;
 
 const SITE_URL = "https://euro-funds.eu";
 
@@ -62,13 +82,16 @@ export default function RootLayout({ children }) {
   return (
     <html lang="bg">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: NO_FLASH }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       </head>
       <body>
-        <ErrorReporter />
-        <AppChrome />
-        {children}
-        <SiteFooter />
+        <I18nProvider>
+          <ErrorReporter />
+          <AppChrome />
+          {children}
+          <SiteFooter />
+        </I18nProvider>
       </body>
     </html>
   );

@@ -5,6 +5,8 @@ import { buildAuthUrl, callbackUrl, createPkce, exchangeCode, verifyIdToken } fr
 import { createSession, destroySessionByToken, getSession, sessionClearCookie, sessionSetCookie } from "./session.js";
 import { listChangelog, addFeedback, listFeedback } from "./changelog.js";
 import * as data from "./db.js";
+import { LOCALE_CODES } from "../app/lib/i18n/locales.js";
+import { getSupportedLanguages, translateBatch } from "./translation.js";
 
 const OAUTH_COOKIE = "evp_oauth";
 
@@ -99,6 +101,23 @@ export async function handleAuth(request, env, url) {
     return ok(r);
   }
 
+  if (pathname === "/api/i18n/languages" && method === "GET") {
+    return ok(getSupportedLanguages(url.searchParams.get("ui")), { "cache-control": "public, max-age=86400" });
+  }
+
+  if (pathname === "/api/i18n/translate-batch" && method === "POST") {
+    if (!sameOrigin(request, env, url)) return err("csrf", 403);
+    const body = (await readJson(request)) || {};
+    const items = Array.isArray(body.items) ? body.items.slice(0, 128) : [];
+    const r = await translateBatch(env, {
+      sourceLanguage: body.sourceLanguage || "bg",
+      targetLanguage: String(body.targetLanguage || ""),
+      items: items.map((it) => ({ key: String(it.key || ""), text: String(it.text || "") })),
+    });
+    if (r.error) return err(r.error, 400);
+    return ok(r);
+  }
+
   if (pathname === "/api/errors" && method === "POST") {
     if (!sameOrigin(request, env, url)) return err("csrf", 403);
     const body = (await readJson(request)) || {};
@@ -117,7 +136,7 @@ export async function handleAuth(request, env, url) {
   }
 
   const isPrivate =
-    pathname === "/api/profile" || pathname === "/api/preferences" ||
+    pathname === "/api/profile" || pathname === "/api/profile/language" || pathname === "/api/preferences" ||
     pathname === "/api/saved-procedures" || pathname.startsWith("/api/saved-procedures/") ||
     pathname === "/api/account" || pathname.startsWith("/api/admin/");
   if (!isPrivate) return null;
@@ -152,6 +171,22 @@ export async function handleAuth(request, env, url) {
       if (r.error) return err(r.error, 400);
       return ok({ profile: await data.getProfile(env, userId) });
     }
+  }
+  if (pathname === "/api/profile/language" && method === "PATCH") {
+    const body = (await readJson(request)) || {};
+    const mode = body.mode === "manual" ? "manual" : "auto";
+    let language = null;
+    if (mode === "manual") {
+      const code = String(body.language || "").toLowerCase();
+      if (!LOCALE_CODES.includes(code)) return err("invalid_language", 400);
+      language = code;
+    }
+    const now = nowISO();
+    await env.DB.prepare(
+      "INSERT INTO user_preferences (user_id, language, language_mode, language_updated_at, created_at, updated_at) VALUES (?1,?2,?3,?4,?5,?5) " +
+      "ON CONFLICT(user_id) DO UPDATE SET language=excluded.language, language_mode=excluded.language_mode, language_updated_at=excluded.language_updated_at, updated_at=excluded.updated_at"
+    ).bind(userId, language, mode, now, now).run();
+    return ok({ preferredLanguage: language, languageMode: mode });
   }
   if (pathname === "/api/preferences") {
     if (method === "GET") return ok({ preferences: await data.getPreferences(env, userId) });

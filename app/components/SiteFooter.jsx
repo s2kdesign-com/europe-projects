@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import { GoogleG } from "./UserMenu.jsx";
+import LanguageSelector from "./LanguageSelector.jsx";
 import { useSession } from "../hooks/useSession.js";
 import { APP_VERSION, CHANGELOG_SEEN_KEY } from "../lib/version.js";
 
@@ -13,6 +15,7 @@ const openAiInfo = () => window.dispatchEvent(new CustomEvent("open-welcome", { 
 export default function SiteFooter({ session: sessionProp }) {
   const own = useSession();
   const session = sessionProp || own;
+  const { t } = useTranslation();
   const [hasNew, setHasNew] = useState(false);
 
   useEffect(() => {
@@ -69,6 +72,14 @@ export default function SiteFooter({ session: sessionProp }) {
               </div>
             </>
           )}
+
+          {/* Език — непосредствено под профила/логина (виж спецификация р.7) */}
+          <div className="sf-lang">
+            <h4 className="sf-title">{t("footer.language")}</h4>
+            <p className="sf-desc">{t("footer.languageHint")}</p>
+            <LanguageSelector variant="footer" id="footer-lang" />
+            <p className="sf-lang-note">{t("footer.autoDetectNote")}</p>
+          </div>
         </div>
 
         {/* Колона 3 — връзки */}

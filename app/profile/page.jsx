@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import AccountHeader from "../components/AccountHeader.jsx";
 import Icon from "../components/Icon.jsx";
 import { GoogleG } from "../components/UserMenu.jsx";
+import LanguageRegionSection from "../components/LanguageRegionSection.jsx";
 import { useSession } from "../hooks/useSession.js";
 import { downloadTextFile } from "../lib/browser.js";
 import { ORGANIZATION_TYPES, ORG_SIZES, EMPLOYEE_RANGES, REVENUE_RANGES, SECTORS, REGIONS, APPLICANT_TYPES, INTERESTS } from "../lib/profile-taxonomy.js";
@@ -201,6 +202,9 @@ export default function ProfilePage() {
           <Field label="Напомняне (дни преди срок)"><input className="inp inp-sm" type="number" min="0" max="60" value={prefs.notification_days_before} onChange={(e) => setPref("notification_days_before", e.target.value)} /></Field>
           <p className="chart-note"><Icon name="info" size={13} /> Предпочитанията се запазват, но изпращането на имейли изисква бъдеща имейл инфраструктура и все още не е активно.</p>
         </Section>
+
+        {/* 5b. Език и регион */}
+        <LanguageRegionSection />
 
         <div className="prof-actions">
           <button className="btn btn-primary" onClick={save} disabled={saving}><Icon name="check" size={16} /> {saving ? "Запазване…" : "Запази профила"}</button>
