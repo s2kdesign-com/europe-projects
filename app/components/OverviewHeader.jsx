@@ -16,7 +16,7 @@ export default function OverviewHeader({ now, snapshot, sinceVisit, programs, ov
     <section className="ov-header" aria-label="Обзор">
       <div className="ov-greet">
         <div>
-          <h1>{greeting(now)} 👋</h1>
+          <h2>{greeting(now)} 👋</h2>
           <p className="ov-sub">Активни и предстоящи европроцедури за България · фокус младежка заетост</p>
         </div>
         <div className="ov-status">

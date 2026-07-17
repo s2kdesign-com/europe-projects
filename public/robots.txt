@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /profile
+Disallow: /login
 
-Sitemap: https://evroproekti-dashboard.autumn-limit-8eff.workers.dev/sitemap.xml
+Sitemap: https://euro-funds.eu/sitemap.xml

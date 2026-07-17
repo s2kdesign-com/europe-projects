@@ -10,11 +10,11 @@ import ErrorReporter from "./components/ErrorReporter.jsx";
 import AppChrome from "./components/AppChrome.jsx";
 import SiteFooter from "./components/SiteFooter.jsx";
 
-const SITE_URL = "https://evroproekti-dashboard.autumn-limit-8eff.workers.dev";
+const SITE_URL = "https://euro-funds.eu";
 
 const TITLE = "Европроекти — Табло за европейско финансиране за България";
 const DESCRIPTION =
-  "Ежедневно обновяван преглед на активни и предстоящи европроцедури за България — срокове, бюджети и допустими кандидати. Данни от eufunds.bg, esf.bg, az.government.bg и ПКИП.";
+  "Ежедневно обновяван преглед на активни и предстоящи европроцедури за България — срокове, бюджети и допустими кандидати. Източник: eufunds.bg, esf.bg, az.government.bg.";
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
