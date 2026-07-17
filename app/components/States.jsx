@@ -22,7 +22,7 @@ export function SkeletonGrid({ count = 6 }) {
 export function LoadingState() {
   const { t } = useTranslation();
   return (
-    <div className="page">
+    <div className="page container">
       <p className="sr-only" role="status">{t("states.loadingProcedures")}</p>
       <SkeletonGrid count={6} />
     </div>

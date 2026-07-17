@@ -97,7 +97,7 @@ export default function AppHeader({ tab, onTab, savedCount, session }) {
             <span>
               <span className="brand-name">Европроекти</span>
               <br />
-              <span className="brand-sub">Табло за финансиране</span>
+              <span className="brand-sub">{tr("common.tagline")}</span>
             </span>
           </a>
 

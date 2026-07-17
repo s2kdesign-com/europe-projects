@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import AppHeader from "./AppHeader.jsx";
 import FilterPanel from "./FilterPanel.jsx";
 import ViewControls from "./ViewControls.jsx";
@@ -48,6 +49,7 @@ async function defaultLoadDetail(id, signal) {
 }
 
 export default function DashboardShell({ initialTab = "overview", initialData = null, fetchList = defaultFetchList, loadDetail = defaultLoadDetail, now = new Date(), session: sessionOverride = null }) {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
   // Активният таб идва от реалния маршрут (pathname), не от ?tab. initialTab е
@@ -181,10 +183,10 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
   const inCompareFn = useCallback((id) => (filters.compare || []).includes(id), [filters.compare]);
   const toggleSave = saved.toggleSave;
 
-  const copyLink = useCallback(async (p) => { const ok = await copyText(buildShareUrl(window.location.origin, window.location.pathname, { selected: p.id })); flash(ok ? "Връзката е копирана" : "Копирането не бе успешно"); }, [flash]);
-  const copyView = useCallback(async () => { const ok = await copyText(buildShareUrl(window.location.origin, window.location.pathname, filters)); flash(ok ? "Връзката към изгледа е копирана" : "Копирането не бе успешно"); }, [filters, flash]);
-  const downloadICS = useCallback((p) => { const ics = generateICS(p, now); if (!ics) return flash("Няма крайна дата за календар"); downloadTextFile(slugFilename(p.name, "ics"), ics, "text/calendar;charset=utf-8"); flash("Свален календарен файл (.ics)"); }, [now, flash]);
-  const exportCSV = useCallback((list, name = "evroproekti.csv") => { downloadTextFile(name, projectsToCSV(list, now), "text/csv;charset=utf-8"); flash(`Свалени ${list.length} процедури (CSV)`); }, [now, flash]);
+  const copyLink = useCallback(async (p) => { const ok = await copyText(buildShareUrl(window.location.origin, window.location.pathname, { selected: p.id })); flash(ok ? t("toast.linkCopied") : t("toast.copyFailed")); }, [flash, t]);
+  const copyView = useCallback(async () => { const ok = await copyText(buildShareUrl(window.location.origin, window.location.pathname, filters)); flash(ok ? t("toast.viewLinkCopied") : t("toast.copyFailed")); }, [filters, flash, t]);
+  const downloadICS = useCallback((p) => { const ics = generateICS(p, now); if (!ics) return flash(t("toast.noDeadline")); downloadTextFile(slugFilename(p.name, "ics"), ics, "text/calendar;charset=utf-8"); flash(t("toast.icsDownloaded")); }, [now, flash, t]);
+  const exportCSV = useCallback((list, name = "evroproekti.csv") => { downloadTextFile(name, projectsToCSV(list, now), "text/csv;charset=utf-8"); flash(t("toast.csvDownloaded", { count: list.length })); }, [now, flash, t]);
 
   const goProcedures = useCallback((patch) => { navigateTab("procedures"); if (patch) fx.patch(patch); }, [fx]);
   const onKpiSelect = useCallback((key) => {
@@ -208,7 +210,7 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
   );
 
   function Results({ items }) {
-    if (items.length === 0) return <EmptyState message="Няма процедури, отговарящи на избраните филтри." action={<button className="btn btn-primary" onClick={fx.clearAll}>Изчисти филтрите</button>} />;
+    if (items.length === 0) return <EmptyState message={t("filters.noMatch")} action={<button className="btn btn-primary" onClick={fx.clearAll}>{t("filters.clearFilters")}</button>} />;
     if (filters.view === "list") return <div className="list">{items.map(renderRow)}</div>;
     if (filters.view === "program")
       return (<>{groupByProgram(items, filters.sort, now).map(([program, arr]) => (
@@ -223,8 +225,8 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
   else {
     content = (
       <div className="container page">
-        {stale && <StaleBanner text={`Данните са от ${formatDate(data.snapshot?.run_date)} и може да не са актуални.`} />}
-        {!data.ok && <StaleBanner text="Показани са ограничени данни — връзката с базата е частична." />}
+        {stale && <StaleBanner text={t("states.stale", { date: formatDate(data.snapshot?.run_date) })} />}
+        {!data.ok && <StaleBanner text={t("states.partialData")} />}
 
         {activeTab === "overview" && (
           <>
