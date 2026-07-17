@@ -8,6 +8,37 @@ import LanguageRegionSection from "../components/LanguageRegionSection.jsx";
 import { useSession } from "../hooks/useSession.js";
 import { downloadTextFile } from "../lib/browser.js";
 import { ORGANIZATION_TYPES, ORG_SIZES, EMPLOYEE_RANGES, REVENUE_RANGES, SECTORS, REGIONS, APPLICANT_TYPES, INTERESTS } from "../lib/profile-taxonomy.js";
+import { useUiTranslate, UiTrContext, useUiTr } from "../lib/i18n/ui-translate.js";
+
+// Всички български етикети на страницата (структура + таксономия) — за batch превод.
+const TAXONOMY_LABELS = [
+  ...ORGANIZATION_TYPES.map((x) => x.label), ...ORG_SIZES.map((x) => x.label),
+  ...EMPLOYEE_RANGES.map((x) => x.label), ...REVENUE_RANGES.map((x) => x.label),
+  ...SECTORS, ...REGIONS, ...APPLICANT_TYPES.map((x) => x.label), ...INTERESTS.map((x) => x.label),
+];
+const STRUCT_LABELS = [
+  "Моят профил", "Използва се за препоръки и филтриране. Данните се пазят в акаунта ви.",
+  "потвърден", "Попълненост:", "Имейлът и името идват от Google и не се редактират тук.",
+  "Организация", "Име на организацията", "Тип организация", "Регион", "Община", "Размер",
+  "Брой служители", "Годишен оборот (по избор)", "Основен сектор", "Допълнителни сектори",
+  "Интереси за финансиране", "Предпочитания за финансиране", "Предпочитани програми",
+  "Тип кандидат", "Мин. бюджет (EUR)", "Макс. бюджет (EUR)", "Макс. собствено финансиране (%)",
+  "Минималният бюджет е по-голям от максималния.", "Предпочитани региони", "Известия",
+  "Промени по запазени процедури", "Наближаващи срокове", "Имейл известия",
+  "Напомняне (дни преди срок)",
+  "Предпочитанията се запазват, но изпращането на имейли изисква бъдеща имейл инфраструктура и все още не е активно.",
+  "Запази профила", "Запазване…", "Акаунт и поверителност", "Изтегли моите данни", "Изход",
+  "Изтрий акаунта", "Към таблото", "Зареждане…", "Вход е необходим",
+  "Влезте, за да управлявате своя профил и предпочитания.", "Продължи с Google",
+  "Потвърден от Google", "Минималният бюджет е по-голям от максималния.",
+  "Настройка на профила — попълнете основните полета (организация, интереси, предпочитания) и натиснете „Запази“. Може да пропуснете и да го направите по-късно.",
+  "Влезли сте като", "Google ни предоставя само основна идентичност; паролата ви никога не достига до нас.",
+  "Запазените процедури и профилът се пазят в базата (Cloudflare D1), обвързани с акаунта ви. Преди вход временните запазвания живеят само в текущия браузър.",
+  "Изтриване на акаунта",
+  "Това ще изтрие профила, предпочитанията и запазените ви процедури. Публичните данни за процедурите не се засягат. Действието е необратимо.",
+  "Отказ", "Изтрий окончателно",
+];
+const ALL_PROFILE_LABELS = [...STRUCT_LABELS, ...TAXONOMY_LABELS];
 
 const EMPTY_PROFILE = {
   organization_name: "", organization_type: "", region: "", municipality: "", organization_size: "",
@@ -103,8 +134,10 @@ export default function ProfilePage() {
     window.location.href = "/";
   };
 
+  const tl = useUiTranslate(ALL_PROFILE_LABELS);
+
   // --- Състояния ---
-  if (session.loading) return <><AccountHeader session={session} /><main id="main" className="container page"><p className="prose">Зареждане…</p></main></>;
+  if (session.loading) return <><AccountHeader session={session} /><main id="main" className="container page"><p className="prose">{tl("Зареждане…")}</p></main></>;
   if (!session.authenticated)
     return (
       <>
@@ -112,10 +145,10 @@ export default function ProfilePage() {
         <main id="main" className="auth-wrap">
           <section className="auth-card">
             <span className="auth-mark" aria-hidden="true"><Icon name="users" size={26} /></span>
-            <h1>Вход е необходим</h1>
-            <p className="auth-desc">Влезте, за да управлявате своя профил и предпочитания.</p>
-            <button className="btn btn-google btn-google-lg" onClick={() => session.login("/profile")}><GoogleG size={20} /> Продължи с Google</button>
-            <a className="auth-secondary" href="/">Към таблото</a>
+            <h1>{tl("Вход е необходим")}</h1>
+            <p className="auth-desc">{tl("Влезте, за да управлявате своя профил и предпочитания.")}</p>
+            <button className="btn btn-google btn-google-lg" onClick={() => session.login("/profile")}><GoogleG size={20} /> {tl("Продължи с Google")}</button>
+            <a className="auth-secondary" href="/">{tl("Към таблото")}</a>
           </section>
         </main>
       </>
@@ -125,15 +158,15 @@ export default function ProfilePage() {
   const initial = (u.display_name || u.email || "?").charAt(0).toUpperCase();
 
   return (
-    <>
+    <UiTrContext.Provider value={tl}>
       <AccountHeader session={session} />
       <main id="main" className="container page profile">
-        <div className="page-head"><h1>Моят профил</h1><p>Използва се за препоръки и филтриране. Данните се пазят в акаунта ви.</p></div>
+        <div className="page-head"><h1>{tl("Моят профил")}</h1><p>{tl("Използва се за препоръки и филтриране. Данните се пазят в акаунта ви.")}</p></div>
 
         {onboarding && (
           <div className="ov-since" style={{ marginBottom: 16 }}>
             <Icon name="sparkle" size={18} />
-            <p>Настройка на профила — попълнете основните полета (организация, интереси, предпочитания) и натиснете „Запази". Може да пропуснете и да го направите по-късно.</p>
+            <p>{tl("Настройка на профила — попълнете основните полета (организация, интереси, предпочитания) и натиснете „Запази“. Може да пропуснете и да го направите по-късно.")}</p>
           </div>
         )}
 
@@ -143,14 +176,14 @@ export default function ProfilePage() {
             {u.avatar_url ? <img className="prof-avatar" src={u.avatar_url} alt="" width={64} height={64} referrerPolicy="no-referrer" /> : <span className="prof-avatar prof-initials">{initial}</span>}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="prof-name">{u.display_name || "—"}</div>
-              <div className="prof-email">{u.email} <span className="verified" title="Потвърден от Google"><Icon name="check" size={12} /> потвърден</span></div>
+              <div className="prof-email">{u.email} <span className="verified" title={tl("Потвърден от Google")}><Icon name="check" size={12} /> {tl("потвърден")}</span></div>
               <div className="prof-completion">
                 <div className="pc-bar"><div className="pc-fill" style={{ width: completion + "%" }} /></div>
-                <span>Попълненост: <strong>{completion}%</strong></span>
+                <span>{tl("Попълненост:")} <strong>{completion}%</strong></span>
               </div>
             </div>
           </div>
-          <p className="chart-note"><Icon name="info" size={13} /> Имейлът и името идват от Google и не се редактират тук.</p>
+          <p className="chart-note"><Icon name="info" size={13} /> {tl("Имейлът и името идват от Google и не се редактират тук.")}</p>
         </section>
 
         {formError && <div className="auth-error" role="alert" style={{ marginBottom: 12 }}><Icon name="alert" size={18} /> {formError}</div>}
@@ -174,7 +207,7 @@ export default function ProfilePage() {
         <Section title="Интереси за финансиране">
           <div className="check-cols">
             {INTERESTS.map((it) => (
-              <label className="check" key={it.key}><input type="checkbox" checked={!!profile[it.key]} onChange={(e) => set(it.key, e.target.checked)} /><span>{it.label}</span></label>
+              <label className="check" key={it.key}><input type="checkbox" checked={!!profile[it.key]} onChange={(e) => set(it.key, e.target.checked)} /><span>{tl(it.label)}</span></label>
             ))}
           </div>
         </Section>
@@ -188,37 +221,37 @@ export default function ProfilePage() {
             <Field label="Макс. бюджет (EUR)"><input className="inp" type="number" min="0" value={profile.maximum_project_budget} onChange={(e) => set("maximum_project_budget", e.target.value)} /></Field>
             <Field label="Макс. собствено финансиране (%)"><input className="inp" type="number" min="0" max="100" value={profile.maximum_self_financing_percentage} onChange={(e) => set("maximum_self_financing_percentage", e.target.value)} /></Field>
           </div>
-          {budgetInvalid && <p className="field-err"><Icon name="alert" size={13} /> Минималният бюджет е по-голям от максималния.</p>}
+          {budgetInvalid && <p className="field-err"><Icon name="alert" size={13} /> {tl("Минималният бюджет е по-голям от максималния.")}</p>}
           <CheckGroup legend="Предпочитани региони" items={REGIONS.map((r) => ({ key: r, label: r }))} selected={profile.preferred_regions} onToggle={(v) => toggleArr("preferred_regions", v)} />
         </Section>
 
         {/* 5. Известия */}
         <Section title="Известия">
           <div className="check-cols">
-            <label className="check"><input type="checkbox" checked={!!prefs.change_notifications_enabled} onChange={(e) => setPref("change_notifications_enabled", e.target.checked)} /><span>Промени по запазени процедури</span></label>
-            <label className="check"><input type="checkbox" checked={!!prefs.deadline_notifications_enabled} onChange={(e) => setPref("deadline_notifications_enabled", e.target.checked)} /><span>Наближаващи срокове</span></label>
-            <label className="check"><input type="checkbox" checked={!!prefs.email_notifications_enabled} onChange={(e) => setPref("email_notifications_enabled", e.target.checked)} /><span>Имейл известия</span></label>
+            <label className="check"><input type="checkbox" checked={!!prefs.change_notifications_enabled} onChange={(e) => setPref("change_notifications_enabled", e.target.checked)} /><span>{tl("Промени по запазени процедури")}</span></label>
+            <label className="check"><input type="checkbox" checked={!!prefs.deadline_notifications_enabled} onChange={(e) => setPref("deadline_notifications_enabled", e.target.checked)} /><span>{tl("Наближаващи срокове")}</span></label>
+            <label className="check"><input type="checkbox" checked={!!prefs.email_notifications_enabled} onChange={(e) => setPref("email_notifications_enabled", e.target.checked)} /><span>{tl("Имейл известия")}</span></label>
           </div>
           <Field label="Напомняне (дни преди срок)"><input className="inp inp-sm" type="number" min="0" max="60" value={prefs.notification_days_before} onChange={(e) => setPref("notification_days_before", e.target.value)} /></Field>
-          <p className="chart-note"><Icon name="info" size={13} /> Предпочитанията се запазват, но изпращането на имейли изисква бъдеща имейл инфраструктура и все още не е активно.</p>
+          <p className="chart-note"><Icon name="info" size={13} /> {tl("Предпочитанията се запазват, но изпращането на имейли изисква бъдеща имейл инфраструктура и все още не е активно.")}</p>
         </Section>
 
         {/* 5b. Език и регион */}
         <LanguageRegionSection />
 
         <div className="prof-actions">
-          <button className="btn btn-primary" onClick={save} disabled={saving}><Icon name="check" size={16} /> {saving ? "Запазване…" : "Запази профила"}</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}><Icon name="check" size={16} /> {saving ? tl("Запазване…") : tl("Запази профила")}</button>
           {msg && <span className="save-ok" role="status"><Icon name="check" size={16} /> {msg}</span>}
         </div>
 
         {/* 6. Акаунт и поверителност */}
         <Section title="Акаунт и поверителност" id="privacy">
-          <p className="prose">Влезли сте като <strong>{u.email}</strong>. Google ни предоставя само основна идентичност; паролата ви никога не достига до нас.</p>
-          <p className="prose">Запазените процедури и профилът се пазят в базата (Cloudflare D1), обвързани с акаунта ви. Преди вход временните запазвания живеят само в текущия браузър.</p>
+          <p className="prose">{tl("Влезли сте като")} <strong>{u.email}</strong>. {tl("Google ни предоставя само основна идентичност; паролата ви никога не достига до нас.")}</p>
+          <p className="prose">{tl("Запазените процедури и профилът се пазят в базата (Cloudflare D1), обвързани с акаунта ви. Преди вход временните запазвания живеят само в текущия браузър.")}</p>
           <div className="prof-actions">
-            <button className="btn" onClick={exportData}><Icon name="download" size={16} /> Изтегли моите данни</button>
-            <button className="btn" onClick={() => session.logout()}><Icon name="external" size={16} /> Изход</button>
-            <button className="btn btn-danger" onClick={() => setConfirmDelete(true)}><Icon name="close" size={16} /> Изтрий акаунта</button>
+            <button className="btn" onClick={exportData}><Icon name="download" size={16} /> {tl("Изтегли моите данни")}</button>
+            <button className="btn" onClick={() => session.logout()}><Icon name="external" size={16} /> {tl("Изход")}</button>
+            <button className="btn btn-danger" onClick={() => setConfirmDelete(true)}><Icon name="close" size={16} /> {tl("Изтрий акаунта")}</button>
           </div>
         </Section>
       </main>
@@ -226,16 +259,16 @@ export default function ProfilePage() {
       {confirmDelete && (
         <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && setConfirmDelete(false)}>
           <div className="confirm" role="dialog" aria-modal="true" aria-labelledby="del-title">
-            <h2 id="del-title">Изтриване на акаунта</h2>
-            <p>Това ще изтрие профила, предпочитанията и запазените ви процедури. Публичните данни за процедурите не се засягат. Действието е необратимо.</p>
+            <h2 id="del-title">{tl("Изтриване на акаунта")}</h2>
+            <p>{tl("Това ще изтрие профила, предпочитанията и запазените ви процедури. Публичните данни за процедурите не се засягат. Действието е необратимо.")}</p>
             <div className="prof-actions">
-              <button className="btn" onClick={() => setConfirmDelete(false)}>Отказ</button>
-              <button className="btn btn-danger" onClick={doDelete}><Icon name="close" size={16} /> Изтрий окончателно</button>
+              <button className="btn" onClick={() => setConfirmDelete(false)}>{tl("Отказ")}</button>
+              <button className="btn btn-danger" onClick={doDelete}><Icon name="close" size={16} /> {tl("Изтрий окончателно")}</button>
             </div>
           </div>
         </div>
       )}
-    </>
+    </UiTrContext.Provider>
   );
 }
 
@@ -247,31 +280,35 @@ function clean(p) {
 function numOrNull(v) { const n = Number(v); return v === "" || !Number.isFinite(n) ? null : Math.floor(n); }
 
 function Section({ title, id, children }) {
+  const tl = useUiTr();
   return (
     <section className="prof-card" id={id}>
-      <h2 className="prof-section-title">{title}</h2>
+      <h2 className="prof-section-title">{tl(title)}</h2>
       {children}
     </section>
   );
 }
 function Field({ label, children }) {
-  return <label className="field"><span className="field-label">{label}</span>{children}</label>;
+  const tl = useUiTr();
+  return <label className="field"><span className="field-label">{tl(label)}</span>{children}</label>;
 }
 function Select({ value, onChange, options }) {
+  const tl = useUiTr();
   return (
     <select className="inp" value={value || ""} onChange={(e) => onChange(e.target.value)}>
       <option value="">—</option>
-      {options.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+      {options.map((o) => <option key={o.key} value={o.key}>{tl(o.label)}</option>)}
     </select>
   );
 }
 function CheckGroup({ legend, items, selected, onToggle }) {
+  const tl = useUiTr();
   return (
     <fieldset className="checkgroup">
-      <legend className="field-label">{legend}</legend>
+      <legend className="field-label">{tl(legend)}</legend>
       <div className="check-cols">
         {items.map((it) => (
-          <label className="check" key={it.key}><input type="checkbox" checked={(selected || []).includes(it.key)} onChange={() => onToggle(it.key)} /><span>{it.label}</span></label>
+          <label className="check" key={it.key}><input type="checkbox" checked={(selected || []).includes(it.key)} onChange={() => onToggle(it.key)} /><span>{tl(it.label)}</span></label>
         ))}
       </div>
     </fieldset>
