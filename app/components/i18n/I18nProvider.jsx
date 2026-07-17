@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../../lib/i18n/config.js";
-import { localeDir } from "../../lib/i18n/locales.js";
+import { localeDir, normalizeLocale } from "../../lib/i18n/locales.js";
 import { applyLanguage, resetToDevice as resetToDeviceStore, resolveInitial } from "../../lib/i18n/language-store.js";
 import { ensureCatalog } from "../../lib/i18n/catalog.js";
 
@@ -22,9 +22,12 @@ export default function I18nProvider({ children }) {
   useEffect(() => {
     const onChange = (lng) => setLang(lng);
     i18n.on("languageChanged", onChange);
-    // Коригира езика след mount (URL има приоритет; поправя случая, в който
-    // запазен ръчен избор би презаписал ?lang) и зарежда каталога за не-bg.
-    const initial = resolveInitial();
+    // No-flash скриптът вече е определил езика от URL (?lang) → ръчен избор → браузър
+    // и config.js е инициализирал i18n с него. Доверяваме му се (иначе рутингът, който
+    // маха ?lang от адреса, би позволил запазен избор да презапише URL езика). Само ако
+    // no-flash не е успял (изключен JS в главата), пресмятаме наново.
+    const flash = (typeof window !== "undefined" && window.__I18N_INITIAL) ? normalizeLocale(window.__I18N_INITIAL) : null;
+    const initial = flash || resolveInitial();
     if (initial && initial !== i18n.language) applyLanguage(initial, { persist: false });
     ensureCatalog(initial).then((ok) => { if (ok && i18n.language === initial) i18n.changeLanguage(initial); });
     return () => i18n.off("languageChanged", onChange);
