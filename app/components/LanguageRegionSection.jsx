@@ -3,7 +3,9 @@
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import LanguageSelector from "./LanguageSelector.jsx";
+import CountrySelector from "./country/CountrySelector.jsx";
 import { useLanguage } from "./i18n/I18nProvider.jsx";
+import { useCountry } from "./country/CountryProvider.jsx";
 import { useSession } from "../hooks/useSession.js";
 import { readMode } from "../lib/i18n/language-store.js";
 
@@ -23,6 +25,7 @@ async function patchProfileLanguage(body) {
 export default function LanguageRegionSection() {
   const { t } = useTranslation();
   const { lang, setLanguage, resetToDevice } = useLanguage();
+  const { countryMode, setCountry, resetToAutomaticCountry, selectedCountry } = useCountry();
   const session = useSession();
   const [mode, setMode] = useState(() => readMode());
   const [status, setStatus] = useState(null); // {type:'saving'|'ok'|'err'}
@@ -80,6 +83,30 @@ export default function LanguageRegionSection() {
             {status?.type === "ok" && <span className="lang-region-status ok">{t("language.saved")}</span>}
             {status?.type === "err" && <span className="lang-region-status err">{t("language.error")}</span>}
           </span>
+        </div>
+
+        {/* Държава за финансиране (отделно от езика) — виж спецификация р.12 */}
+        <div className="lang-region-country">
+          <label className="field" style={{ maxWidth: 420 }}>
+            <span className="field-label">{t("country.profileLabel")}</span>
+            <CountrySelector variant="profile" id="profile-country" />
+          </label>
+          <p className="prose" style={{ marginTop: 6 }}>{t("country.profileDesc")}</p>
+
+          <label className="lang-auto-toggle">
+            <input
+              type="checkbox"
+              checked={countryMode === "auto"}
+              onChange={(e) => (e.target.checked ? resetToAutomaticCountry() : setCountry(selectedCountry))}
+            />
+            <span>{t("country.autoToggle")}</span>
+          </label>
+
+          <div className="lang-region-actions">
+            <button type="button" className="btn" onClick={resetToAutomaticCountry}>
+              {t("country.useAuto")}
+            </button>
+          </div>
         </div>
       </div>
     </section>

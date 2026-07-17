@@ -5,6 +5,9 @@ import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import { GoogleG } from "./UserMenu.jsx";
 import LanguageSelector from "./LanguageSelector.jsx";
+import CountrySelector, { FlagImg } from "./country/CountrySelector.jsx";
+import { useCountry } from "./country/CountryProvider.jsx";
+import { getCountry } from "../lib/country/countries.js";
 import { useFocusTrap } from "../hooks/useFocusTrap.js";
 import { APP_VERSION_LABEL, DATA_SOURCES_TEXT } from "../lib/version.js";
 
@@ -21,10 +24,15 @@ const AI_FEATURES = [
 const AI_STEP_KEYS = ["step1", "step2", "step3", "step4", "step5"];
 
 export default function SystemWelcomeModal({ onClose, onLogin, initialSection = null }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const trapRef = useFocusTrap(true, onClose);
   const [aiOpen, setAiOpen] = useState(initialSection === "ai");
   const aiRef = useRef(null);
+  const { selectedCountry, suggestedCountry, setCountry } = useCountry();
+  const uiLang = i18n.language;
+  const suggested = suggestedCountry ? getCountry(suggestedCountry) : null;
+  const current = getCountry(selectedCountry);
+  const cLabel = (c) => (c ? (uiLang === "bg" ? c.nameBg : c.english) : "");
 
   // Дълбок линк от footer-а: „Как работи AI" отваря модала директно на AI секцията.
   useEffect(() => {
@@ -39,6 +47,23 @@ export default function SystemWelcomeModal({ onClose, onLogin, initialSection = 
         <button className="drawer-close welcome-x" onClick={onClose} aria-label={t("welcome.close")}><Icon name="close" size={20} /></button>
 
         <div className="welcome-scroll">
+          {/* Секция 0 — Вашата държава (виж спецификация р.10) */}
+          <section className="welcome-sec welcome-country">
+            <div className="wc-head">
+              <FlagImg country={current} size={26} />
+              <h3>{t("country.modalTitle")}</h3>
+            </div>
+            {suggested && suggested.code !== "BG" && (
+              <p className="wc-suggested">{t("country.suggested", { country: cLabel(suggested) })}</p>
+            )}
+            <p className="wc-sub">{t("country.suggestedSub")}</p>
+            <CountrySelector variant="modal" id="welcome-country" />
+            <div className="wc-actions">
+              <button className="btn btn-primary" onClick={() => setCountry(selectedCountry)}>{t("country.confirm")}</button>
+            </div>
+            <p className="wc-privacy"><Icon name="info" size={13} aria-hidden="true" /> {t("country.privacyNote")}</p>
+          </section>
+
           {/* Секция 1 — Добре дошли */}
           <section className="welcome-sec">
             <span className="welcome-mark" aria-hidden="true"><Icon name="euro" size={28} /></span>

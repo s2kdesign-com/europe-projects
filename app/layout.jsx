@@ -11,6 +11,7 @@ import ErrorReporter from "./components/ErrorReporter.jsx";
 import AppChrome from "./components/AppChrome.jsx";
 import SiteFooter from "./components/SiteFooter.jsx";
 import I18nProvider from "./components/i18n/I18nProvider.jsx";
+import CountryProvider from "./components/country/CountryProvider.jsx";
 
 // No-flash: определя езика и задава <html lang/dir> ПРЕДИ хидратацията, за да не
 // мига интерфейсът от български към избрания език. Приоритет: URL ?lang → ръчен
@@ -93,10 +94,12 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <I18nProvider>
-          <ErrorReporter />
-          <AppChrome />
-          {children}
-          <SiteFooter />
+          <CountryProvider>
+            <ErrorReporter />
+            <AppChrome />
+            {children}
+            <SiteFooter />
+          </CountryProvider>
         </I18nProvider>
       </body>
     </html>

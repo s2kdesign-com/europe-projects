@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import UserMenu from "./UserMenu.jsx";
+import CountryLogoMark from "./country/CountryLogoMark.jsx";
 import { TABS } from "../lib/constants.js";
 import { pathForTab } from "../lib/routes.js";
 
@@ -93,7 +94,7 @@ export default function AppHeader({ tab, onTab, savedCount, session }) {
       <div className="appbar-inner">
         <div className="appbar-top" ref={topRef}>
           <a className="brand" href="/" onClick={goHome} aria-label="Европроекти — начало">
-            <span className="brand-mark" aria-hidden="true"><Icon name="euro" size={20} /></span>
+            <CountryLogoMark size={20} />
             <span>
               <span className="brand-name">Европроекти</span>
               <br />

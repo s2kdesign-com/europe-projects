@@ -37,9 +37,11 @@ import { downloadTextFile, copyText, slugFilename } from "../lib/browser.js";
 import { LS_VIEW, MAX_COMPARE, DEFAULT_VIEW, DEFAULT_PERIOD, DEFAULT_ACTIVITY_PERIOD, ACTIVITY_PERIOD_DAYS, PERIOD_DAYS, TABS } from "../lib/constants.js";
 import { tabFromPath, pathForTab } from "../lib/routes.js";
 import TranslatedProjectsProvider from "./i18n/TranslatedProjects.jsx";
+import { useCountry } from "./country/CountryProvider.jsx";
 
-async function defaultFetchList(signal) {
-  const r = await fetch("/api/projects", { signal });
+async function defaultFetchList(signal, country) {
+  const qs = country ? "?country=" + encodeURIComponent(country) : "";
+  const r = await fetch("/api/projects" + qs, { signal });
   if (!r.ok) throw new Error("http_" + r.status);
   return r.json();
 }
@@ -78,6 +80,7 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
 
   const realSession = useSession();
   const session = sessionOverride || realSession;
+  const { selectedCountry } = useCountry();
 
   const flash = useCallback((msg) => {
     setToast(msg);
@@ -95,7 +98,7 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
     const controller = new AbortController();
     let alive = true;
     if (retry === 0) setState({ phase: "loading" });
-    fetchList(controller.signal)
+    fetchList(controller.signal, selectedCountry)
       .then((d) => {
         if (!alive) return;
         setData({ projects: d.projects || [], snapshot: d.snapshot || null, ok: d.ok !== false });
@@ -104,7 +107,18 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
       })
       .catch((e) => { if (alive && e.name !== "AbortError") { setState((s) => (s.phase === "ready" ? s : { phase: "error" })); setRefreshing(false); } });
     return () => { alive = false; controller.abort(); };
-  }, [retry, fetchList, initialData]);
+    // selectedCountry в deps: при смяна на държавата старата заявка се abort-ва
+    // (controller.abort в cleanup) и се зарежда новата държава.
+  }, [retry, fetchList, initialData, selectedCountry]);
+
+  // Скелет при смяна на държавата (пази header/nav; чисти данните от предишната).
+  const prevCountryRef = useRef(selectedCountry);
+  useEffect(() => {
+    if (prevCountryRef.current !== selectedCountry) {
+      prevCountryRef.current = selectedCountry;
+      setState({ phase: "loading" });
+    }
+  }, [selectedCountry]);
 
   useEffect(() => {
     if (!session.authenticated) { setAcctProfile(null); return; }

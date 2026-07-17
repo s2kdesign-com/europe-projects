@@ -150,6 +150,20 @@ export default {
         return json({ countries: rows.results || [], ok: true });
       }
 
+      // Публичен списък на официалните източници за държава. Само безопасни полета —
+      // без вътрешни parser грешки / инфраструктурни детайли.
+      if (pathname === "/api/sources") {
+        const country = requestedCountry(url);
+        if (!country) return json({ ok: false, error: "invalid_country" }, 400);
+        const rows = await env.DB.prepare(
+          "SELECT id, name, authority_name, authority_type, base_url, calls_url, programmes_url, source_type, source_level, official, primary_source, coverage_description, source_language, update_frequency, verified, source_health, last_success_at, last_checked_at FROM funding_sources WHERE country_code = ?1 ORDER BY priority"
+        ).bind(country).all();
+        const meta = await env.DB.prepare(
+          "SELECT code, name_bg, native_name, english_name, coverage_status, ingestion_status, enabled, last_successful_sync_at, last_source_audit_at FROM countries WHERE code = ?1"
+        ).bind(country).first();
+        return json({ country, meta: meta || null, sources: rows.results || [], ok: true });
+      }
+
       if (pathname === "/api/projects") {
         if (request.method !== "GET") return json({ ok: false, error: "method_not_allowed" }, 405);
         const country = requestedCountry(url);

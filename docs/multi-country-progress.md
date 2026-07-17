@@ -55,15 +55,18 @@ degraded, blocked`.
 | Country resolution (cf.country, locale, profile, guest) | ✓ |
 | Worker `?country=` филтър (default BG) + `/api/geo` | ✓ |
 | Локални SVG знамена (BG, RO, GR, PL, HR + fallback) | ✓ частично (стъпка 1) |
-| Информационен модал: секция държава | ⏳ остава |
-| Footer country selector | ⏳ остава |
-| Профил държава + `PATCH /api/profile/country` | ⏳ остава |
-| CountryLogoMark | ⏳ остава |
-| CountrySourcesPanel/Page + `/sources` route | ⏳ остава |
+| CountryProvider монтиран в дървото (layout) | ✓ (v2.22.0) |
+| DashboardShell country-aware fetch (`?country=`) + abort/skeleton | ✓ (v2.22.0) |
+| Информационен модал: секция „Вашата държава“ | ✓ (v2.22.0) |
+| Footer country selector | ✓ (v2.22.0) |
+| Профил държава + `PATCH /api/profile/country` + auto toggle | ✓ (v2.22.0) |
+| CountryLogoMark (знаме зад логото) | ✓ (v2.22.0) |
+| CountrySourcesPanel/Page + `/sources` + `/api/sources` | ✓ (v2.22.0) |
 | Ingestion core + `CountryConnector` интерфейс | ✓ scaffold |
 | BG reference connector stub | ✓ scaffold |
-| CountrySyncOrchestrator | ⏳ остава (скелет) |
+| CountrySyncOrchestrator | ⏳ остава (само скелет в план) |
 | Scheduled Task prompt (документиран) | ✓ виж scheduled-task doc |
+| Country-aware saved филтър / country URL routes / Playwright | ⏳ остава |
 
 ## Забележки за RO
 - Официални портали (проверени чрез търсене, gov домейни): **MIPE — mfe.gov.ro**

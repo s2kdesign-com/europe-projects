@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import { GoogleG } from "./UserMenu.jsx";
 import LanguageSelector from "./LanguageSelector.jsx";
+import CountrySelector from "./country/CountrySelector.jsx";
 import { useSession } from "../hooks/useSession.js";
 import { APP_VERSION, CHANGELOG_SEEN_KEY } from "../lib/version.js";
 
@@ -80,6 +81,13 @@ export default function SiteFooter({ session: sessionProp }) {
             <LanguageSelector variant="footer" id="footer-lang" />
             <p className="sf-lang-note">{t("footer.autoDetectNote")}</p>
           </div>
+
+          {/* Държава — под езика (виж спецификация р.11) */}
+          <div className="sf-lang">
+            <h4 className="sf-title">{t("country.label")}</h4>
+            <p className="sf-desc">{t("country.footerHint")}</p>
+            <CountrySelector variant="footer" id="footer-country" />
+          </div>
         </div>
 
         {/* Колона 3 — връзки */}
@@ -92,6 +100,7 @@ export default function SiteFooter({ session: sessionProp }) {
             <a className="sf-link" href="/saved">{t("navigation.saved")}</a>
             <a className="sf-link" href="/changelog">{t("navigation.changelog")}{hasNew && <span className="new-dot" aria-label="нова версия" />}</a>
             <button className="sf-link" onClick={() => emit("open-welcome")}>{t("footer.aboutSystem")}</button>
+            <a className="sf-link" href="/sources">{t("country.sourcesTitle")}</a>
             <button className="sf-link" onClick={openAiInfo}>{t("footer.howAiWorks")}</button>
             <a className="sf-link" href="/terms">{t("footer.terms")}</a>
             <a className="sf-link" href="/privacy">{t("footer.privacy")}</a>
