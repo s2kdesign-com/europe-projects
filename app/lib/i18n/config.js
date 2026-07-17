@@ -10,21 +10,17 @@ import { initReactI18next } from "react-i18next";
 import bg from "../../locales/bg.json";
 import { DEFAULT_LOCALE, isSupported, localeDir } from "./locales.js";
 
-// Езикът, определен от inline no-flash скрипта (виж app/layout.jsx). Ако липсва
-// (напр. SSR/тест), започваме с български и клиентът коригира след mount.
-function initialLanguage() {
-  if (typeof window !== "undefined" && window.__I18N_INITIAL && isSupported(window.__I18N_INITIAL)) {
-    return window.__I18N_INITIAL;
-  }
-  return DEFAULT_LOCALE;
-}
-
+// ВАЖНО: инициализираме на български (DEFAULT_LOCALE) — точно каквото е рендирано
+// в статичния HTML при билд. Така първият клиентски рендер СЪВПАДА със сървърния и
+// няма hydration mismatch (React #418). Реалният език (URL/профил/браузър) се
+// прилага веднага СЛЕД хидратацията в I18nProvider (кратко превключване, не flash
+// на цялата страница, защото каталозите се кешират локално).
 const isDev = typeof process !== "undefined" && process.env && process.env.NODE_ENV !== "production";
 
 if (!i18n.isInitialized) {
   i18n.use(initReactI18next).init({
     resources: { bg: { translation: bg } },
-    lng: initialLanguage(),
+    lng: DEFAULT_LOCALE,
     fallbackLng: DEFAULT_LOCALE,
     supportedLngs: false, // валидираме сами през locales.js
     interpolation: { escapeValue: false }, // React вече escape-ва

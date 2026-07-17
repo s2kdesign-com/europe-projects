@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import UserMenu from "./UserMenu.jsx";
@@ -108,17 +109,16 @@ export default function AppHeader({ tab, onTab, savedCount, session }) {
 
         <nav className="nav" aria-label={tr("navigation.ariaLabel")} ref={navRef}>
           {TABS.map((item) => (
-            <a
+            <Link
               key={item.key}
               href={pathForTab(item.key)}
               className="nav-tab"
               aria-current={tab === item.key ? "page" : undefined}
-              onClick={(e) => { if (!e.metaKey && !e.ctrlKey && e.button === 0) { e.preventDefault(); onTab(item.key); } }}
             >
               <Icon name={TAB_ICON[item.key]} size={16} />
               {tr("navigation." + item.key)}
               {item.key === "saved" && savedCount > 0 && <span className="count-dot">{savedCount}</span>}
-            </a>
+            </Link>
           ))}
         </nav>
 
