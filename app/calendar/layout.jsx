@@ -1,7 +1,7 @@
 export const metadata = {
   title: "Календар на сроковете за европроекти",
   description: "Календар с крайните срокове на активните и предстоящите европроцедури за България. Следете кога изтичат процедурите и планирайте кандидатстването.",
-  alternates: { canonical: "/calendar", languages: { "bg-BG": "/calendar", "x-default": "/calendar" } },
+  alternates: { canonical: "/calendar", languages: { "bg-BG": "/calendar", "en": "/en/calendar", "de": "/de/calendar", "x-default": "/calendar" } },
   robots: { index: true, follow: true },
   openGraph: {
     title: "Календар на сроковете за европроекти | Европроекти",

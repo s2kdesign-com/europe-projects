@@ -49,7 +49,7 @@ export const metadata = {
   publisher: "s2kdesign.com",
   category: "finance",
   applicationCategory: "BusinessApplication",
-  alternates: { canonical: "/", languages: { "bg-BG": "/", "x-default": "/" } },
+  alternates: { canonical: "/", languages: { "bg-BG": "/", "en": "/en", "de": "/de", "x-default": "/" } },
   // Верификация за Google Search Console / Bing (задава се чрез env при билд;
   // ако липсва — просто не се извежда). Не hardcode-ваме кодове.
   verification: {

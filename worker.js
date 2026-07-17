@@ -5,6 +5,7 @@ import { handleAuth } from "./worker/handlers.js";
 import { logError } from "./worker/db.js";
 import { handleProcedurePage, handleStatusLanding, handleProgramsIndex, handleProgramLanding, handleCandidateLanding, handleDeadlineLanding } from "./worker/procedure-page.js";
 import { generateSitemap } from "./worker/sitemap.js";
+import { handleLocalePage } from "./worker/i18n-pages.js";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" };
 function json(body, status = 200) {
@@ -89,6 +90,16 @@ export default {
         if (resp) return resp;
       } catch (e) {
         await logError(env, { source: "server", method: "GET", path: pathname, status: 500, message: String((e && e.message) || e), detail: String((e && e.stack) || "") }).catch(() => {});
+      }
+    }
+
+    // Езикови URL-и (/en, /de) → БГ статика с преведен <head> + hreflang.
+    if (request.method === "GET" && /^\/(en|de)(\/|$)/.test(pathname)) {
+      try {
+        const loc = await handleLocalePage(request, env, url);
+        if (loc) return loc;
+      } catch (e) {
+        await logError(env, { source: "server", method: "GET", path: pathname, status: 500, message: String((e && e.message) || e), detail: "" }).catch(() => {});
       }
     }
 

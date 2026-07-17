@@ -13,6 +13,17 @@ export const CATEGORIES = [
 
 export const CHANGELOG_ENTRIES = [
   {
+    version: "2.15.0", category: "feature", published_at: "2026-07-17", affected_route: null,
+    title: "Езикови адреси /en и /de за търсачките",
+    summary: "Английската и немската версия вече имат собствени адреси (/en/…, /de/…) със самостоятелен canonical, преведени заглавия и hreflang връзки — за правилно многоезично индексиране.",
+    content: [
+      "Path-prefix адреси: /en/procedures, /de/procedures и другите основни страници.",
+      "Всяка езикова версия има собствен (self-referencing) canonical — не сочи към българската.",
+      "hreflang връзки между bg, en, de + x-default на всички основни страници.",
+      "Заглавието и описанието в <head> се превеждат server-side; интерфейсът се зарежда директно на съответния език.",
+    ],
+  },
+  {
     version: "2.14.0", category: "feature", published_at: "2026-07-17", affected_route: null,
     title: "Обзорни страници по програма, кандидат и срок + „За системата“",
     summary: "Нови публични страници: процедури по програма, по тип кандидат и по краен срок, плюс страници „За системата“ и „Как работи AI“. Всички са в картата на сайта.",
