@@ -57,9 +57,17 @@ export function resetToDevice() {
   return applyLanguage(lng, { persist: false });
 }
 
-// Разпознаване при първо посещение (без ръчен избор).
+function urlLanguage() {
+  try { return normalizeLocale(new URLSearchParams(window.location.search).get("lang")); }
+  catch { return null; }
+}
+
+// Разпознаване при първо посещение. URL ?lang има най-висок приоритет (спец. р.5),
+// после ръчен guest избор, после браузър. Профилният език се прилага отделно след
+// зареждане на сесията.
 export function resolveInitial() {
   return resolveLanguage({
+    urlLanguage: urlLanguage(),
     storedGuestLanguage: readMode() === "manual" ? readGuestLanguage() : null,
     browserLanguages: browserLanguages(),
     fallback: DEFAULT_LOCALE,
