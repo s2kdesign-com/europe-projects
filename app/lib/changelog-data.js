@@ -13,6 +13,15 @@ export const CATEGORIES = [
 
 export const CHANGELOG_ENTRIES = [
   {
+    version: "2.11.1", category: "fix", published_at: "2026-07-17", affected_route: null,
+    title: "По-чисти адреси на маршрутите",
+    summary: "Параметрите на „Обзор“ (период) вече не се пренасят към /procedures и другите маршрути — всеки адрес показва само своите параметри.",
+    content: [
+      "Поправка: period/activityPeriod вече не изтичат на /procedures, /calendar и /saved.",
+      "Всеки маршрут пази в адреса само приложимите за него query параметри (+ отворена процедура/сравнение).",
+    ],
+  },
+  {
     version: "2.11.0", category: "feature", published_at: "2026-07-17", affected_route: null,
     title: "Реални адреси за страниците (SEO-friendly маршрути)",
     summary: "Процедури, Календар и Запазени вече имат собствени адреси /procedures, /calendar и /saved — отварят се директно, работят при презареждане и имат собствени заглавия. Старите ?tab= адреси се пренасочват.",

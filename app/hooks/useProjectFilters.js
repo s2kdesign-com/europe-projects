@@ -6,6 +6,20 @@ import {
   deserializeFilters,
   serializeFilters,
 } from "../lib/project-utils.js";
+import { tabFromPath, ROUTE_QUERY_KEYS } from "../lib/routes.js";
+
+// Параметри, валидни на всеки маршрут (отворена процедура, сравнение).
+const COMMON_QUERY_KEYS = ["id", "compare"];
+
+// Оставя в URL само query параметрите, приложими за текущия маршрут (чист URL —
+// напр. period/activityPeriod не изтичат на /procedures).
+function routeScopedQuery(filters, pathname) {
+  const tab = tabFromPath(pathname);
+  const allowed = new Set([...(ROUTE_QUERY_KEYS[tab] || []), ...COMMON_QUERY_KEYS]);
+  const sp = new URLSearchParams(serializeFilters(filters));
+  for (const k of [...sp.keys()]) if (!allowed.has(k)) sp.delete(k);
+  return sp.toString();
+}
 
 // Управлява състоянието на филтрите и го синхронизира с URL (URLSearchParams),
 // така че търсене, филтри, сортиране и изглед оцеляват при reload и назад/напред,
@@ -31,7 +45,7 @@ export function useProjectFilters() {
       skipNextSync.current = false;
       return;
     }
-    const qs = serializeFilters(filters);
+    const qs = routeScopedQuery(filters, window.location.pathname);
     const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
     const current = window.location.search ? window.location.pathname + window.location.search : window.location.pathname;
     if (url !== current) {
