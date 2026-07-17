@@ -9,7 +9,7 @@ import { formatDate, targetGroup } from "../lib/project-utils.js";
 import { ELIGIBILITY_DISCLAIMER } from "../lib/recommend.js";
 import { useTranslatedProject } from "./i18n/TranslatedProjects.jsx";
 
-function RecommendedCard({ p, rec, isSaved, inCompare, onOpen, onToggleSave, onToggleCompare, onCalendar }) {
+function RecommendedCard({ p, rec, isSaved, inCompare, onOpen, onToggleSave, onToggleCompare, onCopyLink, onCalendar }) {
   const { t } = useTranslation();
   const tp = useTranslatedProject(p.id);
   const name = (tp && tp.name) || p.name;
@@ -43,11 +43,14 @@ function RecommendedCard({ p, rec, isSaved, inCompare, onOpen, onToggleSave, onT
 
       <ProjectActions p={p} isSaved={isSaved} inCompare={inCompare} onOpen={onOpen} onToggleSave={onToggleSave} onToggleCompare={onToggleCompare} onCalendar={onCalendar} compact />
 
-      {p.last_updated && (
-        <div className="mrow" style={{ marginTop: 4, fontSize: 12, color: "var(--faint)" }}>
-          <span>{t("card.updatedLabel")} {formatDate(p.last_updated)}</span>
-        </div>
-      )}
+      <div className="card-updated-row">
+        {p.last_updated && <span className="card-updated">{t("card.updatedLabel")} {formatDate(p.last_updated)}</span>}
+        {onCopyLink && (
+          <button className="iconbtn card-copy" aria-label={t("card.copyLink")} title={t("card.copyLink")} onClick={() => onCopyLink(p)}>
+            <Icon name="link" size={16} />
+          </button>
+        )}
+      </div>
     </article>
   );
 }
@@ -63,26 +66,26 @@ export default function RecommendedSection({
       <div className="ov-section-head">
         <h2 id="rec-h"><Icon name="users" size={18} /> {t("sections.recommended")}</h2>
         {authenticated && profileComplete && <span className="count-dot">{items.length}</span>}
-        {authenticated && <button className="btn btn-ghost see-all" onClick={onOpenProfile}><Icon name="filter" size={14} /> Профил</button>}
+        {authenticated && <button className="btn btn-ghost see-all" onClick={onOpenProfile}><Icon name="filter" size={14} /> {t("recommend.profileBtn")}</button>}
       </div>
 
       {!authenticated ? (
         <div className="state ov-empty">
           <Icon name="users" size={26} />
-          <h3>Настрой профил за препоръки</h3>
-          <p>Влезте с Google, за да настроите профил и да получавате персонализирани препоръки, синхронизирани между устройствата ви.</p>
-          <button className="btn btn-google btn-google-lg" style={{ maxWidth: 280 }} onClick={onLogin}><GoogleG size={18} /> Вход с Google</button>
+          <h3>{t("recommend.setupTitle")}</h3>
+          <p>{t("recommend.setupText")}</p>
+          <button className="btn btn-google btn-google-lg" style={{ maxWidth: 280 }} onClick={onLogin}><GoogleG size={18} /> {t("menu.login")}</button>
         </div>
       ) : !profileComplete ? (
         <div className="state ov-empty">
           <Icon name="filter" size={26} />
-          <h3>Завършете профила си за по-точни препоръки</h3>
+          <h3>{t("recommend.completeTitle")}</h3>
           <div className="pc-bar" style={{ maxWidth: 260, margin: "8px auto" }}><div className="pc-fill" style={{ width: (completion || 0) + "%" }} /></div>
-          <p>Попълнен на {completion || 0}%. Добавете предпочитани програми, тип кандидат и интереси, за да заработят препоръките.</p>
-          <button className="btn btn-primary" onClick={onOpenProfile}>Завърши профила</button>
+          <p>{t("recommend.completeText", { pct: completion || 0 })}</p>
+          <button className="btn btn-primary" onClick={onOpenProfile}>{t("recommend.completeBtn")}</button>
         </div>
       ) : items.length === 0 ? (
-        <div className="state ov-empty"><Icon name="info" size={26} /><h3>Няма съвпадения</h3><p>Няма процедури, отговарящи на текущия ви профил. Пробвайте да разширите предпочитанията.</p></div>
+        <div className="state ov-empty"><Icon name="info" size={26} /><h3>{t("recommend.noMatchTitle")}</h3><p>{t("recommend.noMatchText")}</p></div>
       ) : (
         <>
           <div className="cards">

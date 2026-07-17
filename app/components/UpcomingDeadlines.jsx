@@ -74,12 +74,12 @@ export default function UpcomingDeadlines({ buckets, now, isSaved, savedMeta, on
       </div>
 
       {total === 0 ? (
-        <div className="state ov-empty"><Icon name="calendar" size={26} /><h3>Няма наближаващи срокове</h3><p>Няма процедури с крайни срокове в проследявания период.</p></div>
+        <div className="state ov-empty"><Icon name="calendar" size={26} /><h3>{t("urgency.emptyTitle")}</h3><p>{t("urgency.emptyText")}</p></div>
       ) : view === "grouped" ? (
         buckets.map((b) => (
           <div className="dl-bucket" key={b.key}>
             <div className="dl-bucket-head">
-              <span className={"badge " + (BUCKET_TONE[b.key] || "neutral")}><Icon name="clock" size={13} /> {b.label}</span>
+              <span className={"badge " + (BUCKET_TONE[b.key] || "neutral")}><Icon name="clock" size={13} /> {t("urgency." + b.key, b.label)}</span>
               <span className="count-dot">{b.items.length}</span>
             </div>
             <div className="dl-list">

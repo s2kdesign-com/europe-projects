@@ -6,6 +6,7 @@ import i18n from "../../lib/i18n/config.js";
 import { localeDir, normalizeLocale } from "../../lib/i18n/locales.js";
 import { applyLanguage, resetToDevice as resetToDeviceStore, resolveInitial } from "../../lib/i18n/language-store.js";
 import { ensureCatalog } from "../../lib/i18n/catalog.js";
+import { setUiLocale } from "../../lib/project-utils.js";
 
 const LanguageContext = createContext(null);
 
@@ -20,8 +21,9 @@ export default function I18nProvider({ children }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const onChange = (lng) => setLang(lng);
+    const onChange = (lng) => { setUiLocale(lng); setLang(lng); };
     i18n.on("languageChanged", onChange);
+    setUiLocale(i18n.language);
     // No-flash скриптът вече е определил езика от URL (?lang) → ръчен избор → браузър
     // и config.js е инициализирал i18n с него. Доверяваме му се (иначе рутингът, който
     // маха ?lang от адреса, би позволил запазен избор да презапише URL езика). Само ако

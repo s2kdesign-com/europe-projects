@@ -93,6 +93,11 @@
 .crumbs { font-size: 14px; color: var(--muted, #64748b); margin-bottom: 8px; }
 .crumbs a { color: var(--primary, #0b6ea3); text-decoration: none; }
 
+/* Ред „Обновено" + икона за копиране вдясно (начални карти) */
+.card-updated-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.card-updated { font-size: 12px; color: var(--faint, #94a3b8); }
+.card-copy { margin-inline-start: auto; }
+
 /* Индикатор за преведена карта */
 .card-translated { font-size: 11px; color: var(--muted, #64748b); margin: 2px 0 6px; }
 

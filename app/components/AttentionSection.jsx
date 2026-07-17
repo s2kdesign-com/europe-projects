@@ -10,7 +10,7 @@ import { useTranslatedProject } from "./i18n/TranslatedProjects.jsx";
 
 const REASON_ICON = { expiring: "clock", new: "sparkle", changed: "refresh", savedChanged: "bookmarkFilled", noDocs: "alert" };
 
-function AttentionCard({ p, reasons, now, isSaved, inCompare, onOpen, onToggleSave, onToggleCompare, onCalendar }) {
+function AttentionCard({ p, reasons, now, isSaved, inCompare, onOpen, onToggleSave, onToggleCompare, onCopyLink, onCalendar }) {
   const { t } = useTranslation();
   const tp = useTranslatedProject(p.id);
   const dl = daysLeft(p.deadline_date, now);
@@ -33,7 +33,7 @@ function AttentionCard({ p, reasons, now, isSaved, inCompare, onOpen, onToggleSa
       <div className="reasons" aria-label={t("sections.attention")}>
         {reasons.map((r, i) => (
           <span className={"reason " + r.tone} key={i}>
-            <Icon name={REASON_ICON[r.type] || "info"} size={13} /> {r.label}
+            <Icon name={REASON_ICON[r.type] || "info"} size={13} /> {r.key ? t("reasons." + r.key, { days: r.days, defaultValue: r.label }) : r.label}
           </span>
         ))}
       </div>
@@ -59,11 +59,14 @@ function AttentionCard({ p, reasons, now, isSaved, inCompare, onOpen, onToggleSa
         compact
       />
 
-      {p.last_updated && (
-        <div className="mrow card-updated" style={{ marginTop: 4, fontSize: 12, color: "var(--faint)" }}>
-          <span>{t("card.updatedLabel")} {formatDate(p.last_updated)}</span>
-        </div>
-      )}
+      <div className="card-updated-row">
+        {p.last_updated && <span className="card-updated">{t("card.updatedLabel")} {formatDate(p.last_updated)}</span>}
+        {onCopyLink && (
+          <button className="iconbtn card-copy" aria-label={t("card.copyLink")} title={t("card.copyLink")} onClick={() => onCopyLink(p)}>
+            <Icon name="link" size={16} />
+          </button>
+        )}
+      </div>
     </article>
   );
 }

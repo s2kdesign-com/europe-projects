@@ -32,17 +32,17 @@ export function attentionReasons(p, savedSet, savedMeta, now = new Date()) {
   const dl = daysLeft(p.deadline_date, now);
   const open = p.status === "open" || p.status === "closing_soon";
 
-  if (open && dl != null && dl >= 0 && dl <= 3) reasons.push({ type: "expiring", tone: "red", label: `Изтича до ${dl} дни` });
-  else if (open && dl != null && dl >= 0 && dl <= 7) reasons.push({ type: "expiring", tone: "red", label: "Изтича до 7 дни" });
-  else if (open && dl != null && dl >= 0 && dl <= 14) reasons.push({ type: "expiring", tone: "amber", label: "Изтича до 14 дни" });
+  if (open && dl != null && dl >= 0 && dl <= 3) reasons.push({ type: "expiring", tone: "red", key: "expiringDays", days: dl, label: `Изтича до ${dl} дни` });
+  else if (open && dl != null && dl >= 0 && dl <= 7) reasons.push({ type: "expiring", tone: "red", key: "expiring7", label: "Изтича до 7 дни" });
+  else if (open && dl != null && dl >= 0 && dl <= 14) reasons.push({ type: "expiring", tone: "amber", key: "expiring14", label: "Изтича до 14 дни" });
 
-  if (isNewSince(p, now)) reasons.push({ type: "new", tone: "violet", label: "Нова тази седмица" });
-  else if (isChangedSince(p, now)) reasons.push({ type: "changed", tone: "blue", label: "Обновена тази седмица" });
+  if (isNewSince(p, now)) reasons.push({ type: "new", tone: "violet", key: "newThisWeek", label: "Нова тази седмица" });
+  else if (isChangedSince(p, now)) reasons.push({ type: "changed", tone: "blue", key: "updatedThisWeek", label: "Обновена тази седмица" });
 
   const saved = savedSet && savedSet.has ? savedSet.has(p.id) : Array.isArray(savedSet) && savedSet.includes(p.id);
-  if (saved && changedAfterSave(p, savedMeta)) reasons.push({ type: "savedChanged", tone: "amber", label: "Промяна по следена" });
+  if (saved && changedAfterSave(p, savedMeta)) reasons.push({ type: "savedChanged", tone: "amber", key: "savedChanged", label: "Промяна по следена" });
 
-  if (open && (p.doc_count || 0) === 0) reasons.push({ type: "noDocs", tone: "neutral", label: "Няма публикувани условия" });
+  if (open && (p.doc_count || 0) === 0) reasons.push({ type: "noDocs", tone: "neutral", key: "noDocs", label: "Няма публикувани условия" });
 
   return reasons;
 }

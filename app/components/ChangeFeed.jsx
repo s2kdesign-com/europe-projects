@@ -4,10 +4,30 @@ import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
 import { formatDate } from "../lib/project-utils.js";
 import { PERIODS } from "../lib/constants.js";
+import { useTranslatedProject } from "./i18n/TranslatedProjects.jsx";
 
 const TYPE_ICON = { new: "sparkle", changed: "refresh" };
 const TYPE_LABEL = { new: "feed.newProcedure", changed: "feed.updated" };
 const TYPE_EXP = { new: "feed.addedForTracking", changed: "feed.updatedData" };
+
+function FeedRow({ it, onOpen }) {
+  const { t } = useTranslation();
+  const tp = useTranslatedProject(it.project.id);
+  const name = (tp && tp.name) || it.project.name;
+  return (
+    <li className="feed-item">
+      <span className={"feed-dot " + it.tone} aria-hidden="true"><Icon name={TYPE_ICON[it.type] || "info"} size={14} /></span>
+      <div className="feed-body">
+        <div className="feed-top">
+          <span className={"badge " + it.tone}><Icon name={TYPE_ICON[it.type]} size={12} /> {t(TYPE_LABEL[it.type] || "feed.updated", it.label)}</span>
+          {it.date && <time className="feed-date" dateTime={it.date}>{formatDate(it.date)}</time>}
+        </div>
+        <button className="feed-title" onClick={() => onOpen(it.project.id)} aria-haspopup="dialog">{name}</button>
+        <p className="feed-exp">{t(TYPE_EXP[it.type] || "feed.updatedData", it.explanation)} <span className="feed-prog">· {it.project.program}</span></p>
+      </div>
+    </li>
+  );
+}
 
 // „Какво е ново" — хронологичен поток от реални сигнали (first_seen / last_updated).
 // Периодът (30/60/90 дни) филтрира този поток по дата на добавяне/промяна и живее
@@ -35,19 +55,7 @@ export default function ChangeFeed({ items, onOpen, period, onPeriod, limit = 0 
         <div className="state ov-empty"><Icon name="info" size={26} /><h3>{t("feed.emptyTitle")}</h3><p>{t("feed.emptyText")}</p></div>
       ) : (
         <ol className="feed">
-          {shown.map((it) => (
-            <li className="feed-item" key={it.id}>
-              <span className={"feed-dot " + it.tone} aria-hidden="true"><Icon name={TYPE_ICON[it.type] || "info"} size={14} /></span>
-              <div className="feed-body">
-                <div className="feed-top">
-                  <span className={"badge " + it.tone}><Icon name={TYPE_ICON[it.type]} size={12} /> {t(TYPE_LABEL[it.type] || "feed.updated", it.label)}</span>
-                  {it.date && <time className="feed-date" dateTime={it.date}>{formatDate(it.date)}</time>}
-                </div>
-                <button className="feed-title" onClick={() => onOpen(it.project.id)} aria-haspopup="dialog">{it.project.name}</button>
-                <p className="feed-exp">{t(TYPE_EXP[it.type] || "feed.updatedData", it.explanation)} <span className="feed-prog">· {it.project.program}</span></p>
-              </div>
-            </li>
-          ))}
+          {shown.map((it) => (<FeedRow key={it.id} it={it} onOpen={onOpen} />))}
         </ol>
       )}
     </section>

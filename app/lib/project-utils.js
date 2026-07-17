@@ -40,20 +40,35 @@ export function daysLeft(deadlineDate, now = new Date()) {
   return Math.round((end - start) / 86400000);
 }
 
-/** Човешки етикет за отброяване. */
+// Текущ UI locale за форматиране на дати и отброяване. Задава се от I18nProvider
+// (setUiLocale) при смяна на езика — така countdown/датите се локализират навсякъде,
+// без да пипаме всяко място на извикване.
+let UI_LOCALE = "bg";
+export function setUiLocale(l) { UI_LOCALE = l || "bg"; }
+
+const COUNTDOWN = {
+  bg: { expired: "срокът изтече", today: "днес", one: "остава 1 ден", many: (n) => `остават ${n} дни` },
+  en: { expired: "deadline passed", today: "today", one: "1 day left", many: (n) => `${n} days left` },
+  de: { expired: "Frist abgelaufen", today: "heute", one: "noch 1 Tag", many: (n) => `noch ${n} Tage` },
+};
+
+/** Човешки етикет за отброяване (локализиран; при неподдържан език → английски). */
 export function countdownLabel(days) {
   if (days == null) return "";
-  if (days < 0) return "срокът изтече";
-  if (days === 0) return "днес";
-  if (days === 1) return "остава 1 ден";
-  return `остават ${days} дни`;
+  const c = COUNTDOWN[UI_LOCALE] || (UI_LOCALE === "bg" ? COUNTDOWN.bg : COUNTDOWN.en);
+  if (days < 0) return c.expired;
+  if (days === 0) return c.today;
+  if (days === 1) return c.one;
+  return c.many(days);
 }
 
-/** Форматиране на дата на български. Пази оригинала при невалидни стойности. */
+/** Форматиране на дата според текущия locale (Intl). Пази оригинала при невалидни. */
 export function formatDate(dateStr) {
   const d = parseDeadline(dateStr);
   if (!d) return dateStr || "";
-  return d.toLocaleDateString("bg-BG", { day: "2-digit", month: "long", year: "numeric" });
+  const loc = UI_LOCALE === "bg" ? "bg-BG" : UI_LOCALE;
+  try { return d.toLocaleDateString(loc, { day: "2-digit", month: "long", year: "numeric" }); }
+  catch { return d.toLocaleDateString("bg-BG", { day: "2-digit", month: "long", year: "numeric" }); }
 }
 
 // ---------------------------------------------------------------------------
