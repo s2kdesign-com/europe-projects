@@ -6,24 +6,31 @@ import StatusBadge from "./StatusBadge.jsx";
 import ProjectActions from "./ProjectActions.jsx";
 import { daysLeft, countdownLabel, formatDate } from "../lib/project-utils.js";
 import { URGENT_DAYS } from "../lib/constants.js";
+import { useTranslatedProject } from "./i18n/TranslatedProjects.jsx";
 
 const REASON_ICON = { expiring: "clock", new: "sparkle", changed: "refresh", savedChanged: "bookmarkFilled", noDocs: "alert" };
 
-function AttentionCard({ p, reasons, now, isSaved, inCompare, onOpen, onToggleSave, onToggleCompare, onCopyLink, onCalendar }) {
+function AttentionCard({ p, reasons, now, isSaved, inCompare, onOpen, onToggleSave, onToggleCompare, onCalendar }) {
+  const { t } = useTranslation();
+  const tp = useTranslatedProject(p.id);
   const dl = daysLeft(p.deadline_date, now);
   const showCd = dl != null && (p.status === "open" || p.status === "closing_soon");
+  const name = (tp && tp.name) || p.name;
+  const budget = (tp && tp.budget) || p.budget;
+  const eligible = (tp && tp.eligible) || p.eligible;
+  const deadlineText = (tp && tp.deadline) || p.deadline;
   return (
-    <article className="card att-card" aria-label={p.name}>
+    <article className="card att-card" aria-label={name}>
       <div className="card-top">
         <StatusBadge status={p.status} />
         {showCd && (
           <span className={"spacer countdown" + (dl <= URGENT_DAYS ? " hot" : "")}>{countdownLabel(dl)}</span>
         )}
       </div>
-      <h3 className="card-title">{p.name}</h3>
+      <h3 className="card-title">{name}</h3>
       {p.program && <div className="card-prog">{p.program}</div>}
 
-      <div className="reasons" aria-label="Причини за внимание">
+      <div className="reasons" aria-label={t("sections.attention")}>
         {reasons.map((r, i) => (
           <span className={"reason " + r.tone} key={i}>
             <Icon name={REASON_ICON[r.type] || "info"} size={13} /> {r.label}
@@ -32,13 +39,15 @@ function AttentionCard({ p, reasons, now, isSaved, inCompare, onOpen, onToggleSa
       </div>
 
       <dl className="card-meta">
-        {(p.deadline_date || p.deadline) && (
-          <div className="mrow"><Icon name="calendar" /><dt>Срок:</dt><dd>{p.deadline_date ? <time dateTime={p.deadline_date}>{formatDate(p.deadline_date)}</time> : p.deadline}</dd></div>
+        {(p.deadline_date || deadlineText) && (
+          <div className="mrow"><Icon name="calendar" /><dt>{t("card.deadlineLabel")}</dt><dd>{p.deadline_date ? <time dateTime={p.deadline_date}>{formatDate(p.deadline_date)}</time> : deadlineText}</dd></div>
         )}
-        {p.budget && <div className="mrow"><Icon name="euro" /><dt>Бюджет:</dt><dd>{p.budget}</dd></div>}
-        {p.eligible && <div className="mrow"><Icon name="users" /><dt>Кандидати:</dt><dd className="eligible-clamp">{p.eligible}</dd></div>}
+        {budget && <div className="mrow"><Icon name="euro" /><dt>{t("card.budgetLabel")}</dt><dd>{budget}</dd></div>}
+        {eligible && <div className="mrow"><Icon name="users" /><dt>{t("card.candidatesLabel")}</dt><dd className="eligible-clamp">{eligible}</dd></div>}
       </dl>
 
+      {/* Начални карти: без иконата за копиране (за да не се пренася на нов ред);
+          вместо това показваме кога е обновена процедурата. */}
       <ProjectActions
         p={p}
         isSaved={isSaved}
@@ -46,9 +55,15 @@ function AttentionCard({ p, reasons, now, isSaved, inCompare, onOpen, onToggleSa
         onOpen={onOpen}
         onToggleSave={onToggleSave}
         onToggleCompare={onToggleCompare}
-        onCopyLink={onCopyLink}
         onCalendar={onCalendar}
+        compact
       />
+
+      {p.last_updated && (
+        <div className="mrow card-updated" style={{ marginTop: 4, fontSize: 12, color: "var(--faint)" }}>
+          <span>{t("card.updatedLabel")} {formatDate(p.last_updated)}</span>
+        </div>
+      )}
     </article>
   );
 }

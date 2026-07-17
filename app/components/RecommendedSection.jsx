@@ -7,15 +7,21 @@ import ProjectActions from "./ProjectActions.jsx";
 import { GoogleG } from "./UserMenu.jsx";
 import { formatDate, targetGroup } from "../lib/project-utils.js";
 import { ELIGIBILITY_DISCLAIMER } from "../lib/recommend.js";
+import { useTranslatedProject } from "./i18n/TranslatedProjects.jsx";
 
-function RecommendedCard({ p, rec, isSaved, inCompare, onOpen, onToggleSave, onToggleCompare, onCopyLink, onCalendar }) {
+function RecommendedCard({ p, rec, isSaved, inCompare, onOpen, onToggleSave, onToggleCompare, onCalendar }) {
+  const { t } = useTranslation();
+  const tp = useTranslatedProject(p.id);
+  const name = (tp && tp.name) || p.name;
+  const budget = (tp && tp.budget) || p.budget;
+  const deadlineText = (tp && tp.deadline) || p.deadline;
   return (
-    <article className="card rec-card" aria-label={p.name}>
+    <article className="card rec-card" aria-label={name}>
       <div className="card-top">
-        <span className="relevance" title="Оценка за съответствие спрямо профила ти"><Icon name="check" size={13} /> {rec.score}% съвпадение</span>
+        <span className="relevance" title={t("card.matchTitle")}><Icon name="check" size={13} /> {t("card.match", { score: rec.score })}</span>
         <StatusBadge status={p.status} />
       </div>
-      <h3 className="card-title">{p.name}</h3>
+      <h3 className="card-title">{name}</h3>
       {p.program && <div className="card-prog">{p.program}</div>}
 
       {rec.reasons.length > 0 && (
@@ -30,12 +36,18 @@ function RecommendedCard({ p, rec, isSaved, inCompare, onOpen, onToggleSave, onT
       )}
 
       <dl className="card-meta">
-        <div className="mrow"><Icon name="users" /><dt>Тип:</dt><dd>{targetGroup(p) === "youth" ? "Младежка заетост" : "Общи / бизнес"}</dd></div>
-        {p.budget && <div className="mrow"><Icon name="euro" /><dt>Финансиране:</dt><dd>{p.budget}</dd></div>}
-        {(p.deadline_date || p.deadline) && <div className="mrow"><Icon name="calendar" /><dt>Срок:</dt><dd>{p.deadline_date ? formatDate(p.deadline_date) : p.deadline}</dd></div>}
+        <div className="mrow"><Icon name="users" /><dt>{t("card.typeLabel")}</dt><dd>{targetGroup(p) === "youth" ? t("filters.targetYouth") : t("filters.targetGeneral")}</dd></div>
+        {budget && <div className="mrow"><Icon name="euro" /><dt>{t("card.financingLabel")}</dt><dd>{budget}</dd></div>}
+        {(p.deadline_date || deadlineText) && <div className="mrow"><Icon name="calendar" /><dt>{t("card.deadlineLabel")}</dt><dd>{p.deadline_date ? formatDate(p.deadline_date) : deadlineText}</dd></div>}
       </dl>
 
-      <ProjectActions p={p} isSaved={isSaved} inCompare={inCompare} onOpen={onOpen} onToggleSave={onToggleSave} onToggleCompare={onToggleCompare} onCopyLink={onCopyLink} onCalendar={onCalendar} />
+      <ProjectActions p={p} isSaved={isSaved} inCompare={inCompare} onOpen={onOpen} onToggleSave={onToggleSave} onToggleCompare={onToggleCompare} onCalendar={onCalendar} compact />
+
+      {p.last_updated && (
+        <div className="mrow" style={{ marginTop: 4, fontSize: 12, color: "var(--faint)" }}>
+          <span>{t("card.updatedLabel")} {formatDate(p.last_updated)}</span>
+        </div>
+      )}
     </article>
   );
 }

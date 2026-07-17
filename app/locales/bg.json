@@ -222,6 +222,10 @@
     "budgetLabel": "Бюджет:",
     "candidatesLabel": "Кандидати:",
     "updatedLabel": "Обновено:",
-    "autoTranslated": "Преведено автоматично"
+    "autoTranslated": "Преведено автоматично",
+    "match": "{{score}}% съвпадение",
+    "matchTitle": "Оценка за съответствие спрямо профила ти",
+    "typeLabel": "Тип:",
+    "financingLabel": "Финансиране:"
   }
 }
