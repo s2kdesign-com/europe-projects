@@ -294,7 +294,7 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
 
   return (
     <>
-      <a href="#main" className="skip-link">Към съдържанието</a>
+      <a href="#main" className="skip-link">{t("common.skipToContent")}</a>
       <AppHeader tab={activeTab} onTab={fx.setTab} savedCount={saved.savedCount} session={session} />
       <main id="main">{content}</main>
 

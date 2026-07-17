@@ -86,7 +86,7 @@ const jsonLd = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="bg">
+    <html lang="bg" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
