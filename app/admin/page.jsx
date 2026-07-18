@@ -23,6 +23,47 @@ const ADMIN_LABELS = [
   "Вход е необходим", "Настройките са достъпни само за администратори.",
   "Продължи с Google", "Към таблото", "Няма достъп",
   "Тази страница е само за администратори. Ако смятате, че това е грешка, свържете се с администратор.",
+  // Система (останалите етикети)
+  "Статус на превода", "Доставчик", "Поддържани езици", "Локация", "Речник (glossary)",
+  "Кеширани преводи", "Езици в кеша", "активен", "неактивен", "включен", "изключен",
+  "Запазени процедури", "Документи", "Записи в changelog",
+  "Достъпът се управлява чрез роли:", "Потребител", "Премиум", "Администратор",
+  // Потребители
+  "Имейл", "Роля", "Регистриран", "Последен вход", "Ролята е обновена.", "Промяната не бе записана.",
+  // Exceptions / Сигнали
+  "Време", "Метод/Път", "Статус", "Съобщение", "Няма записани грешки",
+  "Системата не е регистрирала грешки. Тук се събират сървърни и клиентски изключения.",
+  "Да изчистя ли журнала с грешки?", "Тип", "Заглавие", "Описание", "Адрес / версия", "Няма сигнали",
+  "Тук се показват подадените сигнали от потребителите (бутон „Подай сигнал за проблем“).",
+  "Грешка", "Неточни данни", "Предложение",
+  // Източници (форма)
+  "Нов източник", "Име", "Орган (authority)", "Тип", "Ниво", "Език (код)", "Приоритет",
+  "Покритие (описание)", "Проверен (verified)", "Активен (enabled — production sync)",
+  "Основен източник", "Изисква JavaScript", "Добави източника", "Запази промените", "Отказ",
+  "Добавяйте само официални източници (държавни портали и управляващи органи). „Активен“ включва източника в автоматичната синхронизация — само след проверка и QA.",
+  // AI модели
+  "AI модели", "Управление на AI доставчиците, моделите, дневните задачи и бъдещите AI функции на системата.",
+  "Дневен преглед", "Системен AI анализ", "Преглед на документи", "Анализ на бюджети",
+  "Персонализирани препоръки", "Бъдещ AI чат", "Модел", "Управление",
+  "Управлява се от Claude Scheduled Tasks", "Последно изпълнение", "Реален модел (последен отчет)",
+  "Валидация", "AI заявки днес", "Успешни", "Неуспешни", "Токени", "Средна латентност",
+  "Няма налични данни", "Конфигуриран", "API ключът не е конфигуриран", "Връзка OK",
+  "Грешка при връзка", "Ключ", "Последна смяна", "Последен тест", "Модели (кеш)",
+  "Въведете нов API ключ", "Замени ключа", "Запази", "Провери връзката", "Премахни ключа",
+  "Успешна връзка", "Активни AI модели", "Модел (display)", "Цена (~1M)", "Използван",
+  "заявки", "токена", "Няма конфигурация (наследява системния модел)", "Смени модела",
+  "Предназначение", "Модел (от реално достъпните)", "— изберете —", "Обнови списъка с модели",
+  "Запази (неактивен)", "Активирай модела", "Моделът е активиран.", "Конфигурацията е записана (неактивна).",
+  "Списъкът с модели е обновен.", "Дневна процедура", "График",
+  "Всеки ден в 08:00 (Claude Scheduled Tasks)", "Държави (начало → край)", "следваща",
+  "Обработени източници", "успешни", "Записи", "Цикъл", "Резюме", "AI логове", "Дата",
+  "Всички източници", "Всички статуси", "Държава", "Резултат", "Активен", "Неактивен",
+  "Ключът е невалиден", "Няма достъп до избрания модел", "Доставчикът е недостъпен",
+  "Първо конфигурирайте API ключ за доставчика", "Ключът е премахнат.",
+  "Старият ключ ще бъде заменен и няма да може да бъде възстановен. Продължавате ли?",
+  "Ключът ще бъде премахнат, доставчикът — деактивиран, а зависимите модели ще станат unavailable. Продължавате ли?",
+  "Няма AI логове", "Тук се записват дневните прегледи и runtime AI заявките (без prompts и без отговори).",
+  "Конфигуриран (неактивен до валидация)", "Изключен", "Подготвен модел", "Реалният модел се различава от желания:", "процедури", "промени", "Скрий", "Покажи",
 ];
 
 const ROLES = [
@@ -145,13 +186,13 @@ function SystemTab({ session }) {
       <section className="prof-card">
         <h2 className="prof-section-title">{tl("Многоезичност и превод")}</h2>
         <dl className="sys-grid">
-          <div><dt>Статус на превода</dt><dd>{tr ? (tr.configured ? <span className="role-chip" style={{ background: "var(--green-bg,#dcfce7)", color: "var(--green-ink,#15803d)" }}>активен</span> : <span className="role-chip" style={{ background: "var(--amber-bg,#fef3c7)", color: "var(--amber-ink,#92400e)" }}>неактивен</span>) : "…"}</dd></div>
-          <div><dt>Доставчик</dt><dd>{tr?.provider || "…"}</dd></div>
-          <div><dt>Поддържани езици</dt><dd>{tr ? tr.languages : "…"}</dd></div>
-          <div><dt>Локация</dt><dd className="mono">{tr?.location || "…"}</dd></div>
-          <div><dt>Речник (glossary)</dt><dd>{tr ? (tr.glossaryEnabled ? `включен · v${tr.glossaryVersion}` : `изключен · v${tr.glossaryVersion}`) : "…"}</dd></div>
-          <div><dt>Кеширани преводи</dt><dd>{tr ? tr.cacheEntries : "…"}</dd></div>
-          <div><dt>Езици в кеша</dt><dd>{tr ? tr.cacheLanguages : "…"}</dd></div>
+          <div><dt>{tl("Статус на превода")}</dt><dd>{tr ? (tr.configured ? <span className="role-chip" style={{ background: "var(--green-bg,#dcfce7)", color: "var(--green-ink,#15803d)" }}>{tl("активен")}</span> : <span className="role-chip" style={{ background: "var(--amber-bg,#fef3c7)", color: "var(--amber-ink,#92400e)" }}>{tl("неактивен")}</span>) : "…"}</dd></div>
+          <div><dt>{tl("Доставчик")}</dt><dd>{tr?.provider || "…"}</dd></div>
+          <div><dt>{tl("Поддържани езици")}</dt><dd>{tr ? tr.languages : "…"}</dd></div>
+          <div><dt>{tl("Локация")}</dt><dd className="mono">{tr?.location || "…"}</dd></div>
+          <div><dt>{tl("Речник (glossary)")}</dt><dd>{tr ? (tr.glossaryEnabled ? `${tl("включен")} · v${tr.glossaryVersion}` : `${tl("изключен")} · v${tr.glossaryVersion}`) : "…"}</dd></div>
+          <div><dt>{tl("Кеширани преводи")}</dt><dd>{tr ? tr.cacheEntries : "…"}</dd></div>
+          <div><dt>{tl("Езици в кеша")}</dt><dd>{tr ? tr.cacheLanguages : "…"}</dd></div>
         </dl>
         {tr && !tr.configured && <p className="chart-note"><Icon name="alert" size={13} /> Секретите за Google Cloud Translation не са зададени — интерфейсът ползва български fallback. Виж TRANSLATION-SETUP.md.</p>}
       </section>
@@ -159,12 +200,12 @@ function SystemTab({ session }) {
       <section className="prof-card">
         <h2 className="prof-section-title">{tl("База данни")}</h2>
         <dl className="sys-grid">
-          <div><dt>Потребители</dt><dd>{c ? c.users : "…"}</dd></div>
-          <div><dt>Запазени процедури</dt><dd>{c ? c.saved : "…"}</dd></div>
-          <div><dt>Документи</dt><dd>{c ? c.documents : "…"}</dd></div>
-          <div><dt>Записи в changelog</dt><dd>{c ? c.changelog : "…"}</dd></div>
+          <div><dt>{tl("Потребители")}</dt><dd>{c ? c.users : "…"}</dd></div>
+          <div><dt>{tl("Запазени процедури")}</dt><dd>{c ? c.saved : "…"}</dd></div>
+          <div><dt>{tl("Документи")}</dt><dd>{c ? c.documents : "…"}</dd></div>
+          <div><dt>{tl("Записи в changelog")}</dt><dd>{c ? c.changelog : "…"}</dd></div>
         </dl>
-        <h2 className="prof-section-title" style={{ marginTop: 20 }}>Роли</h2>
+        <h2 className="prof-section-title" style={{ marginTop: 20 }}>{tl("Роли")}</h2>
         <p className="prose">Достъпът се управлява чрез роли: <strong>Потребител</strong> (базов достъп + профил и запазени), <strong>Премиум</strong> (за бъдещи разширени функции) и <strong>Администратор</strong> (тази конзола). Управлявайте ролите в раздел „Потребители".</p>
         <p className="chart-note"><Icon name="info" size={13} /> Данните за процедурите се обновяват автоматично всеки ден от насрочената задача. Тук няма деструктивни действия върху публичните данни.</p>
       </section>
@@ -266,46 +307,46 @@ function SourcesTab() {
 
   const editForm = (isNew) => (
     <section className="prof-card">
-      <h2 className="prof-section-title">{isNew ? "Нов източник" : `Редакция: ${editing}`}</h2>
+      <h2 className="prof-section-title">{isNew ? tl("Нов източник") : `${tl("Редакция")}: ${editing}`}</h2>
       <div className="form-grid">
-        {isNew && <label className="field"><span className="field-label">ID (слъг, напр. gr-espa)</span><input className="inp" value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} /></label>}
+        {isNew && <label className="field"><span className="field-label">ID</span><input className="inp" value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} placeholder="gr-espa" /></label>}
         {isNew && (
-          <label className="field"><span className="field-label">Държава</span>
+          <label className="field"><span className="field-label">{tl("Държава")}</span>
             <select className="inp" value={form.country_code} onChange={(e) => setForm({ ...form, country_code: e.target.value })}>
               <option value="">—</option>
               {data.countries.map((c) => <option key={c.code} value={c.code}>{c.code} · {c.name_bg}</option>)}
             </select>
           </label>
         )}
-        <label className="field"><span className="field-label">Име</span><input className="inp" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
-        <label className="field"><span className="field-label">Орган (authority)</span><input className="inp" value={form.authority_name || ""} onChange={(e) => setForm({ ...form, authority_name: e.target.value })} /></label>
+        <label className="field"><span className="field-label">{tl("Име")}</span><input className="inp" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+        <label className="field"><span className="field-label">{tl("Орган (authority)")}</span><input className="inp" value={form.authority_name || ""} onChange={(e) => setForm({ ...form, authority_name: e.target.value })} /></label>
         <label className="field"><span className="field-label">Base URL</span><input className="inp" value={form.base_url} onChange={(e) => setForm({ ...form, base_url: e.target.value })} /></label>
-        <label className="field"><span className="field-label">Calls URL (покани)</span><input className="inp" value={form.calls_url || ""} onChange={(e) => setForm({ ...form, calls_url: e.target.value })} /></label>
-        <label className="field"><span className="field-label">Тип</span>
+        <label className="field"><span className="field-label">Calls URL</span><input className="inp" value={form.calls_url || ""} onChange={(e) => setForm({ ...form, calls_url: e.target.value })} /></label>
+        <label className="field"><span className="field-label">{tl("Тип")}</span>
           <select className="inp" value={form.source_type} onChange={(e) => setForm({ ...form, source_type: e.target.value })}>
             {["portal", "authority", "agency", "application_system", "monitoring", "system", "rss", "api"].map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </label>
-        <label className="field"><span className="field-label">Ниво</span>
+        <label className="field"><span className="field-label">{tl("Ниво")}</span>
           <select className="inp" value={form.source_level} onChange={(e) => setForm({ ...form, source_level: e.target.value })}>
             {["national", "regional", "programme"].map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </label>
-        <label className="field"><span className="field-label">Език (код)</span><input className="inp inp-sm" value={form.source_language || ""} onChange={(e) => setForm({ ...form, source_language: e.target.value })} /></label>
-        <label className="field"><span className="field-label">Приоритет</span><input className="inp inp-sm" type="number" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} /></label>
-        <label className="field" style={{ gridColumn: "1 / -1" }}><span className="field-label">Покритие (описание)</span><input className="inp" value={form.coverage_description || ""} onChange={(e) => setForm({ ...form, coverage_description: e.target.value })} /></label>
+        <label className="field"><span className="field-label">{tl("Език (код)")}</span><input className="inp inp-sm" value={form.source_language || ""} onChange={(e) => setForm({ ...form, source_language: e.target.value })} /></label>
+        <label className="field"><span className="field-label">{tl("Приоритет")}</span><input className="inp inp-sm" type="number" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} /></label>
+        <label className="field" style={{ gridColumn: "1 / -1" }}><span className="field-label">{tl("Покритие (описание)")}</span><input className="inp" value={form.coverage_description || ""} onChange={(e) => setForm({ ...form, coverage_description: e.target.value })} /></label>
       </div>
       <div className="check-cols" style={{ marginTop: 8 }}>
-        <label className="check"><input type="checkbox" checked={!!form.verified} onChange={(e) => setForm({ ...form, verified: e.target.checked })} /><span>Проверен (verified)</span></label>
-        <label className="check"><input type="checkbox" checked={!!form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} /><span>Активен (enabled — production sync)</span></label>
-        <label className="check"><input type="checkbox" checked={!!form.primary_source} onChange={(e) => setForm({ ...form, primary_source: e.target.checked })} /><span>Основен източник</span></label>
-        <label className="check"><input type="checkbox" checked={!!form.requires_javascript} onChange={(e) => setForm({ ...form, requires_javascript: e.target.checked })} /><span>Изисква JavaScript</span></label>
+        <label className="check"><input type="checkbox" checked={!!form.verified} onChange={(e) => setForm({ ...form, verified: e.target.checked })} /><span>{tl("Проверен (verified)")}</span></label>
+        <label className="check"><input type="checkbox" checked={!!form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} /><span>{tl("Активен (enabled — production sync)")}</span></label>
+        <label className="check"><input type="checkbox" checked={!!form.primary_source} onChange={(e) => setForm({ ...form, primary_source: e.target.checked })} /><span>{tl("Основен източник")}</span></label>
+        <label className="check"><input type="checkbox" checked={!!form.requires_javascript} onChange={(e) => setForm({ ...form, requires_javascript: e.target.checked })} /><span>{tl("Изисква JavaScript")}</span></label>
       </div>
       <div className="prof-actions">
-        <button className="btn btn-primary" disabled={saving} onClick={isNew ? create : saveEdit}><Icon name="check" size={16} /> {isNew ? "Добави източника" : "Запази промените"}</button>
-        <button className="btn" onClick={() => { setEditing(null); setForm(EMPTY_SOURCE); }}>Отказ</button>
+        <button className="btn btn-primary" disabled={saving} onClick={isNew ? create : saveEdit}><Icon name="check" size={16} /> {isNew ? tl("Добави източника") : tl("Запази промените")}</button>
+        <button className="btn" onClick={() => { setEditing(null); setForm(EMPTY_SOURCE); }}>{tl("Отказ")}</button>
       </div>
-      <p className="chart-note"><Icon name="info" size={13} /> Добавяйте само официални източници (държавни портали и управляващи органи). „Активен“ включва източника в автоматичната синхронизация — само след проверка и QA.</p>
+      <p className="chart-note"><Icon name="info" size={13} /> {tl("Добавяйте само официални източници (държавни портали и управляващи органи). „Активен“ включва източника в автоматичната синхронизация — само след проверка и QA.")}</p>
     </section>
   );
 
@@ -383,6 +424,7 @@ function SourcesTab() {
 }
 
 function UsersTab() {
+  const tl = useUiTr();
   const [users, setUsers] = useState(null);
   const [msg, setMsg] = useState(null);
   const load = useCallback(() => { fetch("/api/admin/users", { credentials: "same-origin" }).then((r) => r.json()).then((d) => setUsers(d.users || [])).catch(() => setUsers([])); }, []);
@@ -393,26 +435,26 @@ function UsersTab() {
     try {
       const r = await fetch("/api/admin/users/" + encodeURIComponent(id), { method: "PATCH", credentials: "same-origin", headers: { "content-type": "application/json", "X-Requested-With": "fetch" }, body: JSON.stringify({ role }) });
       if (!r.ok) throw new Error();
-      setMsg("Ролята е обновена."); setTimeout(() => setMsg(null), 2000);
-    } catch { setMsg("Промяната не бе записана."); load(); }
+      setMsg(tl("Ролята е обновена.")); setTimeout(() => setMsg(null), 2000);
+    } catch { setMsg(tl("Промяната не бе записана.")); load(); }
     finally { setUsers((us) => us.map((u) => (u.id === id ? { ...u, _saving: false } : u))); }
   };
 
-  if (users == null) return <section className="prof-card"><p className="prose">Зареждане…</p></section>;
+  if (users == null) return <section className="prof-card"><p className="prose">{tl("Зареждане…")}</p></section>;
   return (
     <section className="prof-card">
-      <div className="ov-section-head"><h2 className="prof-section-title" style={{ margin: 0 }}>Потребители</h2><span className="count-dot">{users.length}</span>{msg && <span className="save-ok" role="status"><Icon name="check" size={14} /> {msg}</span>}</div>
+      <div className="ov-section-head"><h2 className="prof-section-title" style={{ margin: 0 }}>{tl("Потребители")}</h2><span className="count-dot">{users.length}</span>{msg && <span className="save-ok" role="status"><Icon name="check" size={14} /> {msg}</span>}</div>
       <div className="table-scroll">
         <table className="admin-table">
-          <thead><tr><th>Потребител</th><th>Имейл</th><th>Роля</th><th>Регистриран</th><th>Последен вход</th></tr></thead>
+          <thead><tr><th>{tl("Потребител")}</th><th>{tl("Имейл")}</th><th>{tl("Роля")}</th><th>{tl("Регистриран")}</th><th>{tl("Последен вход")}</th></tr></thead>
           <tbody>
             {users.map((u) => (
               <tr key={u.id}>
                 <td><div className="u-cell">{u.avatar_url ? <img src={u.avatar_url} alt="" width={28} height={28} className="um-avatar" referrerPolicy="no-referrer" /> : <span className="um-avatar um-initials">{(u.display_name || u.email || "?").charAt(0).toUpperCase()}</span>}<span>{u.display_name || "—"}</span></div></td>
                 <td className="mono">{u.email}</td>
                 <td>
-                  <select className="inp inp-sm" value={u.role} disabled={u._saving} onChange={(e) => changeRole(u.id, e.target.value)} aria-label={`Роля на ${u.email}`}>
-                    {ROLES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+                  <select className="inp inp-sm" value={u.role} disabled={u._saving} onChange={(e) => changeRole(u.id, e.target.value)} aria-label={`${tl("Роля")}: ${u.email}`}>
+                    {ROLES.map((r) => <option key={r.key} value={r.key}>{tl(r.label)}</option>)}
                   </select>
                 </td>
                 <td>{fmt(u.created_at)}</td>
@@ -427,29 +469,30 @@ function UsersTab() {
 }
 
 function ErrorsTab() {
+  const tl = useUiTr();
   const [rows, setRows] = useState(null);
   const [open, setOpen] = useState(null);
   const load = useCallback(() => { fetch("/api/admin/errors?limit=200", { credentials: "same-origin" }).then((r) => r.json()).then((d) => setRows(d.errors || [])).catch(() => setRows([])); }, []);
   useEffect(() => { load(); }, [load]);
-  const clear = async () => { if (!confirm("Да изчистя ли журнала с грешки?")) return; await fetch("/api/admin/errors", { method: "DELETE", credentials: "same-origin", headers: { "X-Requested-With": "fetch" } }); load(); };
+  const clear = async () => { if (!confirm(tl("Да изчистя ли журнала с грешки?"))) return; await fetch("/api/admin/errors", { method: "DELETE", credentials: "same-origin", headers: { "X-Requested-With": "fetch" } }); load(); };
 
-  if (rows == null) return <section className="prof-card"><p className="prose">Зареждане…</p></section>;
+  if (rows == null) return <section className="prof-card"><p className="prose">{tl("Зареждане…")}</p></section>;
   return (
     <section className="prof-card">
       <div className="ov-section-head">
         <h2 className="prof-section-title" style={{ margin: 0 }}>Exceptions</h2>
         <span className="count-dot">{rows.length}</span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          <button className="btn btn-ghost" onClick={load}><Icon name="refresh" size={16} /> Обнови</button>
-          {rows.length > 0 && <button className="btn btn-danger" onClick={clear}><Icon name="close" size={16} /> Изчисти</button>}
+          <button className="btn btn-ghost" onClick={load}><Icon name="refresh" size={16} /> {tl("Обнови")}</button>
+          {rows.length > 0 && <button className="btn btn-danger" onClick={clear}><Icon name="close" size={16} /> {tl("Изчисти")}</button>}
         </div>
       </div>
       {rows.length === 0 ? (
-        <div className="state ov-empty"><Icon name="check" size={26} /><h3>Няма записани грешки</h3><p>Системата не е регистрирала грешки. Тук се събират сървърни и клиентски изключения.</p></div>
+        <div className="state ov-empty"><Icon name="check" size={26} /><h3>{tl("Няма записани грешки")}</h3><p>{tl("Системата не е регистрирала грешки. Тук се събират сървърни и клиентски изключения.")}</p></div>
       ) : (
         <div className="table-scroll">
           <table className="admin-table">
-            <thead><tr><th>Време</th><th>Източник</th><th>Метод/Път</th><th>Статус</th><th>Съобщение</th></tr></thead>
+            <thead><tr><th>{tl("Време")}</th><th>{tl("Източник")}</th><th>{tl("Метод/Път")}</th><th>{tl("Статус")}</th><th>{tl("Съобщение")}</th></tr></thead>
             <tbody>
               {rows.map((e) => [
                 <tr key={e.id} className="err-row" onClick={() => setOpen(open === e.id ? null : e.id)}>
@@ -470,31 +513,32 @@ function ErrorsTab() {
 }
 
 function FeedbackTab() {
+  const tl = useUiTr();
   const [rows, setRows] = useState(null);
   const load = useCallback(() => { fetch("/api/admin/feedback?limit=200", { credentials: "same-origin" }).then((r) => r.json()).then((d) => setRows(d.feedback || [])).catch(() => setRows([])); }, []);
   useEffect(() => { load(); }, [load]);
   const TYPE = { bug: "Грешка", data: "Неточни данни", idea: "Предложение" };
   const TONE = { bug: "red", data: "amber", idea: "blue" };
 
-  if (rows == null) return <section className="prof-card"><p className="prose">Зареждане…</p></section>;
+  if (rows == null) return <section className="prof-card"><p className="prose">{tl("Зареждане…")}</p></section>;
   return (
     <section className="prof-card">
       <div className="ov-section-head">
-        <h2 className="prof-section-title" style={{ margin: 0 }}>Сигнали</h2>
+        <h2 className="prof-section-title" style={{ margin: 0 }}>{tl("Сигнали")}</h2>
         <span className="count-dot">{rows.length}</span>
-        <button className="btn btn-ghost" style={{ marginLeft: "auto" }} onClick={load}><Icon name="refresh" size={16} /> Обнови</button>
+        <button className="btn btn-ghost" style={{ marginLeft: "auto" }} onClick={load}><Icon name="refresh" size={16} /> {tl("Обнови")}</button>
       </div>
       {rows.length === 0 ? (
-        <div className="state ov-empty"><Icon name="check" size={26} /><h3>Няма сигнали</h3><p>Тук се показват подадените сигнали от потребителите (бутон „Подай сигнал за проблем").</p></div>
+        <div className="state ov-empty"><Icon name="check" size={26} /><h3>{tl("Няма сигнали")}</h3><p>{tl("Тук се показват подадените сигнали от потребителите (бутон „Подай сигнал за проблем“).")}</p></div>
       ) : (
         <div className="table-scroll">
           <table className="admin-table">
-            <thead><tr><th>Време</th><th>Тип</th><th>Заглавие</th><th>Описание</th><th>Адрес / версия</th><th>Имейл</th></tr></thead>
+            <thead><tr><th>{tl("Време")}</th><th>{tl("Тип")}</th><th>{tl("Заглавие")}</th><th>{tl("Описание")}</th><th>{tl("Адрес / версия")}</th><th>{tl("Имейл")}</th></tr></thead>
             <tbody>
               {rows.map((f) => (
                 <tr key={f.id}>
                   <td className="nowrap">{fmt(f.created_at)}</td>
-                  <td><span className={"badge " + (TONE[f.type] || "neutral")}>{TYPE[f.type] || f.type}</span></td>
+                  <td><span className={"badge " + (TONE[f.type] || "neutral")}>{tl(TYPE[f.type] || f.type)}</span></td>
                   <td>{f.title || "—"}</td>
                   <td className="fb-desc">{f.description}</td>
                   <td className="mono">{f.url}{f.app_version ? ` · v${f.app_version}` : ""}</td>

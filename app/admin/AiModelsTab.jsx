@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Icon from "../components/Icon.jsx";
 import { priceLabel, useForLabel, AI_PRICING_DATE } from "../lib/ai-pricing.js";
+import { useUiTr } from "../lib/i18n/ui-translate.js";
 
 // Само chat-подходящи модели за системния анализ (без audio/tts/image/и т.н.).
 const NON_CHAT = /(audio|realtime|tts|transcribe|whisper|image|moderation|embedding|sora|codex|search-api|search-preview|deep-research|davinci|babbage|instruct)/;
@@ -41,6 +42,7 @@ async function api(path, opts = {}) {
 }
 
 export default function AiModelsTab() {
+  const tl = useUiTr();
   const [data, setData] = useState(null);
   const [summary, setSummary] = useState(null);
   const [msg, setMsg] = useState(null);
@@ -65,8 +67,8 @@ export default function AiModelsTab() {
   return (
     <>
       <div className="page-head" style={{ marginBottom: 8 }}>
-        <h2 style={{ margin: 0 }}>AI модели</h2>
-        <p>Управление на AI доставчиците, моделите, дневните задачи и бъдещите AI функции на системата.</p>
+        <h2 style={{ margin: 0 }}>{tl("AI модели")}</h2>
+        <p>{tl("Управление на AI доставчиците, моделите, дневните задачи и бъдещите AI функции на системата.")}</p>
       </div>
       {msg && <div className="ov-since" role="status" style={{ marginBottom: 10 }}><Icon name="info" size={16} /><p>{msg}</p></div>}
       {!data.cryptoConfigured && (
@@ -78,41 +80,41 @@ export default function AiModelsTab() {
       {/* Обобщение */}
       <div className="sys-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12, marginBottom: 14 }}>
         <section className="prof-card" style={{ margin: 0 }}>
-          <h3 className="prof-section-title">Дневен преглед</h3>
+          <h3 className="prof-section-title">{tl("Дневен преглед")}</h3>
           <dl className="sys-grid" style={{ gridTemplateColumns: "1fr" }}>
-            <div><dt>Модел</dt><dd>{daily ? `${daily.display_name}` : "—"} <span className="role-chip">Anthropic</span></dd></div>
+            <div><dt>{tl("Модел")}</dt><dd>{daily ? `${daily.display_name}` : "—"} <span className="role-chip">Anthropic</span></dd></div>
             <div><dt>Model ID</dt><dd className="mono">{daily?.model_id || "—"}</dd></div>
-            <div><dt>Управление</dt><dd><span className="badge amber">Управлява се от Claude Scheduled Tasks</span></dd></div>
-            <div><dt>Последно изпълнение</dt><dd>{lastSync ? `${fmtTs(lastSync.started_at)} · ${lastSync.status}` : "Няма налични данни"}</dd></div>
-            <div><dt>Реален модел (последен отчет)</dt><dd className="mono">{lastDaily?.model_id || "Няма отчетен"}</dd></div>
+            <div><dt>{tl("Управление")}</dt><dd><span className="badge amber">{tl("Управлява се от Claude Scheduled Tasks")}</span></dd></div>
+            <div><dt>{tl("Последно изпълнение")}</dt><dd>{lastSync ? `${fmtTs(lastSync.started_at)} · ${lastSync.status}` : tl("Няма налични данни")}</dd></div>
+            <div><dt>{tl("Реален модел (последен отчет)")}</dt><dd className="mono">{lastDaily?.model_id || tl("Няма налични данни")}</dd></div>
           </dl>
           {lastDaily && daily && lastDaily.model_id && lastDaily.model_id !== daily.model_id && (
-            <p className="chart-note"><Icon name="alert" size={13} /> Реалният модел ({lastDaily.model_id}) се различава от желания ({daily.model_id}).</p>
+            <p className="chart-note"><Icon name="alert" size={13} /> {tl("Реалният модел се различава от желания:")} {lastDaily.model_id} ≠ {daily.model_id}</p>
           )}
         </section>
         <section className="prof-card" style={{ margin: 0 }}>
-          <h3 className="prof-section-title">Системен AI анализ</h3>
+          <h3 className="prof-section-title">{tl("Системен AI анализ")}</h3>
           <dl className="sys-grid" style={{ gridTemplateColumns: "1fr" }}>
-            <div><dt>Модел</dt><dd>{sysAI ? sysAI.display_name : "—"} <span className="role-chip">OpenAI</span></dd></div>
+            <div><dt>{tl("Модел")}</dt><dd>{sysAI ? sysAI.display_name : "—"} <span className="role-chip">OpenAI</span></dd></div>
             <div><dt>Model ID</dt><dd className="mono">{sysAI?.model_id || "—"}</dd></div>
-            <div><dt>Статус</dt><dd>{sysAI?.active && sysAI?.validation_status === "validated" ? <span className="badge green">Активен</span> : <span className="badge neutral">Конфигуриран (неактивен до валидация)</span>}</dd></div>
-            <div><dt>Валидация</dt><dd>{sysAI?.validation_status || "—"}{sysAI?.last_validated_at ? ` · ${fmtTs(sysAI.last_validated_at)}` : ""}</dd></div>
+            <div><dt>{tl("Статус")}</dt><dd>{sysAI?.active && sysAI?.validation_status === "validated" ? <span className="badge green">{tl("Активен")}</span> : <span className="badge neutral">{tl("Конфигуриран (неактивен до валидация)")}</span>}</dd></div>
+            <div><dt>{tl("Валидация")}</dt><dd>{sysAI?.validation_status || "—"}{sysAI?.last_validated_at ? ` · ${fmtTs(sysAI.last_validated_at)}` : ""}</dd></div>
           </dl>
         </section>
         <section className="prof-card" style={{ margin: 0 }}>
-          <h3 className="prof-section-title">Бъдещ AI чат</h3>
+          <h3 className="prof-section-title">{tl("Бъдещ AI чат")}</h3>
           <dl className="sys-grid" style={{ gridTemplateColumns: "1fr" }}>
-            <div><dt>Статус</dt><dd><span className="badge neutral">Изключен</span> (feature flag AI_CHAT_ENABLED)</dd></div>
-            <div><dt>Подготвен модел</dt><dd>{chat ? `${chat.display_name}` : "—"}</dd></div>
+            <div><dt>{tl("Статус")}</dt><dd><span className="badge neutral">{tl("Изключен")}</span> (feature flag AI_CHAT_ENABLED)</dd></div>
+            <div><dt>{tl("Подготвен модел")}</dt><dd>{chat ? `${chat.display_name}` : "—"}</dd></div>
           </dl>
         </section>
         <section className="prof-card" style={{ margin: 0 }}>
-          <h3 className="prof-section-title">AI заявки днес</h3>
+          <h3 className="prof-section-title">{tl("AI заявки днес")}</h3>
           <dl className="sys-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
-            <div><dt>Успешни</dt><dd>{t ? (t.ok ?? 0) : "Няма налични данни"}</dd></div>
-            <div><dt>Неуспешни</dt><dd>{t ? (t.failed ?? 0) : "—"}</dd></div>
-            <div><dt>Токени</dt><dd>{t && t.tokens != null ? t.tokens : "Няма налични данни"}</dd></div>
-            <div><dt>Средна латентност</dt><dd>{t && t.avg_latency != null ? Math.round(t.avg_latency) + " ms" : "Няма налични данни"}</dd></div>
+            <div><dt>{tl("Успешни")}</dt><dd>{t ? (t.ok ?? 0) : tl("Няма налични данни")}</dd></div>
+            <div><dt>{tl("Неуспешни")}</dt><dd>{t ? (t.failed ?? 0) : "—"}</dd></div>
+            <div><dt>{tl("Токени")}</dt><dd>{t && t.tokens != null ? t.tokens : tl("Няма налични данни")}</dd></div>
+            <div><dt>{tl("Средна латентност")}</dt><dd>{t && t.avg_latency != null ? Math.round(t.avg_latency) + " ms" : tl("Няма налични данни")}</dd></div>
           </dl>
         </section>
       </div>
@@ -135,6 +137,7 @@ export default function AiModelsTab() {
 }
 
 function ProviderCard({ p, cryptoConfigured, onChanged, flash }) {
+  const tl = useUiTr();
   const [key, setKey] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -155,48 +158,49 @@ function ProviderCard({ p, cryptoConfigured, onChanged, flash }) {
     finally { setBusy(false); }
   };
   const removeKey = async () => {
-    if (!confirm("Ключът ще бъде премахнат, доставчикът — деактивиран, а зависимите модели ще станат unavailable. Продължавате ли?")) return;
+    if (!confirm(tl("Ключът ще бъде премахнат, доставчикът — деактивиран, а зависимите модели ще станат unavailable. Продължавате ли?"))) return;
     setBusy(true);
-    try { await api(`/api/admin/ai/providers/${p.provider_key}/key`, { method: "DELETE" }); flash("Ключът е премахнат."); onChanged(); }
-    catch (e) { flash(errText(e.code)); }
+    try { await api(`/api/admin/ai/providers/${p.provider_key}/key`, { method: "DELETE" }); flash(tl("Ключът е премахнат.")); onChanged(); }
+    catch (e) { flash(tl(errText(e.code))); }
     finally { setBusy(false); }
   };
 
   return (
     <section className="prof-card" style={{ margin: 0 }}>
       <div className="ov-section-head"><h3 className="prof-section-title" style={{ margin: 0 }}>{p.display_name}</h3>
-        {configured ? <span className="badge green">Конфигуриран</span> : <span className="badge neutral">API ключът не е конфигуриран</span>}
-        {p.connection_status === "ok" && <span className="badge blue">Връзка OK</span>}
-        {p.connection_status === "error" && <span className="badge red">Грешка при връзка</span>}
+        {configured ? <span className="badge green">{tl("Конфигуриран")}</span> : <span className="badge neutral">{tl("API ключът не е конфигуриран")}</span>}
+        {p.connection_status === "ok" && <span className="badge blue">{tl("Връзка OK")}</span>}
+        {p.connection_status === "error" && <span className="badge red">{tl("Грешка при връзка")}</span>}
       </div>
       <dl className="sys-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
-        <div><dt>Ключ</dt><dd className="mono">{configured && p.credential ? `•••• ${p.credential.lastFour || ""}` : "—"}</dd></div>
-        <div><dt>Последна смяна</dt><dd>{p.credential ? fmtTs(p.credential.rotatedAt || p.credential.updatedAt) : "—"}</dd></div>
-        <div><dt>Последен тест</dt><dd>{p.last_tested_at ? `${fmtTs(p.last_tested_at)} · ${p.last_test_status}` : "—"}</dd></div>
-        <div><dt>Модели (кеш)</dt><dd>{p.available_models ? `${p.available_models.length} · ${fmtTs(p.models_refreshed_at)}` : "—"}</dd></div>
+        <div><dt>{tl("Ключ")}</dt><dd className="mono">{configured && p.credential ? `•••• ${p.credential.lastFour || ""}` : "—"}</dd></div>
+        <div><dt>{tl("Последна смяна")}</dt><dd>{p.credential ? fmtTs(p.credential.rotatedAt || p.credential.updatedAt) : "—"}</dd></div>
+        <div><dt>{tl("Последен тест")}</dt><dd>{p.last_tested_at ? `${fmtTs(p.last_tested_at)} · ${p.last_test_status}` : "—"}</dd></div>
+        <div><dt>{tl("Модели (кеш)")}</dt><dd>{p.available_models ? `${p.available_models.length} · ${fmtTs(p.models_refreshed_at)}` : "—"}</dd></div>
       </dl>
       <label className="field" style={{ marginTop: 8 }}>
         <span className="field-label">{p.display_name} API key</span>
         <span style={{ display: "flex", gap: 6 }}>
-          <input className="inp" type={show ? "text" : "password"} value={key} placeholder="Въведете нов API ключ" autoComplete="off" name={"new-ai-key-" + p.provider_key} onChange={(e) => setKey(e.target.value)} />
-          {key && <button type="button" className="btn btn-ghost" onClick={() => setShow((v) => !v)} aria-label={show ? "Скрий" : "Покажи"}>{show ? "Скрий" : "Покажи"}</button>}
+          <input className="inp" type={show ? "text" : "password"} value={key} placeholder={tl("Въведете нов API ключ")} autoComplete="off" name={"new-ai-key-" + p.provider_key} onChange={(e) => setKey(e.target.value)} />
+          {key && <button type="button" className="btn btn-ghost" onClick={() => setShow((v) => !v)} aria-label={show ? tl("Скрий") : tl("Покажи")}>{show ? tl("Скрий") : tl("Покажи")}</button>}
         </span>
       </label>
       <div className="prof-actions" style={{ flexWrap: "wrap" }}>
-        <button className="btn btn-primary" disabled={busy || !key || !cryptoConfigured} onClick={saveKey}><Icon name="check" size={15} /> {configured ? "Замени ключа" : "Запази"}</button>
-        <button className="btn" disabled={busy || !configured} onClick={test}><Icon name="refresh" size={15} /> Провери връзката</button>
-        {configured && <button className="btn btn-danger" disabled={busy} onClick={removeKey}><Icon name="close" size={15} /> Премахни ключа</button>}
+        <button className="btn btn-primary" disabled={busy || !key || !cryptoConfigured} onClick={saveKey}><Icon name="check" size={15} /> {configured ? tl("Замени ключа") : tl("Запази")}</button>
+        <button className="btn" disabled={busy || !configured} onClick={test}><Icon name="refresh" size={15} /> {tl("Провери връзката")}</button>
+        {configured && <button className="btn btn-danger" disabled={busy} onClick={removeKey}><Icon name="close" size={15} /> {tl("Премахни ключа")}</button>}
       </div>
       <p role="status" aria-live="polite" style={{ margin: "6px 0 0", minHeight: 18 }}>
         {testResult && (testResult.ok
-          ? <span className="save-ok"><Icon name="check" size={14} /> Успешна връзка{testResult.latency ? ` · ${testResult.latency} ms` : ""}</span>
-          : <span className="badge red">{errText(testResult.code)}</span>)}
+          ? <span className="save-ok"><Icon name="check" size={14} /> {tl("Успешна връзка")}{testResult.latency ? ` · ${testResult.latency} ms` : ""}</span>
+          : <span className="badge red">{tl(errText(testResult.code))}</span>)}
       </p>
     </section>
   );
 }
 
 function ActiveModels({ data, onChanged, flash }) {
+  const tl = useUiTr();
   const [purpose, setPurpose] = useState("procedure_analysis");
   const [provider, setProvider] = useState("openai");
   const [modelId, setModelId] = useState("");
@@ -208,8 +212,8 @@ function ActiveModels({ data, onChanged, flash }) {
 
   const refreshModels = async () => {
     setBusy(true);
-    try { await api(`/api/admin/ai/providers/${provider}/models/refresh`, { method: "POST" }); flash("Списъкът с модели е обновен."); onChanged(); }
-    catch (e) { flash(errText(e.code)); }
+    try { await api(`/api/admin/ai/providers/${provider}/models/refresh`, { method: "POST" }); flash(tl("Списъкът с модели е обновен.")); onChanged(); }
+    catch (e) { flash(tl(errText(e.code))); }
     finally { setBusy(false); }
   };
   const apply = async (activate) => {
@@ -217,35 +221,35 @@ function ActiveModels({ data, onChanged, flash }) {
     try {
       const m = list.find((x) => x.id === modelId);
       await api(`/api/admin/ai/configurations/${purpose}`, { method: "PATCH", body: JSON.stringify({ provider_key: provider, model_id: modelId, display_name: displayName || (m ? m.displayName : modelId), model_family: m?.family || null, model_tier: m?.tier || null, activate }) });
-      flash(activate ? "Моделът е активиран." : "Конфигурацията е записана (неактивна).");
+      flash(activate ? tl("Моделът е активиран.") : tl("Конфигурацията е записана (неактивна)."));
       onChanged();
-    } catch (e) { flash(errText(e.code)); }
+    } catch (e) { flash(tl(errText(e.code))); }
     finally { setBusy(false); }
   };
 
   return (
     <section className="prof-card">
-      <h3 className="prof-section-title">Активни AI модели</h3>
+      <h3 className="prof-section-title">{tl("Активни AI модели")}</h3>
       <p className="prose">Този модел се използва за ежедневната проверка и анализ на процедурите, когато Scheduled Task архитектурата позволява изборът да се управлява от системата. Дневният преглед носи бадж „Управлява се от Claude Scheduled Tasks“ — изборът тук е desired модел и не се прилага автоматично върху задачата.</p>
       <div className="table-scroll">
         <table className="admin-table">
-          <thead><tr><th>Предназначение</th><th>Доставчик</th><th>Модел (display)</th><th>Model ID</th><th>Цена (~1M)</th><th>Статус</th><th>Валидация</th><th>Използван</th></tr></thead>
+          <thead><tr><th>{tl("Предназначение")}</th><th>{tl("Доставчик")}</th><th>{tl("Модел (display)")}</th><th>Model ID</th><th>{tl("Цена (~1M)")}</th><th>{tl("Статус")}</th><th>{tl("Валидация")}</th><th>{tl("Използван")}</th></tr></thead>
           <tbody>
             {Object.keys(PURPOSE_LABELS).filter((k) => k !== "fallback").map((k) => {
               const rows = data.configurations.filter((c) => c.purpose === k);
-              if (!rows.length) return <tr key={k}><td>{PURPOSE_LABELS[k]}</td><td colSpan={7} className="row-sub">Няма конфигурация (наследява системния модел)</td></tr>;
+              if (!rows.length) return <tr key={k}><td>{tl(PURPOSE_LABELS[k])}</td><td colSpan={7} className="row-sub">{tl("Няма конфигурация (наследява системния модел)")}</td></tr>;
               return rows.map((c) => {
                 const u = (data.usage || []).find((x) => x.model_id === c.model_id);
                 return (
                   <tr key={c.id}>
-                    <td>{PURPOSE_LABELS[k]}{k === "daily_review" ? <div className="row-sub"><span className="badge amber">Claude Scheduled Tasks</span></div> : null}</td>
+                    <td>{tl(PURPOSE_LABELS[k])}{k === "daily_review" ? <div className="row-sub"><span className="badge amber">Claude Scheduled Tasks</span></div> : null}</td>
                     <td>{c.provider_key === "anthropic" ? "Anthropic" : "OpenAI"}</td>
                     <td>{c.display_name}</td>
                     <td className="mono">{c.model_id}</td>
                     <td className="nowrap">{priceLabel(c.model_id) || "—"}</td>
-                    <td>{c.active ? <span className="badge green">Активен</span> : <span className="badge neutral">Неактивен</span>}</td>
+                    <td>{c.active ? <span className="badge green">{tl("Активен")}</span> : <span className="badge neutral">{tl("Неактивен")}</span>}</td>
                     <td>{c.validation_status}</td>
-                    <td className="nowrap">{u ? <>{u.runs} заявки{u.tokens ? <div className="row-sub">{u.tokens} токена</div> : null}<div className="row-sub">{fmtTs(u.last_used_at)}</div></> : "—"}</td>
+                    <td className="nowrap">{u ? <>{u.runs} {tl("заявки")}{u.tokens ? <div className="row-sub">{u.tokens} {tl("токена")}</div> : null}<div className="row-sub">{fmtTs(u.last_used_at)}</div></> : "—"}</td>
                   </tr>
                 );
               });
@@ -254,22 +258,22 @@ function ActiveModels({ data, onChanged, flash }) {
         </table>
       </div>
 
-      <h4 style={{ margin: "16px 0 8px" }}>Смени модела</h4>
+      <h4 style={{ margin: "16px 0 8px" }}>{tl("Смени модела")}</h4>
       <div className="form-grid">
-        <label className="field"><span className="field-label">Предназначение</span>
+        <label className="field"><span className="field-label">{tl("Предназначение")}</span>
           <select className="inp" value={purpose} onChange={(e) => setPurpose(e.target.value)}>
-            {Object.keys(PURPOSE_LABELS).filter((k) => k !== "fallback").map((k) => <option key={k} value={k}>{PURPOSE_LABELS[k]}</option>)}
+            {Object.keys(PURPOSE_LABELS).filter((k) => k !== "fallback").map((k) => <option key={k} value={k}>{tl(PURPOSE_LABELS[k])}</option>)}
           </select>
         </label>
-        <label className="field"><span className="field-label">Доставчик</span>
+        <label className="field"><span className="field-label">{tl("Доставчик")}</span>
           <select className="inp" value={provider} onChange={(e) => { setProvider(e.target.value); setModelId(""); }}>
             <option value="anthropic">Anthropic</option>
             <option value="openai">OpenAI</option>
           </select>
         </label>
-        <label className="field"><span className="field-label">Модел (от реално достъпните)</span>
+        <label className="field"><span className="field-label">{tl("Модел (от реално достъпните)")}</span>
           <select className="inp" value={modelId} onChange={(e) => setModelId(e.target.value)}>
-            <option value="">— изберете —</option>
+            <option value="">{tl("— изберете —")}</option>
             {provider === "anthropic" && !list.length && <option value="claude-opus-4-8">claude-opus-4-8 (Claude Opus 4.8)</option>}
             {list.map((m) => {
               const price = priceLabel(m.id);
@@ -287,14 +291,14 @@ function ActiveModels({ data, onChanged, flash }) {
           <p>
             <strong>{modelId}</strong>
             {priceLabel(modelId) ? <> · ~{priceLabel(modelId)} (вход/изход)</> : null}
-            {useForLabel(modelId) ? <><br />{useForLabel(modelId)}</> : null}
+            {useForLabel(modelId) ? <><br />{tl(useForLabel(modelId))}</> : null}
           </p>
         </div>
       )}
       <div className="prof-actions" style={{ flexWrap: "wrap" }}>
-        <button className="btn" disabled={busy} onClick={refreshModels}><Icon name="refresh" size={15} /> Обнови списъка с модели</button>
-        <button className="btn" disabled={busy || !modelId} onClick={() => apply(false)}>Запази (неактивен)</button>
-        <button className="btn btn-primary" disabled={busy || !modelId} onClick={() => apply(true)}><Icon name="check" size={15} /> Активирай модела</button>
+        <button className="btn" disabled={busy} onClick={refreshModels}><Icon name="refresh" size={15} /> {tl("Обнови списъка с модели")}</button>
+        <button className="btn" disabled={busy || !modelId} onClick={() => apply(false)}>{tl("Запази (неактивен)")}</button>
+        <button className="btn btn-primary" disabled={busy || !modelId} onClick={() => apply(true)}><Icon name="check" size={15} /> {tl("Активирай модела")}</button>
       </div>
       <p className="chart-note"><Icon name="info" size={13} /> Активирането валидира точния model ID срещу доставчика. GPT-5.6 има нива (Sol/Terra/Luna) — изберете реално достъпния ID от списъка, не предполагаем. Цените са приблизителна стойност за ориентир (вход/изход за 1M токена, към {AI_PRICING_DATE}) — не са фактура.</p>
     </section>
@@ -302,23 +306,24 @@ function ActiveModels({ data, onChanged, flash }) {
 }
 
 function DailyRuns({ summary }) {
+  const tl = useUiTr();
   const s = summary?.lastSyncRun;
   const cursor = summary?.cursor;
   const BADGE = { completed: ["green", "Успешно"], success: ["green", "Успешно"], partial: ["amber", "Частично"], running: ["blue", "В процес"], error: ["red", "Неуспешно"], blocked: ["red", "Блокирано"], skipped: ["neutral", "Пропуснато"] };
   const b = s ? (BADGE[s.status] || ["neutral", s.status]) : null;
   return (
     <section className="prof-card">
-      <h3 className="prof-section-title">Дневна процедура</h3>
+      <h3 className="prof-section-title">{tl("Дневна процедура")}</h3>
       {!s ? <p className="prose">Няма налични данни</p> : (
         <dl className="sys-grid">
-          <div><dt>Статус</dt><dd><span className={"badge " + b[0]}>{b[1]}</span></dd></div>
-          <div><dt>График</dt><dd>Всеки ден в 08:00 (Claude Scheduled Tasks)</dd></div>
-          <div><dt>Последно изпълнение</dt><dd>{fmtTs(s.started_at)} — {fmtTs(s.completed_at)}</dd></div>
-          <div><dt>Държави (начало → край)</dt><dd>{s.start_country_code || "—"} → {s.end_country_code || "—"} · следваща: {s.continuation_country_code || "—"}</dd></div>
-          <div><dt>Обработени източници</dt><dd>{s.sources_attempted ?? "—"} (успешни: {s.sources_succeeded ?? "—"})</dd></div>
-          <div><dt>Записи</dt><dd>видени {s.records_seen ?? 0} · нови {s.records_inserted ?? 0} · обновени {s.records_updated ?? 0} · непроменени {s.records_unchanged ?? 0} · невалидни {s.records_invalid ?? 0}</dd></div>
-          <div><dt>Цикъл</dt><dd>№{s.cycle_number ?? "—"} {cursor ? `· завършени ${cursor.completed_countries_in_cycle}/${cursor.total_countries_in_cycle || "?"}` : ""}</dd></div>
-          <div><dt>Резюме</dt><dd style={{ fontSize: 13 }}>{s.safe_summary || "—"}</dd></div>
+          <div><dt>{tl("Статус")}</dt><dd><span className={"badge " + b[0]}>{b[1]}</span></dd></div>
+          <div><dt>{tl("График")}</dt><dd>{tl("Всеки ден в 08:00 (Claude Scheduled Tasks)")}</dd></div>
+          <div><dt>{tl("Последно изпълнение")}</dt><dd>{fmtTs(s.started_at)} — {fmtTs(s.completed_at)}</dd></div>
+          <div><dt>{tl("Държави (начало → край)")}</dt><dd>{s.start_country_code || "—"} → {s.end_country_code || "—"} · {tl("следваща")}: {s.continuation_country_code || "—"}</dd></div>
+          <div><dt>{tl("Обработени източници")}</dt><dd>{s.sources_attempted ?? "—"} ({tl("успешни")}: {s.sources_succeeded ?? "—"})</dd></div>
+          <div><dt>{tl("Записи")}</dt><dd>видени {s.records_seen ?? 0} · нови {s.records_inserted ?? 0} · обновени {s.records_updated ?? 0} · непроменени {s.records_unchanged ?? 0} · невалидни {s.records_invalid ?? 0}</dd></div>
+          <div><dt>{tl("Цикъл")}</dt><dd>№{s.cycle_number ?? "—"} {cursor ? `· завършени ${cursor.completed_countries_in_cycle}/${cursor.total_countries_in_cycle || "?"}` : ""}</dd></div>
+          <div><dt>{tl("Резюме")}</dt><dd style={{ fontSize: 13 }}>{s.safe_summary || "—"}</dd></div>
         </dl>
       )}
     </section>
@@ -326,6 +331,7 @@ function DailyRuns({ summary }) {
 }
 
 function RunsLog() {
+  const tl = useUiTr();
   const [rows, setRows] = useState(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -343,39 +349,39 @@ function RunsLog() {
   return (
     <section className="prof-card">
       <div className="ov-section-head" style={{ flexWrap: "wrap", gap: 8 }}>
-        <h3 className="prof-section-title" style={{ margin: 0 }}>AI логове</h3>
+        <h3 className="prof-section-title" style={{ margin: 0 }}>{tl("AI логове")}</h3>
         <span className="count-dot">{total}</span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
           <select className="inp inp-sm" value={fSource} onChange={(e) => { setFSource(e.target.value); setPage(1); }} aria-label="Източник на изпълнение">
-            <option value="">Всички източници</option>
+            <option value="">{tl("Всички източници")}</option>
             {["claude_scheduled_task", "worker_api", "admin_manual", "ingestion_pipeline", "future_chat"].map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
           <select className="inp inp-sm" value={fStatus} onChange={(e) => { setFStatus(e.target.value); setPage(1); }} aria-label="Статус">
-            <option value="">Всички статуси</option>
+            <option value="">{tl("Всички статуси")}</option>
             {["success", "partial", "error", "blocked"].map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
-          <button className="btn btn-ghost" onClick={load}><Icon name="refresh" size={15} /> Обнови</button>
+          <button className="btn btn-ghost" onClick={load}><Icon name="refresh" size={15} /> {tl("Обнови")}</button>
         </div>
       </div>
       {rows == null ? <p className="prose">Зареждане…</p> : rows.length === 0 ? (
-        <div className="state ov-empty"><Icon name="sparkle" size={26} /><h3>Няма AI логове</h3><p>Тук се записват дневните прегледи и runtime AI заявките (без prompts и без отговори).</p></div>
+        <div className="state ov-empty"><Icon name="sparkle" size={26} /><h3>{tl("Няма AI логове")}</h3><p>{tl("Тук се записват дневните прегледи и runtime AI заявките (без prompts и без отговори).")}</p></div>
       ) : (
         <>
           <div className="table-scroll">
             <table className="admin-table">
-              <thead><tr><th>Дата</th><th>Предназначение</th><th>Източник</th><th>Държава</th><th>Модел</th><th>Статус</th><th>Време</th><th>Токени</th><th>Резултат</th></tr></thead>
+              <thead><tr><th>{tl("Дата")}</th><th>{tl("Предназначение")}</th><th>{tl("Източник")}</th><th>{tl("Държава")}</th><th>{tl("Модел")}</th><th>{tl("Статус")}</th><th>{tl("Време")}</th><th>{tl("Токени")}</th><th>{tl("Резултат")}</th></tr></thead>
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id}>
                     <td className="nowrap">{fmtTs(r.started_at)}</td>
-                    <td>{PURPOSE_LABELS[r.purpose] || r.purpose}</td>
+                    <td>{tl(PURPOSE_LABELS[r.purpose] || r.purpose)}</td>
                     <td className="mono">{r.execution_source || "—"}</td>
                     <td>{r.country_code || "—"}</td>
                     <td className="mono">{r.model_id || "—"}</td>
-                    <td>{r.status === "success" ? <span className="badge green">Успешно</span> : r.status === "error" ? <span className="badge red">Грешка</span> : <span className="badge neutral">{r.status}</span>}</td>
+                    <td>{r.status === "success" ? <span className="badge green">{tl("Успешно")}</span> : r.status === "error" ? <span className="badge red">{tl("Грешка")}</span> : <span className="badge neutral">{r.status}</span>}</td>
                     <td>{r.duration_ms != null ? r.duration_ms + " ms" : "—"}</td>
                     <td>{r.input_tokens != null || r.output_tokens != null ? `${r.input_tokens ?? 0}/${r.output_tokens ?? 0}` : "—"}</td>
-                    <td style={{ maxWidth: 260, fontSize: 12.5 }}>{r.safe_error_summary || (r.procedures_reviewed != null ? `процедури: ${r.procedures_reviewed}, промени: ${r.changes_detected ?? 0}` : "—")}</td>
+                    <td style={{ maxWidth: 260, fontSize: 12.5 }}>{r.safe_error_summary || (r.procedures_reviewed != null ? `${tl("процедури")}: ${r.procedures_reviewed}, ${tl("промени")}: ${r.changes_detected ?? 0}` : "—")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -384,7 +390,7 @@ function RunsLog() {
           {total > PAGE && (
             <div className="admin-pager">
               <span className="pg-info">{(page - 1) * PAGE + 1}–{Math.min(page * PAGE, total)} от {total}</span>
-              <button className="btn btn-ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>Предишна</button>
+              <button className="btn btn-ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>{tl("Предишна")}</button>
               <span className="pg-info" style={{ margin: 0 }}>стр. {page} / {pages}</span>
               <button className="btn btn-ghost" disabled={page >= pages} onClick={() => setPage(page + 1)}>Следваща</button>
             </div>
