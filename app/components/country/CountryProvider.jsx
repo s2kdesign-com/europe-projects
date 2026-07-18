@@ -92,6 +92,23 @@ export default function CountryProvider({ initialSlug = null, children }) {
   }, [authenticated]);
 
   // Връщане към автоматично предложената държава.
+  // Live статуси от D1: enabled/coverage идват от /api/countries, а не от
+  // статичния списък (той е само froнтенд огледало за рендер без заявка).
+  const [liveByCode, setLiveByCode] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/countries")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
+      .then((d) => {
+        if (!alive || !d || !Array.isArray(d.countries)) return;
+        const map = {};
+        for (const c of d.countries) map[c.code] = c;
+        setLiveByCode(map);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
   const resetToAutomaticCountry = useCallback(async () => {
     clearCountryPref();
     const geo = suggestedCountry || (await fetchGeoSuggestion());
@@ -119,13 +136,20 @@ export default function CountryProvider({ initialSlug = null, children }) {
     countryMode: mode,
     detectionSource,
     suggestedCountry,
-    supportedCountries: COUNTRIES,
+    supportedCountries: liveByCode
+      ? COUNTRIES.map((c) => {
+          const live = liveByCode[c.code];
+          return live
+            ? { ...c, enabled: !!live.enabled && live.ingestion_status === "active", coverageStatus: live.coverage_status, activeSourceCount: live.active_source_count }
+            : c;
+        })
+      : COUNTRIES,
     isCountryConfirmed: confirmed,
     countryDataStatus: ready ? "ready" : "loading",
     ready,
     setCountry,
     resetToAutomaticCountry,
-  }), [country, mode, detectionSource, suggestedCountry, confirmed, ready, setCountry, resetToAutomaticCountry]);
+  }), [country, mode, detectionSource, suggestedCountry, confirmed, ready, setCountry, resetToAutomaticCountry, liveByCode]);
 
   return <CountryContext.Provider value={value}>{children}</CountryContext.Provider>;
 }

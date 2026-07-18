@@ -3,6 +3,26 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.28.3] — 2026-07-18
+
+### Поправено
+- **Country дропдаунът показва реалните статуси** — CountryProvider merge-ва live
+  данни от `/api/countries` (enabled + ingestion_status==='active') върху статичния
+  регистър; 21 активни държави вече се показват коректно.
+- **Без хоризонтален скрол** в дропдауна — `overflow-x: hidden`, ellipsis на
+  имена/статуси, flex-shrink на елементите.
+
+## [2.28.2] — 2026-07-18
+
+### Подобрено
+- **Sitemap** — добавени /about, /sources, /how-ai-works; `lastmod` за всички 10 URL-а.
+- **SEO metadata** — root title/description/keywords за 27-те държави от ЕС (не само
+  България); процедури/календар описания multi-country; премахнат лъжлив hreflang
+  (`/en`, `/de` не съществуват — езикът е клиентски).
+- **OG изображения** — под-layout-ите override-ваха openGraph без images → добавено
+  `/og-image.png` на всичките 9 публични подстраници.
+- **robots.txt** — Disallow и за /saved и /api/.
+
 ## [2.28.1] — 2026-07-18
 
 ### Поправено

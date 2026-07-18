@@ -33,9 +33,9 @@ window.__I18N_INITIAL=l;
 
 const SITE_URL = "https://euro-funds.eu";
 
-const TITLE = "Европроекти — Табло за европейско финансиране за България";
+const TITLE = "Европроекти — Европейско финансиране за 27-те държави от ЕС";
 const DESCRIPTION =
-  "Ежедневно обновяван преглед на активни и предстоящи европроцедури за България — срокове, бюджети и допустими кандидати. Данни от официални източници.";
+  "Ежедневно обновяван преглед на активни и предстоящи процедури за европейско финансиране в 27-те държави от ЕС — срокове, бюджети и допустими кандидати. Данни от официални национални източници, структурирани с AI.";
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
@@ -44,13 +44,13 @@ export const metadata = {
   applicationName: "Европроекти",
   generator: "Next.js",
   referrer: "origin-when-cross-origin",
-  keywords: ["европроекти", "европейско финансиране", "България", "ПРЧР", "ПКИП", "оперативни програми", "отворени процедури", "безвъзмездна финансова помощ", "грантове", "финансиране за бизнес", "eufunds", "структурни фондове", "срокове за кандидатстване"],
+  keywords: ["европроекти", "европейско финансиране", "ЕС фондове", "EU funding", "оперативни програми", "отворени процедури", "безвъзмездна финансова помощ", "грантове", "финансиране за бизнес", "структурни фондове", "срокове за кандидатстване", "България", "Румъния", "Гърция", "Полша", "eufunds"],
   authors: [{ name: "s2kdesign.com", url: "https://s2kdesign.com" }],
   creator: "s2kdesign.com",
   publisher: "s2kdesign.com",
   category: "finance",
   applicationCategory: "BusinessApplication",
-  alternates: { canonical: "/", languages: { "bg-BG": "/", "en": "/en", "de": "/de", "x-default": "/" } },
+  alternates: { canonical: "/" },
   // Верификация за Google Search Console / Bing (задава се чрез env при билд;
   // ако липсва — просто не се извежда). Не hardcode-ваме кодове.
   verification: {
@@ -60,7 +60,7 @@ export const metadata = {
   robots: { index: true, follow: true, nocache: false, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
   openGraph: {
     type: "website", locale: "bg_BG", url: "/", siteName: "Европроекти", title: TITLE, description: DESCRIPTION,
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Европроекти — Табло за европейско финансиране за България", type: "image/png" }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Европроекти — Европейско финансиране за 27-те държави от ЕС", type: "image/png" }],
   },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: ["/og-image.png"], creator: "@s2kdesign", site: "@s2kdesign" },
   icons: { icon: [{ url: "/favicon.svg", type: "image/svg+xml" }, { url: "/favicon.ico", sizes: "any" }], shortcut: "/favicon.svg", apple: "/favicon.svg" },

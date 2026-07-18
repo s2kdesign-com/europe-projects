@@ -3,5 +3,7 @@ Allow: /
 Disallow: /admin
 Disallow: /profile
 Disallow: /login
+Disallow: /saved
+Disallow: /api/
 
 Sitemap: https://euro-funds.eu/sitemap.xml

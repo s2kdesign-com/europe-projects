@@ -10,10 +10,14 @@
 
 /* Знамена (локални SVG) — за държава и за език. */
 .country-flag { display: inline-block; inline-size: 20px; block-size: 14px; border-radius: 2px; object-fit: cover; box-shadow: 0 0 0 1px rgba(0,0,0,.08); flex: none; }
-.lang-option { display: flex; align-items: center; gap: 8px; }
+.lang-option { display: flex; align-items: center; gap: 8px; min-inline-size: 0; }
 .lang-globe { display: inline-flex; align-items: center; }
 .country-option { display: flex; align-items: center; gap: 8px; }
-.country-status { margin-inline-start: auto; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+.country-status { margin-inline-start: auto; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; max-inline-size: 45%; overflow: hidden; text-overflow: ellipsis; }
+.lang-option .lang-native, .lang-option .lang-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-inline-size: 0; }
+.lang-option .lang-native { flex-shrink: 1; }
+.lang-option .lang-label { flex-shrink: 3; }
+.lang-option .country-flag, .lang-option .lang-check { flex-shrink: 0; }
 .country-status.on { background: color-mix(in srgb, var(--green, #16a34a) 16%, transparent); color: var(--green, #16a34a); }
 .country-status.soon { background: var(--surface-2, #eef1f5); color: var(--faint, #6b7280); }
 .country-trigger .country-flag { margin-inline-end: 2px; }
@@ -67,6 +71,7 @@
   padding: 4px;
   max-block-size: 320px;
   overflow-y: auto;
+  overflow-x: hidden; /* без хоризонтален скрол — съдържанието се свива */
   overscroll-behavior: contain;
 }
 .lang-option {

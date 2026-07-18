@@ -3,7 +3,7 @@ export const metadata = {
   description: "Как Европроекти използва изкуствен интелект за структуриране на процедурите, извличане на срокове и бюджети и подготовка на кратки резюмета от официални източници.",
   alternates: { canonical: "/how-ai-works", languages: { "bg-BG": "/how-ai-works", "en": "/en/how-ai-works", "de": "/de/how-ai-works", "x-default": "/how-ai-works" } },
   robots: { index: true, follow: true },
-  openGraph: {
+  openGraph: { images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Европроекти", type: "image/png" }],
     title: "AI анализ на европроекти, документи и бюджети | Европроекти",
     description: "Как изкуственият интелект структурира и анализира публичната информация за процедурите.",
     url: "/how-ai-works",

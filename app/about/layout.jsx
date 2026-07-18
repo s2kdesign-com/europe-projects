@@ -3,7 +3,7 @@ export const metadata = {
   description: "Вижте покритието на Европроекти по държави, официалните източници, ежедневния AI преглед и моделите, които структурират процедурите, документите и бюджетите.",
   alternates: { canonical: "/about", languages: { "bg-BG": "/about", "en": "/en/about", "de": "/de/about", "x-default": "/about" } },
   robots: { index: true, follow: true },
-  openGraph: {
+  openGraph: { images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Европроекти", type: "image/png" }],
     title: "Относно Европроекти — държави, официални източници и AI анализ",
     description: "Покритие по държави, официални източници, ежедневен AI преглед и използваните модели.",
     url: "/about",
