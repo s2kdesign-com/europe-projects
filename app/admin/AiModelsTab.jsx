@@ -337,7 +337,7 @@ function RunsLog() {
   const [page, setPage] = useState(1);
   const [fSource, setFSource] = useState("");
   const [fStatus, setFStatus] = useState("");
-  const PAGE = 25;
+  const PAGE = 10;
   const load = useCallback(() => {
     const qs = new URLSearchParams({ limit: String(PAGE), offset: String((page - 1) * PAGE) });
     if (fSource) qs.set("source", fSource);
@@ -389,10 +389,10 @@ function RunsLog() {
           </div>
           {total > PAGE && (
             <div className="admin-pager">
-              <span className="pg-info">{(page - 1) * PAGE + 1}–{Math.min(page * PAGE, total)} от {total}</span>
+              <span className="pg-info">{(page - 1) * PAGE + 1}–{Math.min(page * PAGE, total)} {tl("от")} {total}</span>
               <button className="btn btn-ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>{tl("Предишна")}</button>
-              <span className="pg-info" style={{ margin: 0 }}>стр. {page} / {pages}</span>
-              <button className="btn btn-ghost" disabled={page >= pages} onClick={() => setPage(page + 1)}>Следваща</button>
+              <span className="pg-info" style={{ margin: 0 }}>{tl("стр.")} {page} / {pages}</span>
+              <button className="btn btn-ghost" disabled={page >= pages} onClick={() => setPage(page + 1)}>{tl("Следваща")}</button>
             </div>
           )}
         </>
