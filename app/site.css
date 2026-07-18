@@ -84,8 +84,11 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
 .source-meta { font-size: 12px; color: var(--faint); margin-top: 6px; }
 
 .welcome-country { background: var(--surface-2); border-radius: var(--r-md, 12px); padding: 14px 16px; margin-bottom: 14px; }
-.welcome-country .wc-head { display: flex; align-items: center; gap: 10px; }
-.welcome-country .wc-head h3 { margin: 0; font-size: 16px; font-weight: 800; }
+.welcome-country .wc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.welcome-country .wc-head h3 { margin: 0; font-size: 15px; font-weight: 800; }
+.wc-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.wc-cols .lang-select, .wc-cols .country-select { max-inline-size: 100%; }
+@media (max-width: 560px) { .wc-cols { grid-template-columns: 1fr; } }
 .wc-suggested { margin: 8px 0 2px; font-weight: 700; }
 .wc-sub { margin: 2px 0 10px; font-size: 13.5px; color: var(--muted); }
 .wc-actions { margin-top: 10px; }

@@ -47,17 +47,28 @@ export default function SystemWelcomeModal({ onClose, onLogin, initialSection = 
         <button className="drawer-close welcome-x" onClick={onClose} aria-label={t("welcome.close")}><Icon name="close" size={20} /></button>
 
         <div className="welcome-scroll">
-          {/* Секция 0 — Вашата държава (виж спецификация р.10) */}
+          {/* Секция 0 — Вашата държава + Вашият език (две колони) */}
           <section className="welcome-sec welcome-country">
-            <div className="wc-head">
-              <FlagImg country={current} size={26} />
-              <h3>{t("country.modalTitle")}</h3>
+            <div className="wc-cols">
+              <div className="wc-col">
+                <div className="wc-head">
+                  <FlagImg country={current} size={22} />
+                  <h3>{t("country.modalTitle")}</h3>
+                </div>
+                <CountrySelector variant="modal" id="welcome-country" />
+              </div>
+              <div className="wc-col">
+                <div className="wc-head">
+                  <Icon name="info" size={16} aria-hidden="true" />
+                  <h3>{t("welcome.yourLanguage")}</h3>
+                </div>
+                <LanguageSelector variant="welcome" id="welcome-lang" />
+              </div>
             </div>
             {suggested && suggested.code !== "BG" && (
               <p className="wc-suggested">{t("country.suggested", { country: cLabel(suggested) })}</p>
             )}
             <p className="wc-sub">{t("country.suggestedSub")}</p>
-            <CountrySelector variant="modal" id="welcome-country" />
             <div className="wc-actions">
               <button className="btn btn-primary" onClick={() => setCountry(selectedCountry)}>{t("country.confirm")}</button>
             </div>
@@ -109,11 +120,6 @@ export default function SystemWelcomeModal({ onClose, onLogin, initialSection = 
             <h3>{t("welcome.loginTitle")}</h3>
             <button className="btn btn-google btn-google-lg" onClick={onLogin}><GoogleG size={20} /> {t("welcome.loginBtn")}</button>
             <p className="welcome-login-text">{t("welcome.loginText")}</p>
-
-            <div className="welcome-lang">
-              <span className="welcome-lang-label"><Icon name="info" size={14} aria-hidden="true" /> {t("welcome.languageLabel")}</span>
-              <LanguageSelector variant="welcome" id="welcome-lang" />
-            </div>
 
             <button className="btn welcome-guest" onClick={onClose}>{t("welcome.guest")}</button>
             <p className="welcome-legal">
