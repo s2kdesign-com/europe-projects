@@ -73,7 +73,7 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
 /* ============ /about — Относно системата ============ */
 .ab-hero { padding: 26px 0 14px; }
 .ab-hero h1 { margin: 10px 0 8px; font-size: clamp(26px, 4vw, 38px); }
-.ab-lead { max-width: 760px; color: var(--muted); font-size: 15.5px; line-height: 1.6; }
+.ab-lead { max-width: 900px; color: var(--muted); font-size: 15.5px; line-height: 1.6; }
 .ab-statusline { font-size: 13.5px; color: var(--muted); margin: 10px 0; overflow-wrap: anywhere; }
 .ab-cta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .ab-nav { position: sticky; top: 0; z-index: 30; display: flex; gap: 4px; overflow-x: auto; background: var(--bg, #f6f8fa); padding: 8px 0; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
@@ -85,10 +85,11 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
 .ab-sub { color: var(--muted); margin: 0 0 12px; }
 .ab-h3 { font-size: 17px; margin: 14px 0 6px; }
 .ab-h4 { font-size: 14.5px; margin: 14px 0 6px; }
-.ab-map-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.ab-map-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px; align-items: start; }
 @media (max-width: 900px) { .ab-map-grid { grid-template-columns: 1fr; } }
 /* Географска карта на Европа (инжектиран локален SVG). */
-.euro-geo-map { margin: 10px 0; max-width: 640px; min-height: 240px; }
+/* Картата запълва цялата лява колона (пълната ширина на контейнера като хедъра/footer-а). */
+.euro-geo-map { margin: 10px 0; width: 100%; min-height: 240px; }
 .euro-geo-map svg { width: 100%; height: auto; display: block; }
 .euro-geo-map path.ctx { fill: #e8ecf1; stroke: #fff; stroke-width: .6; pointer-events: none; }
 .euro-geo-map path.eu { stroke: #fff; stroke-width: .7; cursor: pointer; transition: filter .12s ease; }
