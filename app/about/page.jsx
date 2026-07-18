@@ -87,10 +87,12 @@ export default function AboutPage() {
   const topActive = [...countries].filter((c) => c.activeProcedures > 0).sort((a, b) => b.activeProcedures - a.activeProcedures).slice(0, 5);
   const topBudget = [...countries].filter((c) => c.publishedBudgetEur > 0).sort((a, b) => b.publishedBudgetEur - a.publishedBudgetEur).slice(0, 5);
   const maxActive = topActive.length ? topActive[0].activeProcedures : 1;
-  const chartRows = [...countries].sort((a, b) => (b.activeSources + b.totalProcedures) - (a.activeSources + a.totalProcedures));
+  const chartRows = [...countries].sort((a, b) => b.totalProcedures - a.totalProcedures || b.activeSources - a.activeSources);
   const [showAllChart, setShowAllChart] = useState(false);
   const visibleChart = showAllChart ? chartRows : chartRows.slice(0, 10);
-  const maxSources = Math.max(1, ...chartRows.map((c) => c.activeSources));
+  const maxTotal = Math.max(1, ...chartRows.map((c) => c.totalProcedures));
+  // Компактен бюджет за реда (напр. €12M); "—" при липса на структурирани данни.
+  const cfc = useMemo(() => new Intl.NumberFormat(intlLocale(), { style: "currency", currency: "EUR", notation: "compact", maximumFractionDigits: 1 }), [uiLang]);
   const daily = aiCfg?.dailyReview;
   const sysAI = aiCfg?.systemAI;
 
@@ -263,13 +265,15 @@ export default function AboutPage() {
                   <div className="ab-chart-row" key={c.code}>
                     <span className="ab-chart-label"><FlagImg country={getCountry(c.code)} size={16} /> {c.code}</span>
                     <span className="ab-chart-bar">
-                      {c.activeSources > 0 ? (
-                        <>
-                          <span className="seg ok" style={{ width: Math.max(4, ((c.activeSources) / maxSources) * 100) + "%" }} title={`${cName(c)}: ${c.activeSources} ${t("about.chartActive")}`} />
-                        </>
+                      {c.totalProcedures > 0 ? (
+                        <span className="seg ok" style={{ width: Math.max(4, (c.totalProcedures / maxTotal) * 100) + "%" }} title={`${cName(c)}: ${nf.format(c.totalProcedures)} ${t("about.statProcedures")}`} />
                       ) : <span className="seg none" />}
                     </span>
-                    <span className="ab-chart-n">{c.activeSources > 0 ? nf.format(c.activeSources) : t("country.comingSoon")}</span>
+                    <span className="ab-chart-n">
+                      {c.totalProcedures > 0
+                        ? `${nf.format(c.totalProcedures)} / ${c.publishedBudgetEur != null ? cfc.format(c.publishedBudgetEur) : "—"}`
+                        : t("country.comingSoon")}
+                    </span>
                   </div>
                 ))}
               </div>
