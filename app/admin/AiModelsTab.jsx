@@ -5,6 +5,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Icon from "../components/Icon.jsx";
+import { priceLabel, AI_PRICING_DATE } from "../lib/ai-pricing.js";
+
+// Само chat-подходящи модели за системния анализ (без audio/tts/image/и т.н.).
+const NON_CHAT = /(audio|realtime|tts|transcribe|whisper|image|moderation|embedding|sora|codex|search-api|search-preview|deep-research|davinci|babbage|instruct)/;
+function chatModels(models) {
+  const rank = (id) => (id.startsWith("gpt-5.6") ? 0 : id.startsWith("gpt-5.5") ? 1 : id.startsWith("gpt-5.4") ? 2 : id.startsWith("gpt-5.") ? 3 : id.startsWith("gpt-5") ? 4 : id.startsWith("o") ? 5 : 6);
+  return (models || [])
+    .filter((m) => !NON_CHAT.test(m.id) && /^(gpt-|o\d|chat-latest)/.test(m.id) && !/\d{4}-\d{2}-\d{2}/.test(m.id))
+    .sort((a, b) => rank(a.id) - rank(b.id) || a.id.localeCompare(b.id));
+}
 
 const fmtTs = (ts) => {
   if (!ts) return "—";
@@ -193,9 +203,8 @@ function ActiveModels({ data, onChanged, flash }) {
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
   const prov = data.providers.find((p) => p.provider_key === provider);
-  const models = (prov?.available_models || []).filter((m) => provider !== "openai" || m.family === "gpt-5.6" || !m.family?.startsWith("gpt-5.6"));
-  const gptModels = provider === "openai" ? (prov?.available_models || []).filter((m) => m.family === "gpt-5.6") : (prov?.available_models || []);
-  const list = gptModels.length ? gptModels : (prov?.available_models || []);
+  // OpenAI: всички chat-подходящи модели (5.6 нива първи, после 5.5, 5.4…), с цена.
+  const list = provider === "openai" ? chatModels(prov?.available_models) : (prov?.available_models || []);
 
   const refreshModels = async () => {
     setBusy(true);
@@ -257,7 +266,10 @@ function ActiveModels({ data, onChanged, flash }) {
           <select className="inp" value={modelId} onChange={(e) => setModelId(e.target.value)}>
             <option value="">— изберете —</option>
             {provider === "anthropic" && !list.length && <option value="claude-opus-4-8">claude-opus-4-8 (Claude Opus 4.8)</option>}
-            {list.map((m) => <option key={m.id} value={m.id}>{m.id}{m.tier ? ` · ${m.tier}` : ""}</option>)}
+            {list.map((m) => {
+              const price = priceLabel(m.id);
+              return <option key={m.id} value={m.id}>{m.id}{m.tier ? ` · ${m.tier}` : ""}{price ? ` · ~${price}` : ""}</option>;
+            })}
           </select>
         </label>
         <label className="field"><span className="field-label">Display name (не се превежда)</span>
@@ -269,7 +281,7 @@ function ActiveModels({ data, onChanged, flash }) {
         <button className="btn" disabled={busy || !modelId} onClick={() => apply(false)}>Запази (неактивен)</button>
         <button className="btn btn-primary" disabled={busy || !modelId} onClick={() => apply(true)}><Icon name="check" size={15} /> Активирай модела</button>
       </div>
-      <p className="chart-note"><Icon name="info" size={13} /> Активирането валидира точния model ID срещу доставчика. GPT-5.6 има нива (Sol/Terra/Luna) — изберете реално достъпния ID от списъка, не предполагаем.</p>
+      <p className="chart-note"><Icon name="info" size={13} /> Активирането валидира точния model ID срещу доставчика. GPT-5.6 има нива (Sol/Terra/Luna) — изберете реално достъпния ID от списъка, не предполагаем. Цените са приблизителна стойност за ориентир (вход/изход за 1M токена, към {AI_PRICING_DATE}) — не са фактура.</p>
     </section>
   );
 }

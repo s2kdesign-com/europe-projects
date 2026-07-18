@@ -46,15 +46,30 @@ export default function SiteFooter({ session: sessionProp }) {
             <span className="sf-tag"><span className="live-dot" /> {t("footer.tagAiAnalysis")}</span>
             <span className="sf-tag"><span className="live-dot" /> {t("footer.tagDailyUpdate")}</span>
           </div>
-          {/* AI модели — компактно, от публичната безопасна конфигурация. */}
+          {/* AI модели — компактно, от публичната безопасна конфигурация.
+              Зелен индикатор = моделът е реално активен. */}
           <div className="sf-ai-models">
             <h4 className="sf-title">{t("ai.modelsTitle")}</h4>
-            <p className="sf-ai-row"><Icon name="sparkle" size={12} aria-hidden="true" /> {t("ai.dailyUses", { model: aiCfg.dailyReview?.model || "Claude Opus 4.8", provider: aiCfg.dailyReview?.provider || "Anthropic" })}</p>
-            {aiCfg.systemAI && (
-              <p className="sf-ai-row"><Icon name="sparkle" size={12} aria-hidden="true" /> {aiCfg.systemAI.status === "active"
-                ? t("ai.systemUses", { model: aiCfg.systemAI.model, provider: aiCfg.systemAI.provider })
-                : t("ai.systemConfigured", { model: aiCfg.systemAI.model, provider: aiCfg.systemAI.provider })}</p>
-            )}
+            {(() => {
+              const dailyOn = !!(aiCfg.dailyReview?.lastSuccessfulRunAt && Date.now() - new Date(aiCfg.dailyReview.lastSuccessfulRunAt) < 48 * 3600 * 1000);
+              const sysOn = aiCfg.systemAI?.status === "active";
+              return (
+                <>
+                  <p className={"sf-ai-row" + (dailyOn ? " on" : "")}>
+                    {dailyOn ? <span className="live-dot" aria-hidden="true" /> : <Icon name="sparkle" size={12} aria-hidden="true" />}
+                    {t("ai.dailyUses", { model: aiCfg.dailyReview?.model || "Claude Opus 4.8", provider: aiCfg.dailyReview?.provider || "Anthropic" })}
+                  </p>
+                  {aiCfg.systemAI && (
+                    <p className={"sf-ai-row" + (sysOn ? " on" : "")}>
+                      {sysOn ? <span className="live-dot" aria-hidden="true" /> : <Icon name="sparkle" size={12} aria-hidden="true" />}
+                      {sysOn
+                        ? t("ai.systemUses", { model: aiCfg.systemAI.model, provider: aiCfg.systemAI.provider })
+                        : t("ai.systemConfigured", { model: aiCfg.systemAI.model, provider: aiCfg.systemAI.provider })}
+                    </p>
+                  )}
+                </>
+              );
+            })()}
             <a className="sf-link" href="/about#how-we-use-ai">{t("ai.howWeUse")}</a>
           </div>
           <div className="sf-links">

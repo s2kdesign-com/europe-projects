@@ -317,6 +317,8 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
 .sf-ai-models { margin: 10px 0 8px; }
 .sf-ai-models .sf-title { margin: 0 0 4px; }
 .sf-ai-row { display: flex; align-items: flex-start; gap: 6px; margin: 3px 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); overflow-wrap: anywhere; }
+.sf-ai-row.on { color: var(--green, #15803d); font-weight: 600; }
+.sf-ai-row.on .live-dot { margin-top: 5px; flex: none; }
 .sf-ai-row .icon, .sf-ai-row svg { flex: none; margin-top: 3px; color: var(--primary); }
 .sf-ai-models .sf-link { min-height: 44px; display: inline-flex; align-items: center; }
 .sf-links-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
