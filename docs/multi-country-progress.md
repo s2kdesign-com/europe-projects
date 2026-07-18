@@ -1,7 +1,7 @@
 # Multi‑country rollout — прогрес
 
 Статус: жив документ. Поддържа се след всяка завършена стъпка.
-Последна редакция: 2026‑07‑18 (run-20260718-0820).
+Последна редакция: 2026‑07‑18 (run-20260718-1800).
 
 Легенда за статуси: `not_started, researching, sources_verified,
 connector_in_progress, connector_ready, dry_run_passed, backfilling, active,
@@ -36,11 +36,11 @@ degraded, blocked`.
 | SE Швеция | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
 | FI Финландия | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
 | AT Австрия | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
-| IE Ирландия | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
-| DK Дания | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| IE Ирландия | portal ✓ (eufunds.ie) | portal verified (ЕК) | researching | ✗ | partial (2 записа, run-20260718-1800) | ✗ | ✗ | ✗ |
+| DK Дания | portal ✓ (eufonde.dk) | portal verified (ЕК) | blocked (агрегатор без директен списък) | ✗ | ✗ | ✗ | ✗ | ✗ |
 | CY Кипър | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
 | MT Малта | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
-| LU Люксембург | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| LU Люксембург | portal ✓ (fonds-europeens.public.lu) | portal verified (ЕК) | partial (2 записа, под праг за активация) | ✗ | partial (2 записа) | ✗ | ✗ | ✗ |
 
 Забележка (2026-07-18): Всичките 27 държави имат записан официален национален
 портал във `funding_sources` (verified=1, enabled=0 до QA) с доказателство в
@@ -111,3 +111,29 @@ degraded, blocked`.
   Доказателства записани в `source_audit_log`. Няма открит structured/API endpoint.
   `rollout_status` остава `sources_verified` (blocked за production sync); следваща
   стъпка си остава browser automation или директен контакт за API достъп.
+
+## Забележки за LU / SE / IE / DK (run-20260718-1800)
+- **LU:** `fonds-europeens.public.lu` — главната страница `appels-en-cours.html` и
+  под-страницата за 3-тия FSE+ appel не върнаха съдържание при суров `web_fetch`
+  (вероятно JS-rendered), затова 2-та вече заредени записа (FSE+ „Investir dans
+  l'avenir“, AMIF 2026) останаха непроменени и не бе намерена 3-та процедура за
+  активиране (нужни са ≥3). През търсене бе засечен и Interreg Grande Région „petits
+  projets“ 4th call (7 сеп – 10 ное 2026), но без директен `official_url` — не бе
+  вкаран.
+- **SE:** `eufonder.se` и `tillvaxtverket.se` (реалният издател на покани) не върнаха
+  съдържание при `web_fetch`. WebSearch показа само общи описания на фондовете
+  (Regionalfonden, Socialfonden Plus и др.) и заглавие „Nu öppnar 45 utlysningar hos
+  Tillväxtverket“, без конкретни заглавия/срокове/URL на отделни покани — недостатъчно
+  за реален запис. `country_sync_state.rollout_status` остава `blocked`.
+- **IE:** `eufunds.ie` също не се зарежда суров (JS), но WebSearch резултатите дадоха
+  достатъчно конкретни заглавия/линкове за 2 реални покани — вкарани в `projects`:
+  „Call for Proposals for a National Contact Point under EaSI/ESF+“ и „EU Commission
+  launches open call for project proposals under EMFAF“. Под прага от 3 за активиране;
+  `country.enabled` остава 0.
+- **DK:** `eufonde.dk` се зарежда нормално (server-rendered), но е само обобщителен
+  портал — препраща за реални отворени покани към
+  `udviklingidanmark.erhvervsstyrelsen.dk/soeg-midler` и `statens-tilskudspuljer.dk`,
+  чиито конкретни страници не бяха в provenance set за `web_fetch` тази сесия.
+  WebSearch показа 2 примерни ansøgningsrunder, но и двете вече изтекли (>60 дни) и
+  без потвърден `official_url` → не бяха вкарани. Следваща стъпка: search+fetch на
+  `/soeg-midler` директно в следващия run.

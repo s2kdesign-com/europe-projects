@@ -64,8 +64,16 @@ function canonicalRedirect(url, env) {
   } catch {
     return null;
   }
-  if (url.hostname === canonical.hostname) return null;
-  if (!url.hostname.endsWith(".workers.dev")) return null;
+  // http → https на каноничния домейн (SEO: един протокол, един host).
+  if (url.hostname === canonical.hostname) {
+    if (url.protocol === "http:") {
+      const dest = new URL(url.pathname + url.search, canonical.origin);
+      return Response.redirect(dest.toString(), 301);
+    }
+    return null;
+  }
+  // www.<canonical> и *.workers.dev → каноничния домейн.
+  if (url.hostname !== "www." + canonical.hostname && !url.hostname.endsWith(".workers.dev")) return null;
   const dest = new URL(url.pathname + url.search, canonical.origin);
   return Response.redirect(dest.toString(), 301);
 }

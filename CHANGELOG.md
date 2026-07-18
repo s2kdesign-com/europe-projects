@@ -11,6 +11,9 @@
   4 дублирани URL-а премахнати. Приоритети уеднаквени (/about 0.7, /sources 0.6).
 - **Изтрит мъртвият `public/sitemap.xml`** — Worker route-ът винаги го override-ваше;
   двата източника на истина се разминаваха. Sitemap-ът е САМО динамичният.
+- **canonicalRedirect разширен** — http:// на каноничния домейн → 301 https;
+  www.euro-funds.eu → 301 apex (действа само ако www сочи към Worker-а — иначе
+  трябва DNS запис + route в Cloudflare).
 
 ## [2.28.3] — 2026-07-18
 
