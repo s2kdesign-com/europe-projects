@@ -440,7 +440,12 @@
     "linkChangelog": "Какво ново",
     "linkCookies": "Бисквитки",
     "linkPrivacy": "Поверителност",
-    "close": "Затвори"
+    "close": "Затвори",
+    "learnMore": "Научи повече",
+    "statProcedures": "процедури",
+    "statCountries": "държави",
+    "statSources": "източника",
+    "statsAria": "Обобщена статистика на платформата"
   },
   "activity": {
     "title": "Активност на процедурите",

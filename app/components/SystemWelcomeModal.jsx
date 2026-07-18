@@ -15,10 +15,10 @@ import { APP_VERSION_LABEL, DATA_SOURCES_TEXT } from "../lib/version.js";
 // структурира процедури, документи и бюджети). Четвъртата е детерминистично
 // сравнение с профила (не LLM) — затова НЕ я наричаме „AI".
 const AI_FEATURES = [
-  { icon: "sparkle", tKey: "f1" },
-  { icon: "document", tKey: "f2" },
-  { icon: "euro", tKey: "f3" },
-  { icon: "users", tKey: "f4" },
+  { icon: "sparkle", tKey: "f1", href: "/sources" },
+  { icon: "document", tKey: "f2", href: "/about#how-we-use-ai" },
+  { icon: "euro", tKey: "f3", href: "/about#about-system" },
+  { icon: "users", tKey: "f4", href: "/about#how-ai-works" },
 ];
 
 const AI_STEP_KEYS = ["step1", "step2", "step3", "step4", "step5"];
@@ -33,12 +33,18 @@ export default function SystemWelcomeModal({ onClose, onLogin, initialSection = 
   useEffect(() => {
     fetch("/api/ai/public-configuration").then((r) => (r.ok ? r.json() : null)).then((d) => { if (d && d.ok) setAiCfg(d); }).catch(() => {});
   }, []);
+  // Обобщена платформена статистика (общо процедури, държави, източници) до бейджа.
+  const [pstats, setPstats] = useState(null);
+  useEffect(() => {
+    fetch("/api/public/platform-statistics").then((r) => (r.ok ? r.json() : null)).then((d) => { if (d && d.summary) setPstats(d.summary); }).catch(() => {});
+  }, []);
   const { selectedCountry, suggestedCountry, setCountry } = useCountry();
   const [countryCollapsed, setCountryCollapsed] = useState(false);
   const uiLang = i18n.language;
   const suggested = suggestedCountry ? getCountry(suggestedCountry) : null;
   const current = getCountry(selectedCountry);
   const cLabel = (c) => (c ? (uiLang === "bg" ? c.nameBg : c.english) : "");
+  const nf = (n) => new Intl.NumberFormat(uiLang === "bg" ? "bg-BG" : "en-US").format(n || 0);
 
   // Дълбок линк от footer-а: „Как работи AI" отваря модала директно на AI секцията.
   useEffect(() => {
@@ -85,7 +91,16 @@ export default function SystemWelcomeModal({ onClose, onLogin, initialSection = 
           {/* Секция 1 — Добре дошли */}
           <section className="welcome-sec">
             <span className="welcome-mark" aria-hidden="true"><Icon name="euro" size={28} /></span>
-            <span className="ai-badge"><Icon name="sparkle" size={14} aria-hidden="true" /> {t("welcome.aiBadge")}</span>
+            <div className="welcome-badge-row">
+              <span className="ai-badge"><Icon name="sparkle" size={14} aria-hidden="true" /> {t("welcome.aiBadge")}</span>
+              {pstats && (
+                <div className="welcome-stats" aria-label={t("welcome.statsAria")}>
+                  <span className="ws-item"><b>{nf(pstats.totalProcedures)}</b>{t("welcome.statProcedures")}</span>
+                  <span className="ws-item"><b>{nf(pstats.countries)}</b>{t("welcome.statCountries")}</span>
+                  <span className="ws-item"><b>{nf(pstats.activeSources)}</b>{t("welcome.statSources")}</span>
+                </div>
+              )}
+            </div>
             <p className="welcome-eyebrow">{t("welcome.eyebrow")}</p>
             <h2 id="welcome-title">{t("welcome.title")}</h2>
             <p className="welcome-lead">{t("welcome.lead")}</p>
@@ -94,7 +109,11 @@ export default function SystemWelcomeModal({ onClose, onLogin, initialSection = 
               {AI_FEATURES.map((b) => (
                 <div className="welcome-benefit" key={b.tKey}>
                   <span className="wb-ico" aria-hidden="true"><Icon name={b.icon} size={18} /></span>
-                  <div><strong>{t(`welcome.${b.tKey}t`)}</strong><span>{t(`welcome.${b.tKey}x`)}</span></div>
+                  <div>
+                    <strong>{t(`welcome.${b.tKey}t`)}</strong>
+                    <span>{t(`welcome.${b.tKey}x`)}</span>
+                    <a className="wb-more" href={b.href}>{t("welcome.learnMore")} <Icon name="arrowRight" size={13} aria-hidden="true" /></a>
+                  </div>
                 </div>
               ))}
             </div>

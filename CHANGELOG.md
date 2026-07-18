@@ -3,6 +3,15 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.30.1] — 2026-07-18
+
+### Подобрено
+- **Welcome модал**: всяка AI карта има „Научи повече“ (f1→/sources, f2→/about#how-we-use-ai,
+  f3→/about#about-system, f4→/about#how-ai-works); до баджа — статистика (общо
+  процедури/държави/източници от platform-statistics).
+- **Синхрон на countries.source_count/active_source_count** от funding_sources
+  (беше 41, реално 73 активни) → /sources и модалът показват еднакви числа.
+
 ## [2.30.0] — 2026-07-18
 
 ### Ново
