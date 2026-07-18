@@ -10,10 +10,10 @@ const STATIC = [
   { path: "/", changefreq: "daily", priority: "1.0" },
   { path: "/procedures", changefreq: "daily", priority: "0.9" },
   { path: "/calendar", changefreq: "weekly", priority: "0.7" },
-  { path: "/changelog", changefreq: "weekly", priority: "0.6" },
-  { path: "/about", changefreq: "monthly", priority: "0.5" },
+  { path: "/about", changefreq: "weekly", priority: "0.7" },
+  { path: "/changelog", changefreq: "weekly", priority: "0.5" },
   { path: "/how-ai-works", changefreq: "monthly", priority: "0.5" },
-  { path: "/sources", changefreq: "weekly", priority: "0.5" },
+  { path: "/sources", changefreq: "weekly", priority: "0.6" },
   { path: "/terms", changefreq: "monthly", priority: "0.3" },
   { path: "/privacy", changefreq: "monthly", priority: "0.3" },
   { path: "/cookies", changefreq: "monthly", priority: "0.3" },
@@ -53,6 +53,10 @@ function urlEntryLang(path, changefreq, priority) {
 
 export async function generateSitemap(env) {
   let body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n`;
+  // Google изисква уникални <loc> — различни програми/процедури могат да дадат
+  // еднакъв (или празен) slug след codeSlug → dedupe + филтър на празните.
+  const seen = new Set();
+  const emit = (chunk, loc) => { if (seen.has(loc)) return ""; seen.add(loc); return chunk; };
   for (const s of STATIC) {
     if (LANG_VARIANT_PATHS.has(s.path)) body += urlEntryLang(s.path, s.changefreq, s.priority);
     else body += urlEntry(`${SITE}${s.path}`, null, s.changefreq, s.priority);
@@ -68,14 +72,22 @@ export async function generateSitemap(env) {
     // Landing по програма (уникални програми).
     const programs = new Set();
     for (const p of projects.results || []) {
-      if (p.program && !programs.has(p.program)) { programs.add(p.program); body += urlEntry(`${SITE}/procedures/programs/${codeSlug(p.program)}`, null, "weekly", "0.6"); }
+      if (p.program && !programs.has(p.program)) {
+        programs.add(p.program);
+        const pslug = codeSlug(p.program);
+        if (pslug) {
+          const loc = `${SITE}/procedures/programs/${pslug}`;
+          body += emit(urlEntry(loc, null, "weekly", "0.6"), loc);
+        }
+      }
     }
     // Всяка процедура.
     for (const p of projects.results || []) {
       const slug = codeSlug(p.id);
       if (!slug) continue;
       const lastmod = isoDate(p.last_updated) || isoDate(p.first_seen);
-      body += urlEntry(`${SITE}/procedures/${slug}`, lastmod, "weekly", "0.7");
+      const loc = `${SITE}/procedures/${slug}`;
+      body += emit(urlEntry(loc, lastmod, "weekly", "0.7"), loc);
     }
   } catch { /* при грешка връщаме поне статичните URL-и */ }
 
