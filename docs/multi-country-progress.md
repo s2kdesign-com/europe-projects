@@ -67,7 +67,9 @@ degraded, blocked`.
 | CountrySyncOrchestrator (код-скелет) | ✓ (v2.22.1) `src/ingestion/core` |
 | BG официални източници seed-нати в funding_sources | ✓ (5 източника) |
 | saved_procedures.country_code (migration 0011, backfill BG) | ✓ (v2.22.1) |
-| Scheduled Task prompt (документиран) | ✓ виж scheduled-task doc |
+| Scheduled Task — multi-country prompt ПРИЛОЖЕН директно | ✓ (v2.23.0) виж claude-scheduled-task-all-countries.md |
+| Migration 0012: cursor + locks + scheduled_sync_runs | ✓ приложено в prod |
+| scheduler.js (cursor/locks/timeout) + 22 unit теста | ✓ (v2.23.0) |
 | Saved UI филтър „Текуща/Всички държави“ | ⏳ остава (модел готов; смисъл при 2-ра държава с данни) |
 | Country URL routes `/countries/:slug/...` / Playwright | ⏳ остава |
 

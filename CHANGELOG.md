@@ -3,6 +3,21 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.23.0] — 2026-07-18
+
+### Добавено (multi-country Scheduled Task)
+- **Claude Scheduled Task е преработена** от само-България в общ multi-country
+  процес: държавите/източниците се зареждат **динамично от D1**, обработват се
+  **последователно** с **persistent cursor** (round-robin, не винаги от BG),
+  **locks** срещу паралелни run-ове и **timeout safety** с continuation.
+- **Migration 0012:** `scheduled_country_sync_state` (cursor), `scheduled_sync_runs`
+  (отчети), lock полета в `country_sync_state`.
+- **`src/ingestion/core/scheduler.js`** — чиста cursor/lock/timeout логика +
+  22 unit теста (вкл. интеграционен сценарий BG/RO/GR/PL/HR и round-robin fairness).
+- Групи: production sync само за `connector_ready/active/degraded` с verified
+  източници; останалите продължават rollout без production запис.
+- BG regression: 42 процедури / 32 документа / 5 verified източника — непокътнати.
+
 ## [2.22.6] — 2026-07-18
 
 ### Подобрено
