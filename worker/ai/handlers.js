@@ -20,11 +20,55 @@ async function audit(env, a) {
   } catch { /* no-op */ }
 }
 
+// Празен кеш + конфигуриран ключ → зареди списъка с модели (server-side).
+async function autoRefreshModels(env) {
+  try {
+    const { results } = await env.DB.prepare("SELECT provider_key FROM ai_providers WHERE credential_status='configured' AND (available_models_json IS NULL OR available_models_json='')").all();
+    for (const row of results || []) {
+      const provider = getProvider(row.provider_key);
+      const key = provider && (await getProviderKey(env, row.provider_key));
+      if (!key) continue;
+      try {
+        const models = await provider.listAvailableModels(key);
+        await env.DB.prepare("UPDATE ai_providers SET available_models_json=?1, models_refreshed_at=?2, updated_at=?2 WHERE provider_key=?3").bind(JSON.stringify(models), nowISO(), row.provider_key).run();
+      } catch { /* при грешка кешът остава празен; refresh бутонът е наличен */ }
+    }
+  } catch { /* no-op */ }
+}
+
+// Ако точният model ID 'gpt-5.6' е реално достъпен с ключа → валидирай и активирай
+// procedure_analysis (+ обнови future_chat конфигурацията, без да я активираш).
+// НЕ избира автоматично tier (gpt-5.6-sol/terra/luna) — това остава човешки избор.
+async function ensureSystemAIActivated(env, userId) {
+  try {
+    const cfg = await env.DB.prepare("SELECT id, model_id, validation_status, active FROM ai_model_configurations WHERE purpose='procedure_analysis' AND provider_key='openai'").first();
+    if (!cfg || cfg.active) return;
+    const prov = await env.DB.prepare("SELECT available_models_json FROM ai_providers WHERE provider_key='openai' AND credential_status='configured'").first();
+    if (!prov || !prov.available_models_json) return;
+    let models;
+    try { models = JSON.parse(prov.available_models_json); } catch { return; }
+    const exact = models.find((m) => m.id === cfg.model_id); // напр. 'gpt-5.6'
+    if (!exact) return; // само нива → админът избира от dropdown-а
+    const now = nowISO();
+    await env.DB.prepare("UPDATE ai_model_configurations SET active=0, updated_at=?1 WHERE purpose='procedure_analysis'").bind(now).run();
+    await env.DB.prepare("UPDATE ai_model_configurations SET active=1, validation_status='validated', last_validated_at=?1, model_tier=?2, updated_at=?1 WHERE id=?3")
+      .bind(now, exact.tier || null, cfg.id).run();
+    await env.DB.prepare("UPDATE ai_model_configurations SET validation_status='validated', last_validated_at=?1, updated_at=?1 WHERE purpose='future_chat' AND provider_key='openai' AND model_id=?2").bind(now, cfg.model_id).run();
+    await audit(env, { actor: userId || "system", action: "active_model_changed", provider: "openai", purpose: "procedure_analysis", next: JSON.stringify({ provider: "openai", model: cfg.model_id, active: true, auto: true }) });
+  } catch { /* no-op */ }
+}
+
 // ---------- ADMIN (вика се от handlers.js СЛЕД admin authorization) ----------
 export async function handleAdminAI(request, env, url, userId, method, readJson) {
   const { pathname } = url;
 
   if (pathname === "/api/admin/ai/providers" && method === "GET") {
+    // Авто-зареждане на списъка с модели при конфигуриран provider с празен кеш
+    // (за да не зависи dropdown-ът от ръчно натискане на „Обнови списъка").
+    await autoRefreshModels(env);
+    // Авто-свързване на OpenAI: ако точният ID 'gpt-5.6' е реално наличен →
+    // валидира и активира системния AI анализ (по нареждане на собственика).
+    await ensureSystemAIActivated(env, userId);
     const provs = await env.DB.prepare("SELECT provider_key, display_name, enabled, credential_status, connection_status, available_models_json, models_refreshed_at, last_tested_at, last_test_status, last_test_error_code FROM ai_providers ORDER BY provider_key").all();
     const creds = await env.DB.prepare("SELECT provider_key, secret_last_four, created_at, rotated_at, updated_at FROM ai_provider_credentials").all();
     const configs = await env.DB.prepare("SELECT * FROM ai_model_configurations ORDER BY purpose, active DESC, fallback_priority").all();
