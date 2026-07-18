@@ -29,6 +29,7 @@ export default function SystemWelcomeModal({ onClose, onLogin, initialSection = 
   const [aiOpen, setAiOpen] = useState(initialSection === "ai");
   const aiRef = useRef(null);
   const { selectedCountry, suggestedCountry, setCountry } = useCountry();
+  const [countryCollapsed, setCountryCollapsed] = useState(false);
   const uiLang = i18n.language;
   const suggested = suggestedCountry ? getCountry(suggestedCountry) : null;
   const current = getCountry(selectedCountry);
@@ -47,8 +48,9 @@ export default function SystemWelcomeModal({ onClose, onLogin, initialSection = 
         <button className="drawer-close welcome-x" onClick={onClose} aria-label={t("welcome.close")}><Icon name="close" size={20} /></button>
 
         <div className="welcome-scroll">
-          {/* Секция 0 — Вашата държава + Вашият език (две колони) */}
-          <section className="welcome-sec welcome-country">
+          {/* Секция 0 — Вашата държава + Вашият език (две колони).
+              След „Потвърди държавата" се сгъва анимирано и съдържанието се качва. */}
+          <section className={"welcome-sec welcome-country" + (countryCollapsed ? " is-collapsed" : "")} aria-hidden={countryCollapsed}>
             <div className="wc-cols">
               <div className="wc-col">
                 <div className="wc-head">
@@ -70,7 +72,7 @@ export default function SystemWelcomeModal({ onClose, onLogin, initialSection = 
             )}
             <p className="wc-sub">{t("country.suggestedSub")}</p>
             <div className="wc-actions">
-              <button className="btn btn-primary" onClick={() => setCountry(selectedCountry)}>{t("country.confirm")}</button>
+              <button className="btn btn-primary" onClick={() => { setCountry(selectedCountry); setCountryCollapsed(true); }}>{t("country.confirm")}</button>
             </div>
             <p className="wc-privacy"><Icon name="info" size={13} aria-hidden="true" /> {t("country.privacyNote")}</p>
           </section>
