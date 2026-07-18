@@ -87,16 +87,20 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
 .ab-h4 { font-size: 14.5px; margin: 14px 0 6px; }
 .ab-map-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
 @media (max-width: 900px) { .ab-map-grid { grid-template-columns: 1fr; } }
-.euro-map { display: grid; grid-template-columns: repeat(6, minmax(38px, 64px)); grid-auto-rows: minmax(38px, 64px); gap: 5px; margin: 10px 0; }
-.euro-tile { border: 1px solid var(--line); border-radius: 8px; cursor: pointer; display: grid; place-items: center; font-weight: 800; font-size: 12px; min-width: 38px; min-height: 38px; transition: transform .12s ease; }
-.euro-tile:hover, .euro-tile:focus-visible { transform: scale(1.07); outline: 2px solid var(--primary); z-index: 2; }
-.euro-tile.is-selected { outline: 2px solid var(--primary); }
-@media (prefers-reduced-motion: reduce) { .euro-tile { transition: none; } .euro-tile:hover { transform: none; } }
-.euro-tile.t0 { background: var(--surface-2); color: var(--faint); }
-.euro-tile.t1 { background: #dbeafe; color: #1e3a8a; }
-.euro-tile.t2 { background: #93c5fd; color: #1e3a8a; }
-.euro-tile.t3 { background: #3b82f6; color: #fff; }
-.euro-tile.t4 { background: #1d4ed8; color: #fff; }
+/* Географска карта на Европа (инжектиран локален SVG). */
+.euro-geo-map { margin: 10px 0; max-width: 640px; min-height: 240px; }
+.euro-geo-map svg { width: 100%; height: auto; display: block; }
+.euro-geo-map path.ctx { fill: #e8ecf1; stroke: #fff; stroke-width: .6; pointer-events: none; }
+.euro-geo-map path.eu { stroke: #fff; stroke-width: .7; cursor: pointer; transition: filter .12s ease; }
+.euro-geo-map path.eu:hover { filter: brightness(.9); }
+.euro-geo-map path.eu:focus-visible { outline: none; stroke: var(--primary); stroke-width: 2; }
+.euro-geo-map path.eu.is-selected { stroke: var(--primary-strong, #0b5394); stroke-width: 2; }
+@media (prefers-reduced-motion: reduce) { .euro-geo-map path.eu { transition: none; } }
+.euro-geo-map path.eu.t0 { fill: #cfd8e3; }
+.euro-geo-map path.eu.t1 { fill: #bfdbfe; }
+.euro-geo-map path.eu.t2 { fill: #93c5fd; }
+.euro-geo-map path.eu.t3 { fill: #3b82f6; }
+.euro-geo-map path.eu.t4 { fill: #1d4ed8; }
 .euro-legend { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; margin: 6px 0 10px; }
 .euro-legend .lg { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); }
 .euro-legend .lg.t0 { background: var(--surface-2); } .euro-legend .lg.t1 { background: #dbeafe; }

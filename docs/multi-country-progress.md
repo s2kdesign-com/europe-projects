@@ -1,7 +1,7 @@
 # Multi‑country rollout — прогрес
 
 Статус: жив документ. Поддържа се след всяка завършена стъпка.
-Последна редакция: 2026‑07‑18 (run-20260718-0000).
+Последна редакция: 2026‑07‑18 (run-20260718-0820).
 
 Легенда за статуси: `not_started, researching, sources_verified,
 connector_in_progress, connector_ready, dry_run_passed, backfilling, active,
@@ -98,3 +98,11 @@ degraded, blocked`.
   потвърдено повторно; нужна е browser automation или открит JSON/API endpoint зад страницата.
   Доказателства записани в `source_audit_log` (ro-mfe, ro-oportunitati). `rollout_status` остава
   `sources_verified` — не е готов connector.
+- **2026-07-18 rollout check #2 (run-20260718-0820):** проверен и алтернативен URL
+  `mfe.gov.ro/pocidif/calendar-apeluri-de-proiecte-pocidif/` (календар на apeluri по
+  текущата програма POCIDIF 2021‑2027, намерен чрез търсене) — страницата също връща
+  празно тяло на суров fetch, т.е. вероятно е JS-rendered или динамично зареждан списък,
+  не статичен HTML. `oportunitati-ue.gov.ro/en/apeluri/` потвърдено отново празно.
+  Доказателства записани в `source_audit_log`. Няма открит structured/API endpoint.
+  `rollout_status` остава `sources_verified` (blocked за production sync); следваща
+  стъпка си остава browser automation или директен контакт за API достъп.

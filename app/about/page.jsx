@@ -11,6 +11,7 @@ import AppHeader from "../components/AppHeader.jsx";
 import Icon from "../components/Icon.jsx";
 import { FlagImg } from "../components/country/CountrySelector.jsx";
 import { useCountry } from "../components/country/CountryProvider.jsx";
+import EuropeGeoMap from "../components/country/EuropeGeoMap.jsx";
 import { useSession } from "../hooks/useSession.js";
 import { pathForTab } from "../lib/routes.js";
 import { getCountry } from "../lib/country/countries.js";
@@ -18,24 +19,7 @@ import { intlLocale } from "../lib/project-utils.js";
 
 const SECTIONS = [["about-system", "navAbout"], ["how-we-use-ai", "navHowWeUse"], ["how-ai-works", "navHowWorks"]];
 
-// Приблизителна tile карта на Европа (grid cartogram, НЕ географска карта).
-const TILES = {
-  SE: [5, 1], FI: [6, 1],
-  DK: [4, 2], EE: [6, 2],
-  IE: [1, 3], NL: [3, 3], DE: [4, 3], PL: [5, 3], LV: [6, 3],
-  BE: [3, 4], LU: [4, 4], CZ: [5, 4], LT: [6, 4],
-  FR: [2, 5], AT: [4, 5], SK: [5, 5], RO: [6, 5],
-  PT: [1, 6], ES: [2, 6], IT: [3, 6], SI: [4, 6], HU: [5, 6], BG: [6, 6],
-  MT: [3, 7], HR: [4, 7], GR: [5, 7], CY: [6, 7],
-};
-// Последователна синя скала (не червено/зелено).
-function tileClass(n, enabled) {
-  if (!enabled || n == null || n === 0) return "t0";
-  if (n < 10) return "t1";
-  if (n < 30) return "t2";
-  if (n < 100) return "t3";
-  return "t4";
-}
+// Картата е географска (EuropeGeoMap — локален оптимизиран SVG).
 
 export default function AboutPage() {
   const { t, i18n } = useTranslation();
@@ -165,26 +149,12 @@ export default function AboutPage() {
               <div className="ab-map-grid">
                 <div>
                   <h3 className="ab-h3">{t("about.mapTitle")}</h3>
-                  <p className="row-sub">{t("about.mapNote")}</p>
-                  <div className="euro-map" role="group" aria-label={t("about.mapTitle")}>
-                    {countries.map((c) => {
-                      const pos = TILES[c.code];
-                      if (!pos) return null;
-                      const cls = tileClass(c.totalProcedures, c.enabled);
-                      return (
-                        <button
-                          key={c.code}
-                          className={"euro-tile " + cls + (selected === c.code ? " is-selected" : "")}
-                          style={{ gridColumn: pos[0], gridRow: pos[1] }}
-                          aria-label={`${cName(c)}: ${nf.format(c.totalProcedures)} ${t("about.statProcedures")}`}
-                          aria-expanded={selected === c.code}
-                          onClick={() => setSelected(selected === c.code ? null : c.code)}
-                        >
-                          <span className="euro-tile-code">{c.code}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <EuropeGeoMap
+                    countries={countries}
+                    selected={selected}
+                    onSelect={(code) => setSelected(selected === code ? null : code)}
+                    labelFor={(c) => `${cName(c)}: ${nf.format(c.totalProcedures)} ${t("about.statProcedures")}`}
+                  />
                   <div className="euro-legend" aria-hidden="true">
                     <span className="lg-title">{t("about.legendTitle")}:</span>
                     <span className="lg t0">{t("about.legendNone")}</span>
