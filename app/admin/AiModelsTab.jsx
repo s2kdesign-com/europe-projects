@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Icon from "../components/Icon.jsx";
-import { priceLabel, AI_PRICING_DATE } from "../lib/ai-pricing.js";
+import { priceLabel, useForLabel, AI_PRICING_DATE } from "../lib/ai-pricing.js";
 
 // Само chat-подходящи модели за системния анализ (без audio/tts/image/и т.н.).
 const NON_CHAT = /(audio|realtime|tts|transcribe|whisper|image|moderation|embedding|sora|codex|search-api|search-preview|deep-research|davinci|babbage|instruct)/;
@@ -229,21 +229,26 @@ function ActiveModels({ data, onChanged, flash }) {
       <p className="prose">Този модел се използва за ежедневната проверка и анализ на процедурите, когато Scheduled Task архитектурата позволява изборът да се управлява от системата. Дневният преглед носи бадж „Управлява се от Claude Scheduled Tasks“ — изборът тук е desired модел и не се прилага автоматично върху задачата.</p>
       <div className="table-scroll">
         <table className="admin-table">
-          <thead><tr><th>Предназначение</th><th>Доставчик</th><th>Модел (display)</th><th>Model ID</th><th>Статус</th><th>Валидация</th></tr></thead>
+          <thead><tr><th>Предназначение</th><th>Доставчик</th><th>Модел (display)</th><th>Model ID</th><th>Цена (~1M)</th><th>Статус</th><th>Валидация</th><th>Използван</th></tr></thead>
           <tbody>
             {Object.keys(PURPOSE_LABELS).filter((k) => k !== "fallback").map((k) => {
               const rows = data.configurations.filter((c) => c.purpose === k);
-              if (!rows.length) return <tr key={k}><td>{PURPOSE_LABELS[k]}</td><td colSpan={5} className="row-sub">Няма конфигурация (наследява системния модел)</td></tr>;
-              return rows.map((c) => (
-                <tr key={c.id}>
-                  <td>{PURPOSE_LABELS[k]}{k === "daily_review" ? <div className="row-sub"><span className="badge amber">Claude Scheduled Tasks</span></div> : null}</td>
-                  <td>{c.provider_key === "anthropic" ? "Anthropic" : "OpenAI"}</td>
-                  <td>{c.display_name}</td>
-                  <td className="mono">{c.model_id}</td>
-                  <td>{c.active ? <span className="badge green">Активен</span> : <span className="badge neutral">Неактивен</span>}</td>
-                  <td>{c.validation_status}</td>
-                </tr>
-              ));
+              if (!rows.length) return <tr key={k}><td>{PURPOSE_LABELS[k]}</td><td colSpan={7} className="row-sub">Няма конфигурация (наследява системния модел)</td></tr>;
+              return rows.map((c) => {
+                const u = (data.usage || []).find((x) => x.model_id === c.model_id);
+                return (
+                  <tr key={c.id}>
+                    <td>{PURPOSE_LABELS[k]}{k === "daily_review" ? <div className="row-sub"><span className="badge amber">Claude Scheduled Tasks</span></div> : null}</td>
+                    <td>{c.provider_key === "anthropic" ? "Anthropic" : "OpenAI"}</td>
+                    <td>{c.display_name}</td>
+                    <td className="mono">{c.model_id}</td>
+                    <td className="nowrap">{priceLabel(c.model_id) || "—"}</td>
+                    <td>{c.active ? <span className="badge green">Активен</span> : <span className="badge neutral">Неактивен</span>}</td>
+                    <td>{c.validation_status}</td>
+                    <td className="nowrap">{u ? <>{u.runs} заявки{u.tokens ? <div className="row-sub">{u.tokens} токена</div> : null}<div className="row-sub">{fmtTs(u.last_used_at)}</div></> : "—"}</td>
+                  </tr>
+                );
+              });
             })}
           </tbody>
         </table>
@@ -276,6 +281,16 @@ function ActiveModels({ data, onChanged, flash }) {
           <input className="inp" value={displayName} placeholder="напр. GPT-5.6" onChange={(e) => setDisplayName(e.target.value)} />
         </label>
       </div>
+      {modelId && (priceLabel(modelId) || useForLabel(modelId)) && (
+        <div className="ov-since" style={{ margin: "8px 0" }}>
+          <Icon name="info" size={16} />
+          <p>
+            <strong>{modelId}</strong>
+            {priceLabel(modelId) ? <> · ~{priceLabel(modelId)} (вход/изход)</> : null}
+            {useForLabel(modelId) ? <><br />{useForLabel(modelId)}</> : null}
+          </p>
+        </div>
+      )}
       <div className="prof-actions" style={{ flexWrap: "wrap" }}>
         <button className="btn" disabled={busy} onClick={refreshModels}><Icon name="refresh" size={15} /> Обнови списъка с модели</button>
         <button className="btn" disabled={busy || !modelId} onClick={() => apply(false)}>Запази (неактивен)</button>

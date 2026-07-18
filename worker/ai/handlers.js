@@ -72,6 +72,8 @@ export async function handleAdminAI(request, env, url, userId, method, readJson)
     const provs = await env.DB.prepare("SELECT provider_key, display_name, enabled, credential_status, connection_status, available_models_json, models_refreshed_at, last_tested_at, last_test_status, last_test_error_code FROM ai_providers ORDER BY provider_key").all();
     const creds = await env.DB.prepare("SELECT provider_key, secret_last_four, created_at, rotated_at, updated_at FROM ai_provider_credentials").all();
     const configs = await env.DB.prepare("SELECT * FROM ai_model_configurations ORDER BY purpose, active DESC, fallback_priority").all();
+    // Използване по модел (от execution логовете) — за колоната „Използван".
+    const usage = await env.DB.prepare("SELECT model_id, COUNT(*) AS runs, SUM(COALESCE(input_tokens,0)+COALESCE(output_tokens,0)) AS tokens, MAX(started_at) AS last_used_at FROM ai_execution_runs WHERE model_id IS NOT NULL GROUP BY model_id").all();
     const credMap = Object.fromEntries((creds.results || []).map((c) => [c.provider_key, c]));
     const providers = (provs.results || []).map((p) => ({
       ...p,
@@ -79,7 +81,7 @@ export async function handleAdminAI(request, env, url, userId, method, readJson)
       available_models_json: undefined,
       credential: credMap[p.provider_key] ? { lastFour: credMap[p.provider_key].secret_last_four, updatedAt: credMap[p.provider_key].updated_at, rotatedAt: credMap[p.provider_key].rotated_at } : null,
     }));
-    return ok({ providers, configurations: configs.results || [], cryptoConfigured: isCryptoConfigured(env), purposes: PURPOSES });
+    return ok({ providers, configurations: configs.results || [], usage: usage.results || [], cryptoConfigured: isCryptoConfigured(env), purposes: PURPOSES });
   }
 
   // Добавяне/замяна на ключ: валидира → тества → криптира → записва → одит.
