@@ -1,0 +1,42 @@
+Proprietary Software License
+Copyright (c) 2026 Svetlin Krastanov / S2K Design (s2kdesign.com)
+All Rights Reserved.
+
+Europrojects (euro-funds.eu) — European and national funding discovery,
+analysis and tracking platform.
+
+1. Ownership
+   This software, its source code, design, database schema, content and all
+   related materials (the "Software") are the exclusive property of Svetlin
+   Krastanov and S2K Design ("the Owner"). The Software is protected by
+   copyright and other intellectual property laws.
+
+2. Grant of rights
+   No license or right to use, copy, modify, merge, publish, distribute,
+   sublicense, or sell copies of the Software is granted, except as expressly
+   agreed in writing by the Owner. Viewing the source for reference does not
+   grant any right to reuse it.
+
+3. Restrictions
+   Without prior written permission from the Owner, you may NOT:
+   - copy, reproduce, or redistribute the Software or any part of it;
+   - modify, adapt, translate, or create derivative works;
+   - use the Software or its code in another product or service;
+   - remove or alter any copyright, attribution, or license notice.
+
+4. Data and sources
+   Publicly displayed funding data is aggregated from official public sources
+   and remains subject to the terms of those sources. This license covers the
+   Software itself, not the underlying public data.
+
+5. No warranty
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   OWNER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE
+   USE OF THE SOFTWARE.
+
+6. Contact
+   For licensing inquiries: https://s2kdesign.com — https://linktr.ee/Magik3a
+
+Repository: https://github.com/s2kdesign-com/europe-projects

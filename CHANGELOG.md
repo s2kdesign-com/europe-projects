@@ -3,6 +3,21 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.30.5] — 2026-07-18
+
+### Данни
+- **България → евро** (migration 0017): `countries.currency_code` BG BGN→EUR;
+  `user_profiles.financial_currency_code` и `projects.budget_currency` BGN→EUR;
+  countries.js BG currency EUR; REVENUE_RANGES fallback EUR. Историческите лв суми
+  вече са в EUR (budget_amount_eur по 1.95583). Профилът показва „Годишен оборот (EUR)“.
+
+## [2.30.4] — 2026-07-18
+
+### Подобрено
+- **LICENSE** файл (собствен, All Rights Reserved — Svetlin Krastanov / S2K Design).
+- **Footer**: връзка „Лицензирано“ след версията →
+  github.com/s2kdesign-com/europe-projects/blob/main/LICENSE. i18n footer.licensed.
+
 ## [2.30.3] — 2026-07-18
 
 ### Подобрено

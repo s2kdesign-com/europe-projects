@@ -7,7 +7,7 @@ export const FALLBACK_FLAG = "/flags/_placeholder.svg";
 
 // priority: 0 = BG reference; 1.. по rollout приоритета.
 export const COUNTRIES = [
-  { code: "BG", slug: "bulgaria", nameBg: "България", native: "България", english: "Bulgaria", lang: "bg", currency: "BGN", flag: "/flags/bg.svg", enabled: true, priority: 0 },
+  { code: "BG", slug: "bulgaria", nameBg: "България", native: "България", english: "Bulgaria", lang: "bg", currency: "EUR", flag: "/flags/bg.svg", enabled: true, priority: 0 },
   { code: "RO", slug: "romania", nameBg: "Румъния", native: "România", english: "Romania", lang: "ro", currency: "RON", flag: "/flags/ro.svg", enabled: false, priority: 1 },
   { code: "GR", slug: "greece", nameBg: "Гърция", native: "Ελλάδα", english: "Greece", lang: "el", currency: "EUR", flag: "/flags/gr.svg", enabled: false, priority: 2 },
   { code: "PL", slug: "poland", nameBg: "Полша", native: "Polska", english: "Poland", lang: "pl", currency: "PLN", flag: "/flags/pl.svg", enabled: false, priority: 3 },

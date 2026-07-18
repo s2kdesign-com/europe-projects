@@ -477,3 +477,8 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
 .welcome-benefit .wb-more { display: inline-flex; align-items: center; gap: 3px; margin-top: 5px; font-size: 12.5px; font-weight: 700; color: var(--primary, #2f6fdb); text-decoration: none; }
 .welcome-benefit .wb-more:hover { text-decoration: underline; }
 @media (max-width: 560px) { .welcome-stats { margin-left: 0; gap: 12px; } .welcome-stats .ws-item b { font-size: 17px; } }
+
+/* Footer: версия + лиценз на един ред (v2.30.4) */
+.sf-version-row { display: inline-flex; align-items: center; gap: 10px; margin-top: 2px; }
+.sf-license { font-size: 12px; font-weight: 700; color: var(--primary); text-decoration: none; }
+.sf-license:hover { text-decoration: underline; }

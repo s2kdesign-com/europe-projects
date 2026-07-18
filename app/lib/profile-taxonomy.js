@@ -38,8 +38,8 @@ export function revenueRanges(currencyCode = "EUR") {
     { key: "gt5m", label: `над 5 млн. ${cur}` },
   ];
 }
-// Съвместимост (стар списък — BGN); новият код ползва revenueRanges(currency).
-export const REVENUE_RANGES = revenueRanges("BGN");
+// Съвместимост; новият код ползва revenueRanges(currency) с валутата на държавата.
+export const REVENUE_RANGES = revenueRanges("EUR");
 
 export const SECTORS = [
   "Информационни технологии",

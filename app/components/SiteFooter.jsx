@@ -157,7 +157,10 @@ export default function SiteFooter({ session: sessionProp }) {
           <span className="sf-copy">
             <a href="https://s2kdesign.com" target="_blank" rel="noopener noreferrer">s2kdesign.com</a> © {year} {t("footer.rights")}
           </span>
-          <span className="sf-version">v{APP_VERSION}</span>
+          <span className="sf-version-row">
+            <span className="sf-version">v{APP_VERSION}</span>
+            <a className="sf-license" href="https://github.com/s2kdesign-com/europe-projects/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">{t("footer.licensed")}</a>
+          </span>
         </div>
       </div>
     </footer>
