@@ -3,6 +3,16 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.29.2] — 2026-07-18
+
+### Данни
+- **18 нови официални източника в 16 държави** (funding_sources: 75 общо, 73 активни):
+  CZ (MPO OP TAK, ESF ČR), EE (EIS, KIK), LU (Luxinnovation), SI (Podjetniški sklad),
+  AT (ESF), CY (RIF), FI (Business Finland), FR (Aides-territoires), HU (NKFIH),
+  IE (NWRA, EMRA), LV (LIAA), NL (RVO), SE (Tillväxtverket) — enabled=1, проверени
+  HTTP 200 server-rendered; PL (PARP) и ES (CDTI) — verified=1, enabled=0
+  (JS-rendered, до намиране на структуриран достъп). Одит в source_audit_log.
+
 ## [2.29.1] — 2026-07-18
 
 ### Поправено
