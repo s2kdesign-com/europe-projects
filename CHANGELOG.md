@@ -3,6 +3,18 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.23.3] — 2026-07-18
+
+### Данни / Подобрено
+- **Нови проверени официални източници:** Anaptyxi.gov.gr (GR),
+  strukturnifondovi.hr + fondovieu.gov.hr (HR), Balcão dos Fundos (PT),
+  ITMS2014+ (SK), esinvesticijos.lt (LT), CFLA (LV) + calls URL-и за GR/PL/CZ/SK/SI
+  (41 източника общо, всички с одит записи).
+- **/sources:** дропдаунът е **избор на държава** (вместо език).
+- **SEO:** `/sources` добавена в sitemap.xml + hreflang варианти; `/en/sources` и
+  `/de/sources` работят (SHELL_PATHS); robots/noindex/canonical проверени за
+  всички страници.
+
 ## [2.23.2] — 2026-07-18
 
 ### Подобрено

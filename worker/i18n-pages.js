@@ -11,7 +11,7 @@ const BRAND = "Euro Funds"; // за не-български locale (Европр
 export const PREFIX_LOCALES = ["en", "de"]; // останалите езици са клиентски (?lang)
 
 // App-shell пътища, обслужвани от статиката (не Worker-SSR, не asset файлове).
-const SHELL_PATHS = new Set(["/", "/procedures", "/calendar", "/saved", "/changelog", "/about", "/how-ai-works", "/terms", "/privacy", "/cookies"]);
+const SHELL_PATHS = new Set(["/", "/procedures", "/calendar", "/saved", "/changelog", "/about", "/how-ai-works", "/terms", "/privacy", "/cookies", "/sources"]);
 
 function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 

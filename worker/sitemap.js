@@ -13,6 +13,7 @@ const STATIC = [
   { path: "/changelog", changefreq: "weekly", priority: "0.6" },
   { path: "/about", changefreq: "monthly", priority: "0.5" },
   { path: "/how-ai-works", changefreq: "monthly", priority: "0.5" },
+  { path: "/sources", changefreq: "weekly", priority: "0.5" },
   { path: "/terms", changefreq: "monthly", priority: "0.3" },
   { path: "/privacy", changefreq: "monthly", priority: "0.3" },
   { path: "/cookies", changefreq: "monthly", priority: "0.3" },
@@ -36,7 +37,7 @@ function isoDate(s) {
 }
 
 // Пътища с езикови варианти (/en, /de) → добавяме xhtml:link алтернативи.
-const LANG_VARIANT_PATHS = new Set(["/", "/procedures", "/calendar", "/about", "/how-ai-works"]);
+const LANG_VARIANT_PATHS = new Set(["/", "/procedures", "/calendar", "/about", "/how-ai-works", "/sources"]);
 const PREFIX_LOCALES = ["en", "de"];
 
 function langAlternates(path) {

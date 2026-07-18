@@ -13,6 +13,17 @@ export const CATEGORIES = [
 
 export const CHANGELOG_ENTRIES = [
   {
+    version: "2.23.3", category: "data", published_at: "2026-07-18", affected_route: "/sources",
+    title: "Още официални източници по държави + избор на държава на /sources",
+    summary: "Добавени са проверени допълнителни официални източници (портали за покани и системи за кандидатстване) за Гърция, Хърватия, Португалия, Словакия, Литва и Латвия. Дропдаунът на страницата „Официални източници“ вече сменя държавата, а страницата е включена в sitemap с езикови варианти.",
+    content: [
+      "Нови източници: Anaptyxi.gov.gr (GR), strukturnifondovi.hr и fondovieu.gov.hr (HR), Balcão dos Fundos (PT), ITMS2014+ (SK), esinvesticijos.lt (LT), CFLA (LV).",
+      "Добавени връзки към страниците с покани за Гърция, Полша, Чехия, Словакия и Словения.",
+      "Дропдаунът на /sources е избор на държава (вместо език).",
+      "/sources е добавена в sitemap.xml с hreflang варианти (/en/sources, /de/sources).",
+    ],
+  },
+  {
     version: "2.23.2", category: "improvement", published_at: "2026-07-18", affected_route: "/sources",
     title: "Страницата „Официални източници“ с топ меню и избор на език",
     summary: "Страницата с официалните източници вече има същото горно меню като останалите страници, избор на език до заглавието, а връзката „Източници на данни“ във footer-а води директно към нея.",
