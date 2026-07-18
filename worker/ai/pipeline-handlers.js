@@ -43,8 +43,9 @@ export async function handleAIPipeline(request, env, url, userId, method, readJs
     // Дневният преглед тече ли? (Claude Scheduled Task) → блокирай nightly.
     const running = await env.DB.prepare("SELECT id FROM scheduled_sync_runs WHERE status='running' ORDER BY id DESC LIMIT 1").first();
     if (running && !body.force) return err("daily_review_running", 409);
-    const runId = await createPipelineRun(env, { triggerType: "admin_manual", userId, scope: body.scope || "new_and_changed", scopeValue: body.scopeValue || null, country: body.country || null });
-    const res = await enqueueProcedureJobs(env, runId, { scope: body.scope || "new_and_changed", country: body.country || null, entityId: body.entityId || null, force: body.scope === "full_reanalysis" });
+    const testRun = !!body.testRun;
+    const runId = await createPipelineRun(env, { triggerType: "admin_manual", userId, scope: body.scope || "new_and_changed", scopeValue: body.scopeValue || null, country: body.country || null, testRun });
+    const res = await enqueueProcedureJobs(env, runId, { scope: body.scope || "new_and_changed", country: body.country || null, entityId: body.entityId || null, force: body.scope === "full_reanalysis", testLimit: testRun ? 3 : null });
     await audit(env, { actor: userId, action: "pipeline_start", next: JSON.stringify({ runId, scope: body.scope, country: body.country }) });
     // Обработи първия batch синхронно (малък), останалото — през continuation.
     await processJobsBatch(env, { runId, limit: 3 });
@@ -73,10 +74,11 @@ export async function handleAIPipeline(request, env, url, userId, method, readJs
     const cfg = await env.DB.prepare("SELECT active FROM ai_model_configurations WHERE purpose=?1 AND active=1 LIMIT 1").bind(purpose).first();
     if (!cfg) return err("no_active_config", 409);
     const body = (await readJson()) || {};
-    const runId = await createPipelineRun(env, { triggerType: "admin_manual", userId, scope: body.scope || "new_and_changed", country: body.country || null });
+    const testRun = !!body.testRun;
+    const runId = await createPipelineRun(env, { triggerType: "admin_manual", userId, scope: body.scope || "new_and_changed", country: body.country || null, testRun });
     // За procedure_analysis пускаме нормалния enqueue; за останалите — само този purpose
     // ще се създаде като зависимост, затова тук enqueue-ваме procedure jobs (те раждат надолу).
-    const res = await enqueueProcedureJobs(env, runId, { scope: body.scope || "new_and_changed", country: body.country || null, force: body.scope === "full_reanalysis" });
+    const res = await enqueueProcedureJobs(env, runId, { scope: body.scope || "new_and_changed", country: body.country || null, force: body.scope === "full_reanalysis", testLimit: testRun ? 3 : null });
     await audit(env, { actor: userId, action: "purpose_start", purpose, next: JSON.stringify({ runId, purpose }) });
     await processJobsBatch(env, { runId, limit: 3 });
     return ok({ runId, purpose, ...res });
@@ -119,6 +121,19 @@ export async function handleAIPipeline(request, env, url, userId, method, readJs
     await env.DB.prepare(`UPDATE ai_schedules SET ${sets.join(", ")}, updated_at=?${binds.length - 1} WHERE purpose=?${binds.length}`).bind(...binds).run();
     await audit(env, { actor: userId, action: "schedule_change", purpose, next: JSON.stringify(body) });
     return ok();
+  }
+
+  // Safe detail за един execution run (за разгъване в „AI логове").
+  const runDetail = /^\/api\/admin\/ai\/runs\/([\w-]+)$/.exec(p);
+  if (runDetail && method === "GET") {
+    const r = await env.DB.prepare(
+      "SELECT id, purpose, provider_key, model_id, model_display_name, execution_source, country_code, status, started_at, completed_at, duration_ms, input_tokens, output_tokens, cached_input_tokens, reasoning_tokens, request_count, successful_request_count, failed_request_count, error_code, safe_error_summary, result_summary, result_details_json, result_entity_count, result_change_count, result_warning_count, result_requires_review_count, job_id, parent_run_id FROM ai_execution_runs WHERE id=?1"
+    ).bind(runDetail[1]).first();
+    if (!r) return err("not_found", 404);
+    let details = null;
+    if (r.result_details_json) { try { details = JSON.parse(r.result_details_json); } catch { details = null; } }
+    // НЕ връщаме: prompt, raw response, ключове, reasoning — тези изобщо не се пазят тук.
+    return ok({ run: { ...r, result_details_json: undefined }, details });
   }
 
   // Jobs listing.

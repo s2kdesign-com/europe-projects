@@ -212,7 +212,10 @@ export async function handleAdminAI(request, env, url, userId, method, readJson)
       if (v) { conds.push(`${col} = ?${binds.length + 1}`); binds.push(v); }
     }
     const where = conds.length ? " WHERE " + conds.join(" AND ") : "";
-    const rows = await env.DB.prepare(`SELECT * FROM ai_execution_runs${where} ORDER BY started_at DESC LIMIT ${lim} OFFSET ${offset}`).bind(...binds).all();
+    // Без result_details_json (голям) — само summary + has_details флаг за разгъване.
+    const rows = await env.DB.prepare(
+      `SELECT id, execution_type, purpose, provider_key, model_id, model_display_name, execution_source, country_code, status, started_at, completed_at, duration_ms, input_tokens, output_tokens, procedures_reviewed, changes_detected, safe_error_summary, error_code, result_summary, result_entity_count, result_change_count, result_requires_review_count, (result_details_json IS NOT NULL) AS has_details FROM ai_execution_runs${where} ORDER BY started_at DESC LIMIT ${lim} OFFSET ${offset}`
+    ).bind(...binds).all();
     const total = await env.DB.prepare(`SELECT COUNT(*) AS n FROM ai_execution_runs${where}`).bind(...binds).first();
     return ok({ runs: rows.results || [], total: total ? total.n : 0 });
   }

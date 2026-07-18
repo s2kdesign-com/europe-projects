@@ -3,6 +3,19 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.32.0] — 2026-07-18
+
+### Ново
+- **Реални резултати в „AI логове“** (migration 0019): `ai_execution_runs.result_summary`
+  + `result_details_json` + count колони; `worker/ai/summaries.js` строи детерминистично
+  резюме от реални метрики (не свободен текст от модела). Причината за „—“ беше, че
+  pipeline_job generation редовете нямаха резюме — вече се попълва при всеки job.
+- **Разгъваем ред** в колоната „Резултат“ (chevron, aria-expanded/controls, 44px,
+  Enter/Space) → зарежда safe детайли от `GET /api/admin/ai/runs/:id` (no-store, admin
+  only, без ключове/prompts/reasoning/лични данни; redactObject).
+- **Тестов режим** в диалога за стартиране (до 3 реални записа, test_run флаг).
+- Тестове: `test/ai-summaries.test.mjs` (12).
+
 ## [2.31.1] — 2026-07-18
 
 ### Поправено

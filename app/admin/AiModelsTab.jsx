@@ -3,7 +3,7 @@
 // Админ таб „AI модели": доставчици (ключове), активни модели по предназначение,
 // дневна процедура и AI логове. Ключовете никога не се показват — само last four.
 
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Icon from "../components/Icon.jsx";
 import { priceLabel, useForLabel, AI_PRICING_DATE } from "../lib/ai-pricing.js";
 import { useUiTr } from "../lib/i18n/ui-translate.js";
@@ -249,6 +249,7 @@ function ScopeModal({ modal, data, onClose, onStarted, flash }) {
   const [country, setCountry] = useState("");
   const [est, setEst] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [testRun, setTestRun] = useState(true);
   const purpose = modal.kind === "purpose" ? modal.purpose : "procedure_analysis";
   useEffect(() => {
     const qs = new URLSearchParams({ scope }); if (country) qs.set("country", country);
@@ -258,7 +259,7 @@ function ScopeModal({ modal, data, onClose, onStarted, flash }) {
   const start = async () => {
     setBusy(true);
     try {
-      const body = JSON.stringify({ scope, country: country || null });
+      const body = JSON.stringify({ scope, country: country || null, testRun });
       if (modal.kind === "purpose") await api(`/api/admin/ai/purposes/${purpose}/start`, { method: "POST", body });
       else await api("/api/admin/ai/pipelines/start", { method: "POST", body });
       onStarted();
@@ -287,9 +288,13 @@ function ScopeModal({ modal, data, onClose, onStarted, flash }) {
           {est?.deps?.length ? <div className="row-sub">{tl("Зависимости")}: {est.deps.map((d) => tl(PURPOSE_LABELS[d] || d)).join(", ")}</div> : null}
           {scope === "full_reanalysis" && <div className="scope-warn"><Icon name="alert" size={14} /> {tl("Повторна обработка на вече анализирани записи.")}</div>}
         </div>
+        <label className="test-mode">
+          <input type="checkbox" checked={testRun} onChange={(e) => setTestRun(e.target.checked)} />
+          <span>{tl("Тестово изпълнение с малък набор (до 3 записа)")}</span>
+        </label>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
           <button className="btn btn-ghost" onClick={onClose}>{tl("Отказ")}</button>
-          <button className="btn btn-primary" disabled={busy} onClick={start}>{busy ? tl("Стартиране…") : tl("Стартирай")}</button>
+          <button className="btn btn-primary" disabled={busy} onClick={start}>{busy ? tl("Стартиране…") : (testRun ? tl("Стартирай тест") : tl("Стартирай"))}</button>
         </div>
       </div>
     </div>
@@ -497,12 +502,13 @@ function RunsLog() {
   const [page, setPage] = useState(1);
   const [fSource, setFSource] = useState("");
   const [fStatus, setFStatus] = useState("");
+  const [expanded, setExpanded] = useState(null);
   const PAGE = 10;
   const load = useCallback(() => {
     const qs = new URLSearchParams({ limit: String(PAGE), offset: String((page - 1) * PAGE) });
     if (fSource) qs.set("source", fSource);
     if (fStatus) qs.set("status", fStatus);
-    api("/api/admin/ai/runs?" + qs).then((d) => { setRows(d.runs || []); setTotal(d.total || 0); }).catch(() => { setRows([]); setTotal(0); });
+    api("/api/admin/ai/runs?" + qs).then((d) => { setRows(d.runs || []); setTotal(d.total || 0); setExpanded(null); }).catch(() => { setRows([]); setTotal(0); });
   }, [page, fSource, fStatus]);
   useEffect(() => { load(); }, [load]);
   const pages = Math.max(1, Math.ceil(total / PAGE));
@@ -531,19 +537,38 @@ function RunsLog() {
             <table className="admin-table">
               <thead><tr><th>{tl("Дата")}</th><th>{tl("Предназначение")}</th><th>{tl("Източник")}</th><th>{tl("Държава")}</th><th>{tl("Модел")}</th><th>{tl("Статус")}</th><th>{tl("Време")}</th><th>{tl("Токени")}</th><th>{tl("Резултат")}</th></tr></thead>
               <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id}>
-                    <td className="nowrap">{fmtTs(r.started_at)}</td>
-                    <td>{tl(PURPOSE_LABELS[r.purpose] || r.purpose)}</td>
-                    <td className="mono">{r.execution_source || "—"}</td>
-                    <td>{r.country_code || "—"}</td>
-                    <td className="mono">{r.model_id || "—"}</td>
-                    <td>{r.status === "success" ? <span className="badge green">{tl("Успешно")}</span> : r.status === "error" ? <span className="badge red">{tl("Грешка")}</span> : <span className="badge neutral">{r.status}</span>}</td>
-                    <td>{r.duration_ms != null ? r.duration_ms + " ms" : "—"}</td>
-                    <td>{r.input_tokens != null || r.output_tokens != null ? `${r.input_tokens ?? 0}/${r.output_tokens ?? 0}` : "—"}</td>
-                    <td style={{ maxWidth: 260, fontSize: 12.5 }}>{r.safe_error_summary || (r.procedures_reviewed != null ? `${tl("процедури")}: ${r.procedures_reviewed}, ${tl("промени")}: ${r.changes_detected ?? 0}` : "—")}</td>
-                  </tr>
-                ))}
+                {rows.map((r) => {
+                  const summary = resultText(r, tl);
+                  const canExpand = !!r.has_details;
+                  const open = expanded === r.id;
+                  return (
+                    <React.Fragment key={r.id}>
+                      <tr className={open ? "log-row-open" : ""}>
+                        <td className="nowrap">{fmtTs(r.started_at)}</td>
+                        <td>{tl(PURPOSE_LABELS[r.purpose] || r.purpose)}</td>
+                        <td className="mono">{r.execution_source || "—"}</td>
+                        <td>{r.country_code || "—"}</td>
+                        <td className="mono" title={r.model_id || ""}>{r.model_id || "—"}</td>
+                        <td>{r.status === "success" || r.status === "completed" ? <span className="badge green">{tl("Успешно")}</span> : r.status === "error" || r.status === "failed" ? <span className="badge red">{tl("Грешка")}</span> : <span className="badge neutral">{r.status}</span>}</td>
+                        <td>{r.duration_ms != null ? r.duration_ms + " ms" : "—"}</td>
+                        <td>{r.input_tokens != null || r.output_tokens != null ? `${r.input_tokens ?? 0}/${r.output_tokens ?? 0}` : "—"}</td>
+                        <td className="log-result-cell">
+                          <span className="log-result-txt">{summary}</span>
+                          {canExpand && (
+                            <button className="log-expand" aria-expanded={open} aria-controls={`logd-${r.id}`}
+                              aria-label={open ? tl("Скрий подробностите за AI изпълнението") : tl("Покажи подробности за AI изпълнението")}
+                              onClick={() => setExpanded(open ? null : r.id)}>
+                              <Icon name={open ? "chevronDown" : "arrowRight"} size={15} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                      {open && (
+                        <tr className="log-detail-row"><td colSpan={9} id={`logd-${r.id}`}><LogDetail id={r.id} tl={tl} /></td></tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -558,5 +583,95 @@ function RunsLog() {
         </>
       )}
     </section>
+  );
+}
+
+// Детерминистичен текст за колоната „Резултат" (използва result_summary; fallback
+// към старите daily_review броячи; „—" само когато наистина няма нищо).
+function resultText(r, tl) {
+  if (r.result_summary) return r.result_summary;
+  if (r.status === "error" || r.status === "failed") return r.safe_error_summary ? "Неуспешно: " + r.safe_error_summary : tl("Неуспешно");
+  if (r.procedures_reviewed != null) return `${tl("процедури")}: ${r.procedures_reviewed}, ${tl("промени")}: ${r.changes_detected ?? 0}`;
+  return "—";
+}
+
+// Разгъващ се detail ред: зарежда safe подробностите от detail endpoint-а.
+function LogDetail({ id, tl }) {
+  const [state, setState] = useState({ phase: "loading" });
+  useEffect(() => {
+    let alive = true;
+    const ac = new AbortController();
+    fetch(`/api/admin/ai/runs/${id}`, { credentials: "same-origin", signal: ac.signal, headers: { "X-Requested-With": "fetch" } })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
+      .then((d) => { if (alive) setState({ phase: "ready", run: d.run, details: d.details }); })
+      .catch((e) => { if (alive && e.name !== "AbortError") setState({ phase: "error" }); });
+    return () => { alive = false; ac.abort(); };
+  }, [id]);
+
+  if (state.phase === "loading") return <div className="log-detail skel"><div className="sk-line" /><div className="sk-line" /><div className="sk-line short" /></div>;
+  if (state.phase === "error") return <div className="log-detail err">{tl("Подробностите временно не могат да бъдат заредени.")}</div>;
+  const { run, details } = state;
+  const ex = details?.execution || {};
+  const sc = details?.scope || {};
+  const items = details?.items || [];
+  return (
+    <div className="log-detail">
+      <div className="ld-grid">
+        <div className="ld-sec">
+          <h4>{tl("Обобщение")}</h4>
+          <dl>
+            <div><dt>{tl("Резултат")}</dt><dd>{run.result_summary || "—"}</dd></div>
+            <div><dt>{tl("Предназначение")}</dt><dd>{tl(PURPOSE_LABELS[run.purpose] || run.purpose)}</dd></div>
+            <div><dt>{tl("Доставчик / Модел")}</dt><dd className="mono">{run.provider_key} · {run.model_id}</dd></div>
+            <div><dt>{tl("Държава")}</dt><dd>{run.country_code || "—"}</dd></div>
+            <div><dt>{tl("Старт / Край")}</dt><dd>{fmtTs(run.started_at)} → {fmtTs(run.completed_at)}</dd></div>
+            <div><dt>{tl("Статус")}</dt><dd>{run.status}</dd></div>
+          </dl>
+        </div>
+        <div className="ld-sec">
+          <h4>{tl("Обработени записи")}</h4>
+          <dl>
+            <div><dt>{tl("Заявени")}</dt><dd>{sc.requested ?? "—"}</dd></div>
+            <div><dt>{tl("Обработени")}</dt><dd>{sc.processed ?? "—"}</dd></div>
+            <div><dt>{tl("Успешни")}</dt><dd>{sc.completed ?? "—"}</dd></div>
+            <div><dt>{tl("Неуспешни")}</dt><dd>{sc.failed ?? "—"}</dd></div>
+            <div><dt>{tl("Изискват проверка")}</dt><dd>{run.result_requires_review_count ?? "—"}</dd></div>
+          </dl>
+        </div>
+        <div className="ld-sec">
+          <h4>{tl("Използване")}</h4>
+          <dl>
+            <div><dt>{tl("Входни токени")}</dt><dd>{ex.inputTokens ?? run.input_tokens ?? "—"}</dd></div>
+            <div><dt>{tl("Изходни токени")}</dt><dd>{ex.outputTokens ?? run.output_tokens ?? "—"}</dd></div>
+            <div><dt>{tl("Време")}</dt><dd>{ex.durationMs ?? run.duration_ms ?? "—"} ms</dd></div>
+            <div><dt>{tl("Опити")}</dt><dd>{(ex.retryCount ?? 0) + 1}</dd></div>
+            <div><dt>{tl("Prompt версия")}</dt><dd className="mono">{ex.promptVersion || "—"}</dd></div>
+            {ex.fallbackModel && <div><dt>{tl("Резервен модел")}</dt><dd className="mono">{ex.fallbackModel}</dd></div>}
+          </dl>
+        </div>
+      </div>
+      {items.length > 0 && (
+        <div className="ld-items">
+          <h4>{tl("Засегнати записи")}</h4>
+          <ul>
+            {items.map((it, i) => (
+              <li key={i}>
+                <span className="ldi-cc">{it.countryCode || ""}</span>
+                <a className="ldi-title" href={`/procedures/${encodeURIComponent(it.entityId)}`} target="_blank" rel="noopener noreferrer">{it.title || it.entityId}</a>
+                {it.summary ? <span className="ldi-sum">{it.summary}</span> : null}
+                <span className={"badge " + (it.requiresReview ? "amber" : "green")}>{it.status}</span>
+              </li>
+            ))}
+          </ul>
+          {details.itemsTruncated && <p className="row-sub">{tl("Показани са първите записи.")}</p>}
+        </div>
+      )}
+      {(run.safe_error_summary || (details?.safeErrors || []).length > 0) && (
+        <div className="ld-errors">
+          <h4>{tl("Предупреждения и грешки")}</h4>
+          <p>{run.safe_error_summary || (details.safeErrors || []).join("; ")} {run.error_code ? `(${run.error_code})` : ""}</p>
+        </div>
+      )}
+    </div>
   );
 }

@@ -157,7 +157,7 @@ export async function AIExecutionService(env, { purpose, prompt, system, executi
     try {
       const out = await provider.generate(key, { modelId: cfg.model_id, system, prompt, maxTokens: maxTokens || cfg.max_output_tokens || 1024, temperature: cfg.temperature });
       await logRun(env, { id: runId, execution_type: "generation", purpose, provider_key: cfg.provider_key, model_id: cfg.model_id, model_display_name: cfg.display_name, execution_source: executionSource, country_code: countryCode, status: "success", started_at: startedAt, duration_ms: out.latency, input_tokens: out.inputTokens, output_tokens: out.outputTokens, cached_input_tokens: out.cachedInputTokens || null, reasoning_tokens: out.reasoningTokens || null, request_count: 1, successful_request_count: 1, provider_request_id: out.requestId, parent_run_id: parentRunId, metadata_json: i > 0 ? JSON.stringify({ fallback: true, primary_model: primary.model_id, fallback_reason: lastErr && lastErr.code }) : null });
-      return { ...out, config: cfg, usedFallback: i > 0 };
+      return { ...out, config: cfg, usedFallback: i > 0, executionRunId: runId };
     } catch (e) {
       lastErr = e;
       await logRun(env, { id: runId, execution_type: "generation", purpose, provider_key: cfg.provider_key, model_id: cfg.model_id, model_display_name: cfg.display_name, execution_source: executionSource, country_code: countryCode, status: "error", started_at: startedAt, request_count: 1, failed_request_count: 1, parent_run_id: parentRunId, error_code: e.code || "unknown", safe_error_summary: redactSecrets(String(e.message || e)).slice(0, 300) });
@@ -181,4 +181,13 @@ async function logRun(env, r) {
       r.provider_request_id || null, r.error_code || null, r.safe_error_summary || null, r.metadata_json || null, r.parent_run_id || null, now
     ).run();
   } catch { /* логът не бива да чупи заявката */ }
+}
+
+// Прикача детерминистично резюме + safe details към вече записан execution run.
+export async function attachRunResult(env, runId, { summary, detailsJson, entityCount = null, changeCount = null, warningCount = null, requiresReviewCount = null, jobId = null }) {
+  try {
+    await env.DB.prepare(
+      "UPDATE ai_execution_runs SET result_summary=?1, result_details_json=?2, result_entity_count=?3, result_change_count=?4, result_warning_count=?5, result_requires_review_count=?6, job_id=?7 WHERE id=?8"
+    ).bind(summary || null, detailsJson || null, entityCount, changeCount, warningCount, requiresReviewCount, jobId, runId).run();
+  } catch { /* no-op */ }
 }

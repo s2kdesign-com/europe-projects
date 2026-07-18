@@ -76,3 +76,34 @@
 .modal-card { background: var(--surface, #fff); border-radius: 14px; padding: 20px; width: min(460px, 92vw); box-shadow: 0 20px 60px rgba(15,33,66,.24); }
 .fld-label { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; color: var(--faint); margin-bottom: 4px; }
 @media (max-width: 640px) { .apl-nums { gap: 8px 12px; } }
+
+/* ── AI логове: разгъваем резултат + detail (v2.32.0) ──────────────────── */
+.log-result-cell { display: flex; align-items: center; gap: 8px; max-width: 300px; }
+.log-result-txt { flex: 1; min-width: 0; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; }
+.log-expand { flex-shrink: 0; width: 30px; height: 30px; min-width: 30px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; cursor: pointer; color: var(--muted); }
+.log-expand:hover { background: var(--surface-2); color: var(--ink); }
+.log-expand:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.log-row-open td { background: var(--surface-2, #f4f7fb); }
+.log-detail-row > td { padding: 0 !important; background: var(--surface-2, #f4f7fb); }
+.log-detail { padding: 14px 16px; }
+.log-detail.err { color: #b45309; }
+.log-detail .ld-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.ld-sec h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--faint); }
+.ld-sec dl { margin: 0; display: grid; gap: 3px; }
+.ld-sec dl > div { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+.ld-sec dt { color: var(--faint); }
+.ld-sec dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+.ld-items { margin-top: 14px; }
+.ld-items h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--faint); }
+.ld-items ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ld-items li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
+.ldi-cc { font-weight: 700; color: var(--faint); min-width: 26px; }
+.ldi-title { font-weight: 700; color: var(--primary); text-decoration: none; }
+.ldi-title:hover { text-decoration: underline; }
+.ldi-sum { color: var(--muted); }
+.ld-errors { margin-top: 12px; color: #b45309; font-size: 12.5px; }
+.log-detail .skel .sk-line { height: 12px; background: var(--line); border-radius: 6px; margin: 6px 0; animation: skpulse 1.4s ease-in-out infinite; }
+.log-detail .skel .sk-line.short { width: 40%; }
+@keyframes skpulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+.test-mode { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; }
+@media (max-width: 640px) { .log-detail .ld-grid { grid-template-columns: 1fr; } .ld-sec dl > div { font-size: 13px; } }

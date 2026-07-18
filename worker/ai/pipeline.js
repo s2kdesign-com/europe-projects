@@ -6,7 +6,8 @@
 // → recommendation. Всеки job е ред в ai_jobs с lock + idempotency. Обработва се на
 // малки batch-ове през continuation trigger (не в един дълъг Worker request).
 
-import { AIExecutionService } from "./providers.js";
+import { AIExecutionService, attachRunResult } from "./providers.js";
+import { buildResultSummary, buildResultDetails } from "./summaries.js";
 import { PROMPT_VERSIONS, SYSTEM_PROMPTS, buildPrompt, parseAndValidate } from "./prompts.js";
 
 // Кои purposes са част от nightly pipeline-а (future_chat умишлено липсва).
@@ -63,12 +64,12 @@ const nowISO = () => new Date().toISOString();
 const uid = (p) => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 // -------- Pipeline run --------
-export async function createPipelineRun(env, { triggerType, userId = null, scheduledDate = null, scope = "new_and_changed", scopeValue = null, country = null }) {
+export async function createPipelineRun(env, { triggerType, userId = null, scheduledDate = null, scope = "new_and_changed", scopeValue = null, country = null, testRun = false }) {
   const id = uid("pipe");
   await env.DB.prepare(
-    `INSERT INTO ai_pipeline_runs (id, trigger_type, triggered_by_user_id, scheduled_date, status, scope_type, scope_value, country_code, started_at, current_stage, created_at, updated_at)
-     VALUES (?1,?2,?3,?4,'running',?5,?6,?7,?8,'procedure_analysis',?8,?8)`
-  ).bind(id, triggerType, userId, scheduledDate, scope, scopeValue, country, nowISO()).run();
+    `INSERT INTO ai_pipeline_runs (id, trigger_type, triggered_by_user_id, scheduled_date, status, scope_type, scope_value, country_code, test_run, started_at, current_stage, created_at, updated_at)
+     VALUES (?1,?2,?3,?4,'running',?5,?6,?7,?8,?9,'procedure_analysis',?9,?9)`
+  ).bind(id, triggerType, userId, scheduledDate, scope, scopeValue, country, testRun ? 1 : 0, nowISO()).run();
   return id;
 }
 
@@ -87,7 +88,7 @@ async function hasCompletedJob(env, idemKey) {
 }
 
 // Създава procedure_analysis jobs за нови/променени/неуспешни процедури в обхвата.
-export async function enqueueProcedureJobs(env, runId, { scope = "new_and_changed", country = null, entityId = null, force = false } = {}) {
+export async function enqueueProcedureJobs(env, runId, { scope = "new_and_changed", country = null, entityId = null, force = false, testLimit = null } = {}) {
   const cfg = await env.DB.prepare("SELECT provider_key, model_id FROM ai_model_configurations WHERE purpose='procedure_analysis' AND active=1 LIMIT 1").first();
   if (!cfg) return { created: 0, skipped: 0, reason: "no_active_config" };
 
@@ -98,7 +99,8 @@ export async function enqueueProcedureJobs(env, runId, { scope = "new_and_change
   if (scope === "new_and_changed") where += " AND (first_seen >= date('now') OR last_updated >= date('now'))";
   // scope 'all' / 'failed' / 'pending' се управляват на ниво job съществуване по-долу.
 
-  const rows = await env.DB.prepare(`SELECT id, country_code, content_hash, status, deadline_date, first_seen, last_updated, name, program, eligible, budget, notes FROM projects WHERE ${where} LIMIT 500`).bind(...binds).all();
+  const lim = testLimit && testLimit > 0 ? Math.min(3, testLimit) : 500;
+  const rows = await env.DB.prepare(`SELECT id, country_code, content_hash, status, deadline_date, first_seen, last_updated, name, program, eligible, budget, notes FROM projects WHERE ${where} ORDER BY (deadline_date IS NULL), deadline_date ASC LIMIT ${lim}`).bind(...binds).all();
   let created = 0, skipped = 0;
   for (const p of (rows.results || [])) {
     const sourceHash = force ? `force-${Date.now()}` : (p.content_hash || hashText(p.name + p.status + p.budget));
@@ -175,12 +177,29 @@ async function runJob(env, job) {
       const repair = await AIExecutionService(env, { purpose: job.purpose, prompt: prompt + "\n\nВърни само валиден JSON по схемата.", system, executionSource: "pipeline_job_repair", countryCode: job.country_code, parentRunId: job.run_id });
       parsed = parseAndValidate(job.purpose, repair.text || "");
     }
-    if (!parsed.ok) { await failJob(env, job, "schema_invalid", "Невалиден структуриран отговор"); return; }
-    if (job.purpose === "document_analysis" && parsed.value.requires_review) {
-      await setJobStatus(env, job, "requires_review", { duration: Date.now() - t0 });
-    } else {
-      await completeJob(env, job, parsed.value, Date.now() - t0);
+    if (!parsed.ok) {
+      await attachRunResult(env, res.executionRunId, { summary: buildResultSummary(job.purpose, { status: "failed", safeError: "невалиден структуриран отговор" }), detailsJson: null, jobId: job.id });
+      await failJob(env, job, "schema_invalid", "Невалиден структуриран отговор");
+      return;
     }
+    const requiresReview = job.purpose === "document_analysis" && parsed.value.requires_review;
+    const duration = Date.now() - t0;
+    // Детерминистично резюме от реалния резултат на този job.
+    const metrics = deriveJobMetrics(job.purpose, parsed.value, { requiresReview });
+    const summary = buildResultSummary(job.purpose, { ...metrics, status: requiresReview ? "requires_review" : "completed" });
+    const details = buildResultDetails(job.purpose, {
+      summary,
+      scope: { countryCode: job.country_code, entityType: job.entity_type, requested: 1, processed: 1, completed: requiresReview ? 0 : 1, failed: 0, skipped: 0 },
+      results: metrics.results || {},
+      items: [{ entityId: safePublicId(job), entityType: job.entity_type, title: (ctx.name || ctx.title || "").slice(0, 120), countryCode: job.country_code, status: requiresReview ? "requires_review" : "processed", summary: metrics.itemSummary || "", changedFields: metrics.changedFields || null, requiresReview }],
+      quality: { valid: requiresReview ? 0 : 1, invalid: 0, averageConfidence: metrics.confidence ?? null },
+      execution: { provider: job.provider_key, modelId: job.model_id, promptVersion: (PROMPT_VERSIONS[job.purpose] || {}).id, schemaVersion: (PROMPT_VERSIONS[job.purpose] || {}).schema, durationMs: res.latency ?? duration, inputTokens: res.inputTokens ?? null, outputTokens: res.outputTokens ?? null, cachedInputTokens: res.cachedInputTokens ?? null, requestCount: 1, retryCount: job.attempt_count - 1, fallbackModel: res.usedFallback ? (res.config && res.config.model_id) : null },
+      warnings: metrics.warnings || [],
+      safeErrors: [],
+    });
+    await attachRunResult(env, res.executionRunId, { summary, detailsJson: details.json, entityCount: 1, changeCount: metrics.changes || 0, warningCount: (metrics.warnings || []).length, requiresReviewCount: requiresReview ? 1 : 0, jobId: job.id });
+    if (requiresReview) await setJobStatus(env, job, "requires_review", { duration });
+    else await completeJob(env, job, parsed.value, duration);
     await enqueueDependents(env, job);
   } catch (e) {
     const code = (e && e.code) || "provider_error";
@@ -289,4 +308,36 @@ export async function retryFailedJobs(env, runId) {
   const r = await env.DB.prepare("UPDATE ai_jobs SET status='queued', available_at=?1, attempt_count=0, error_code=NULL, safe_error_summary=NULL, updated_at=?1 WHERE run_id=?2 AND status='failed'").bind(nowISO(), runId).run();
   await env.DB.prepare("UPDATE ai_pipeline_runs SET status='running', completed_at=NULL, updated_at=?1 WHERE id=?2").bind(nowISO(), runId).run();
   return r.meta ? r.meta.changes : 0;
+}
+
+// --- Детерминистични метрики от структурирания резултат на един job ---
+function safePublicId(job) {
+  // Публичен, неопасен идентификатор (без вътрешни job/lock ID-та).
+  return String(job.entity_id || "").slice(0, 80);
+}
+function deriveJobMetrics(purpose, value, { requiresReview } = {}) {
+  const m = { processed: 1, requested: 1, changes: 0, requiresReview: requiresReview ? 1 : 0, warnings: [], results: {} };
+  if (purpose === "procedure_analysis") {
+    const changed = value.changes ? 1 : 0;
+    m.changes = changed;
+    m.confidence = typeof value.confidence === "number" ? value.confidence : null;
+    m.changedFields = Array.isArray(value.quality_flags) ? value.quality_flags.slice(0, 8) : null;
+    if (Array.isArray(value.quality_flags)) m.warnings = value.quality_flags.slice(0, 5);
+    m.itemSummary = value.summary_short || "";
+    m.results = { updatedRecords: changed, newRecords: null, unchangedRecords: null, warnings: m.warnings.length, requiresReview: m.requiresReview };
+  } else if (purpose === "document_analysis") {
+    m.changes = value.version_changes ? 1 : 0;
+    m.itemSummary = value.summary || "";
+    m.results = { warnings: null, requiresReview: m.requiresReview };
+  } else if (purpose === "budget_analysis") {
+    m.conflicts = Array.isArray(value.conflicts) ? value.conflicts.length : 0;
+    if (Array.isArray(value.flags)) m.warnings = value.flags.slice(0, 5);
+    m.itemSummary = value.total_budget != null ? `Общ бюджет: ${value.total_budget} ${value.currency || ""}`.trim() : "";
+    m.results = { warnings: m.warnings.length };
+  } else if (purpose === "recommendation") {
+    m.itemSummary = value.explanation ? String(value.explanation).slice(0, 200) : "";
+    m.profiles = 1;
+    m.results = { newRecords: 1 };
+  }
+  return m;
 }
