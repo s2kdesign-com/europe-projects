@@ -76,8 +76,13 @@ degraded, blocked`.
 | Scheduled Task — multi-country prompt ПРИЛОЖЕН директно | ✓ (v2.23.0) виж claude-scheduled-task-all-countries.md |
 | Migration 0012: cursor + locks + scheduled_sync_runs | ✓ приложено в prod |
 | scheduler.js (cursor/locks/timeout) + 22 unit теста | ✓ (v2.23.0) |
+| Country-aware профил: региони/програми/валута/етикети от D1 | ✓ (v2.27.0) profile-options API + confirm при смяна |
+| country_regions seed за ВСИЧКИТЕ 27 държави (394 региона) | ✓ (v2.28.0) + ADMIN_LABELS за всички |
+| Country-aware profile completion + sticky save бар | ✓ (v2.28.0) |
 | Saved UI филтър „Текуща/Всички държави“ | ⏳ остава (модел готов; смисъл при 2-ра държава с данни) |
 | Country URL routes `/countries/:slug/...` / Playwright | ⏳ остава |
+| Municipalities level 2 | ⏳ по решение: municipality е free text; level 2 в схемата е подготвен |
+| RO/HR connector | ⏳ blocked (JS-rendered портали) — Scheduled Task продължава проучването |
 
 ## Забележки за RO
 - Официални портали (проверени чрез търсене, gov домейни): **MIPE — mfe.gov.ro**

@@ -61,12 +61,15 @@ export async function getProfile(env, userId) {
   for (const k of PROFILE_BOOLS) out[k] = !!row[k];
   return out;
 }
-function computeCompletion(p) {
+// Country-aware: полета, неприложими за държавата (напр. програми при държава без
+// извлечени данни), НЕ смъкват процента. Виж docs/multi-country-architecture.md.
+function computeCompletion(p, ctx = {}) {
   const checks = [
     p.organization_name, p.organization_type, p.region, p.primary_sector,
-    (p.preferred_programs || []).length, (p.applicant_types || []).length,
+    (p.applicant_types || []).length,
     p.maximum_project_budget != null, (p.additional_sectors || []).length || PROFILE_BOOLS.some((b) => p[b]),
   ];
+  if (ctx.hasProgrammes !== false) checks.push((p.preferred_programs || []).length);
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }
 export async function putProfile(env, userId, body) {
@@ -77,7 +80,15 @@ export async function putProfile(env, userId, body) {
   for (const k of PROFILE_NUMS) { const n = Number(body[k]); clean[k] = Number.isFinite(n) && n >= 0 ? Math.floor(n) : null; }
   if (clean.maximum_self_financing_percentage != null) clean.maximum_self_financing_percentage = Math.min(100, clean.maximum_self_financing_percentage);
   if (clean.minimum_project_budget != null && clean.maximum_project_budget != null && clean.minimum_project_budget > clean.maximum_project_budget) return { error: "budget_range_invalid" };
-  const completion = computeCompletion(clean);
+  // Има ли държавата на потребителя реални програми? Ако не — не изискваме избор.
+  let hasProgrammes = true;
+  try {
+    const prof = await env.DB.prepare("SELECT preferred_country FROM user_profiles WHERE user_id=?1").bind(userId).first();
+    const cc = (prof && prof.preferred_country) || "BG";
+    const pc = await env.DB.prepare("SELECT COUNT(*) n FROM projects WHERE country_code=?1 AND program IS NOT NULL AND program != ''").bind(cc).first();
+    hasProgrammes = !!(pc && pc.n > 0);
+  } catch { /* консервативно: изискваме програми */ }
+  const completion = computeCompletion(clean, { hasProgrammes });
   const now = nowISO();
   await env.DB.prepare(
     `UPDATE user_profiles SET organization_name=?1, organization_type=?2, company_or_registration_number=?3, region=?4, municipality=?5,

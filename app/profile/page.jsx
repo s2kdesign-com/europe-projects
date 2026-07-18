@@ -38,7 +38,7 @@ const STRUCT_LABELS = [
   "Запазените процедури и профилът се пазят в базата (Cloudflare D1), обвързани с акаунта ви. Преди вход временните запазвания живеят само в текущия браузър.",
   "Изтриване на акаунта",
   "Това ще изтрие профила, предпочитанията и запазените ви процедури. Публичните данни за процедурите не се засягат. Действието е необратимо.",
-  "Отказ", "Изтрий окончателно",
+  "Отказ", "Изтрий окончателно", "Имате незапазени промени",
 ];
 const ALL_PROFILE_LABELS = [...STRUCT_LABELS, ...TAXONOMY_LABELS];
 
@@ -64,6 +64,7 @@ export default function ProfilePage() {
   const { selectedCountry } = useCountry();
   const [copts, setCopts] = useState({ regions: [], programmes: [], currency: "EUR", coverageStatus: "none" });
   const prevCountryRef = useRef(null);
+  const baselineRef = useRef(JSON.stringify(EMPTY_PROFILE));
   useEffect(() => {
     let alive = true;
     const controller = new AbortController();
@@ -107,7 +108,9 @@ export default function ProfilePage() {
         ]);
         if (!alive) return;
         if (p.profile) {
-          setProfile({ ...EMPTY_PROFILE, ...clean(p.profile) });
+          const loaded = { ...EMPTY_PROFILE, ...clean(p.profile) };
+          setProfile(loaded);
+          baselineRef.current = JSON.stringify(loaded);
           setCompletion(p.profile.profile_completion_percentage || 0);
         }
         if (pr.preferences) setPrefs({ ...EMPTY_PREFS, ...pr.preferences });
@@ -147,6 +150,8 @@ export default function ProfilePage() {
     ...revenueRanges(copts.currency).map((x) => x.label),
   ], [regionOptions, programmeOptions, adminL, copts.currency]);
 
+  const dirty = useMemo(() => JSON.stringify(profile) !== baselineRef.current, [profile]);
+
   const budgetInvalid = useMemo(() => {
     const mn = Number(profile.minimum_project_budget), mx = Number(profile.maximum_project_budget);
     return profile.minimum_project_budget !== "" && profile.maximum_project_budget !== "" && Number.isFinite(mn) && Number.isFinite(mx) && mn > mx;
@@ -167,6 +172,7 @@ export default function ProfilePage() {
       if (!rp.ok) { setFormError(dp.error === "budget_range_invalid" ? "Невалиден бюджетен диапазон." : "Профилът не можа да бъде запазен."); setSaving(false); return; }
       if (dp.profile) setCompletion(dp.profile.profile_completion_percentage || 0);
       await fetch("/api/preferences", { method: "PUT", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(prefs) });
+      baselineRef.current = JSON.stringify(profile);
       setMsg("Профилът е запазен."); setTimeout(() => setMsg(null), 2500);
       if (onboarding) window.location.href = "/";
     } catch {
@@ -293,6 +299,13 @@ export default function ProfilePage() {
 
         <div className="prof-actions">
           <button className="btn btn-primary" onClick={save} disabled={saving}><Icon name="check" size={16} /> {saving ? tl("Запазване…") : tl("Запази профила")}</button>
+          {dirty && !saving ? (
+            <div className="profile-savebar" role="status" aria-live="polite">
+              <span className="psb-dot" aria-hidden="true" />
+              <span>{tl("Имате незапазени промени")}</span>
+              <button className="btn btn-primary btn-sm" onClick={save}>{tl("Запази профила")}</button>
+            </div>
+          ) : null}
           {msg && <span className="save-ok" role="status"><Icon name="check" size={16} /> {msg}</span>}
         </div>
 

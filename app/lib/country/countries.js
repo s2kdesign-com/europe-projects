@@ -76,6 +76,20 @@ const ADMIN_LABELS = {
   BE: { region: "Регион", municipality: "Община" },
   CZ: { region: "Край", municipality: "Община" },
   SK: { region: "Край", municipality: "Община" },
+  HR: { region: "Жупания", municipality: "Община / град" },
+  HU: { region: "Комитат", municipality: "Община" },
+  PT: { region: "Окръг", municipality: "Община" },
+  SE: { region: "Лен", municipality: "Община" },
+  FI: { region: "Регион", municipality: "Община" },
+  DK: { region: "Регион", municipality: "Община" },
+  IE: { region: "Регион", municipality: "Графство / община" },
+  LT: { region: "Окръг", municipality: "Община" },
+  LV: { region: "Регион", municipality: "Община" },
+  EE: { region: "Окръг (мааконд)", municipality: "Община" },
+  SI: { region: "Регион", municipality: "Община" },
+  CY: { region: "Окръг", municipality: "Община" },
+  MT: { region: "Регион", municipality: "Локален съвет" },
+  LU: { region: "Кантон", municipality: "Община" },
 };
 export function countryAdminLabels(code) {
   return ADMIN_LABELS[normalizeCountry(code)] || { region: "Регион", municipality: "Община" };
