@@ -5,9 +5,10 @@ import { useTranslation } from "react-i18next";
 import { useCountry } from "./CountryProvider.jsx";
 import { FALLBACK_FLAG } from "../../lib/country/countries.js";
 
-export function FlagImg({ country, size = 20 }) {
-  const [src, setSrc] = useState(country ? country.flag : FALLBACK_FLAG);
-  useEffect(() => { setSrc(country ? country.flag : FALLBACK_FLAG); }, [country]);
+export function FlagImg({ country, src: srcProp = null, size = 20 }) {
+  const initial = srcProp || (country ? country.flag : FALLBACK_FLAG);
+  const [src, setSrc] = useState(initial);
+  useEffect(() => { setSrc(srcProp || (country ? country.flag : FALLBACK_FLAG)); }, [srcProp, country]);
   return (
     <img
       className="country-flag"

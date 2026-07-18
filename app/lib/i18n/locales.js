@@ -38,6 +38,18 @@ export const SUPPORTED_LOCALES = [
 export const LOCALE_CODES = SUPPORTED_LOCALES.map((l) => l.code);
 const BY_CODE = new Map(SUPPORTED_LOCALES.map((l) => [l.code, l]));
 
+// Представително знаме за всеки език (локални SVG в /public/flags). Езикът не е
+// държава — това е само визуален акцент в селектора.
+const LOCALE_FLAG = {
+  bg: "bg", en: "gb", de: "de", fr: "fr", es: "es", it: "it", ro: "ro", el: "gr",
+  pl: "pl", cs: "cz", sk: "sk", hu: "hu", nl: "nl", pt: "pt", tr: "tr", uk: "ua",
+  sr: "rs", hr: "hr", sl: "si", sv: "se", da: "dk", fi: "fi", et: "ee", lv: "lv", lt: "lt",
+};
+export function localeFlag(code) {
+  const key = LOCALE_FLAG[String(code || "").toLowerCase()];
+  return key ? `/flags/${key}.svg` : "/flags/_placeholder.svg";
+}
+
 export function isSupported(code) {
   return BY_CODE.has(String(code || "").toLowerCase());
 }

@@ -2,18 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { SUPPORTED_LOCALES } from "../lib/i18n/locales.js";
+import { SUPPORTED_LOCALES, localeFlag } from "../lib/i18n/locales.js";
 import { useLanguage } from "./i18n/I18nProvider.jsx";
 import { useSession } from "../hooks/useSession.js";
-
-function GlobeIcon({ size = 16 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18" />
-    </svg>
-  );
-}
+import { FlagImg } from "./country/CountrySelector.jsx";
 
 // Синхронизира ръчния избор към профила на логнат потребител (между устройства).
 async function syncProfileLanguage(code) {
@@ -97,7 +89,7 @@ export default function LanguageSelector({ variant = "footer", id = "lang-select
         aria-label={t("language.globeLabel")}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="lang-globe"><GlobeIcon /></span>
+        <span className="lang-globe"><FlagImg src={localeFlag(current?.code)} size={18} /></span>
         <span className="lang-current">{current?.native}</span>
         <span className="lang-caret" aria-hidden="true">▾</span>
       </button>
@@ -130,6 +122,7 @@ export default function LanguageSelector({ variant = "footer", id = "lang-select
                   onClick={() => choose(l.code)}
                   onMouseEnter={() => setActive(i)}
                 >
+                  <FlagImg src={localeFlag(l.code)} size={18} />
                   <span className="lang-native">{l.native}</span>
                   {l.label !== l.native && <span className="lang-label">{l.label}</span>}
                   {selected && <span className="lang-check" aria-hidden="true">✓</span>}
