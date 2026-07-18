@@ -60,3 +60,19 @@
 .admin-pager { display: flex; align-items: center; gap: 8px; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
 .admin-pager .pg-info { font-size: 13px; color: var(--muted); margin-right: auto; }
 .admin-pager button[disabled] { opacity: .45; cursor: default; }
+
+/* ── Вечерен AI pipeline (v2.31.0) ─────────────────────────────────────── */
+.ai-pipe-live { background: var(--surface-2, #f4f7fb); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-top: 6px; }
+.apl-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.apl-stage { font-weight: 700; font-size: 13.5px; }
+.apl-el { margin-left: auto; font-size: 12px; color: var(--faint); }
+.apl-bar { height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; margin: 10px 0 8px; }
+.apl-bar > span { display: block; height: 100%; background: var(--primary); transition: width .4s ease; }
+.apl-nums { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.switch-sm { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; cursor: pointer; }
+.scope-est { margin-top: 12px; padding: 10px 12px; background: var(--surface-2, #f4f7fb); border-radius: 8px; font-size: 13px; }
+.scope-est .row-sub { font-size: 12px; color: var(--faint); margin-top: 2px; }
+.scope-warn { display: flex; align-items: center; gap: 5px; margin-top: 6px; color: #b45309; font-weight: 600; font-size: 12.5px; }
+.modal-card { background: var(--surface, #fff); border-radius: 14px; padding: 20px; width: min(460px, 92vw); box-shadow: 0 20px 60px rgba(15,33,66,.24); }
+.fld-label { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; color: var(--faint); margin-bottom: 4px; }
+@media (max-width: 640px) { .apl-nums { gap: 8px 12px; } }

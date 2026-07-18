@@ -3,6 +3,24 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.31.0] — 2026-07-18
+
+### Ново
+- **Вечерен AI pipeline** (migration 0018): `ai_jobs` (D1 queue + locks + idempotency),
+  `ai_pipeline_runs`, `ai_schedules`, `ai_prompt_versions`; `ai_execution_runs.parent_run_id`.
+- **NightlyAIOrchestrator** (`worker/ai/pipeline.js`): dependency graph
+  procedure→{document,budget}→recommendation; purpose executors върху AIExecutionService;
+  versioned prompts + structured schemas (`worker/ai/prompts.js`); skip_unchanged по
+  idempotency ключ (purpose+entity+hash+model+prompt+schema); приоритизиране по срок.
+- **API** (`worker/ai/pipeline-handlers.js`): admin pipelines/purposes/schedules/jobs +
+  start/estimate/retry-failed/cancel-pending; internal daily-review-completed/jobs/process/
+  nightly/start (HMAC). Cron Trigger `*/15 * * * *` + `scheduled()` fallback.
+- **Admin UI** (AiModelsTab): „Стартирай сега“ per модел, „Стартирай всички активни“,
+  „Стартирай вечерния pipeline“, scope modal с оценка, live статус + progress bar,
+  автоматично изпълнение per purpose. future_chat никога не се стартира.
+- **Privacy**: recommendation изпраща само неутрални структурирани полета (без имейл/
+  име/Google ID). Тестове: `test/ai-pipeline.test.mjs` (14).
+
 ## [2.30.5] — 2026-07-18
 
 ### Данни

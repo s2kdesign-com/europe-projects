@@ -25,6 +25,12 @@ binding = "DB"
 database_name = "evroproekti-dashboard"
 database_id = "d5f1bb40-3729-4c11-ae06-efbd4b5c9760"
 
+# Cron Trigger за nightly AI pipeline-а: на всеки 15 мин обработва чакащи AI jobs
+# (малки batch-ове, без дълъг Worker request) и в ~20:xx UTC прави fallback nightly
+# старт, ако daily review completion report не е получен. Виж worker.js scheduled().
+[triggers]
+crons = ["*/15 * * * *"]
+
 # ---------------------------------------------------------------------------
 # Автентикация (Google OAuth). НЕ слагайте тайни тук — това е под version control.
 #

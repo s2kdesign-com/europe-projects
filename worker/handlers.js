@@ -8,6 +8,7 @@ import * as data from "./db.js";
 import { LOCALE_CODES } from "../app/lib/i18n/locales.js";
 import { normalizeCountry } from "../app/lib/country/countries.js";
 import { handleAdminAI } from "./ai/handlers.js";
+import { handleAIPipeline } from "./ai/pipeline-handlers.js";
 import { getSupportedLanguages, translateBatch } from "./translation.js";
 import { isTranslationConfigured } from "./gauth.js";
 import { GLOSSARY_VERSION } from "../app/lib/i18n/glossary.js";
@@ -182,6 +183,9 @@ export async function handleAuth(request, env, url) {
     if (s.user.role !== "admin") return err("forbidden", 403);
     // AI управление (доставчици/модели/логове) — отделен модул.
     if (pathname.startsWith("/api/admin/ai/")) {
+      const jr = readJson ? (() => readJson(request)) : (async () => null);
+      const pipeResp = await handleAIPipeline(request, env, url, userId, method, jr);
+      if (pipeResp) return pipeResp;
       const aiResp = await handleAdminAI(request, env, url, userId, method, readJson);
       if (aiResp) return aiResp;
       return err("not_found", 404);

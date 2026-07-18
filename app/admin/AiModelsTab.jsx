@@ -129,10 +129,170 @@ export default function AiModelsTab() {
       {/* Активни модели */}
       <ActiveModels data={data} onChanged={load} flash={flash} />
 
+      {/* Вечерен AI pipeline: контроли, live статус, автоматизация */}
+      <PipelinePanel data={data} flash={flash} />
+
       {/* Дневна процедура + логове */}
       <DailyRuns summary={summary} />
       <RunsLog />
     </>
+  );
+}
+
+// ---------- Вечерен AI pipeline ----------
+const RUNNABLE_PURPOSES = ["procedure_analysis", "document_analysis", "budget_analysis", "recommendation"];
+const SCOPES = [
+  { key: "new_and_changed", label: "Нови, променени и чакащи" },
+  { key: "pending", label: "Само чакащи" },
+  { key: "failed", label: "Само неуспешни" },
+  { key: "all", label: "Всички допустими записи" },
+  { key: "full_reanalysis", label: "Повторен анализ (независимо от промени)" },
+];
+
+function PipelinePanel({ data, flash }) {
+  const tl = useUiTr();
+  const [pipe, setPipe] = useState(null);
+  const [schedules, setSchedules] = useState([]);
+  const [modal, setModal] = useState(null); // { purpose | 'all' | 'pipeline' }
+  const load = useCallback(() => {
+    api("/api/admin/ai/pipelines").then((d) => setPipe(d)).catch(() => setPipe({ pipelines: [], active: null }));
+    api("/api/admin/ai/schedules").then((d) => setSchedules(d.schedules || [])).catch(() => setSchedules([]));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  // Авто-refresh на live статуса докато има активен run.
+  useEffect(() => {
+    if (!pipe?.active) return;
+    const t = setInterval(() => api("/api/admin/ai/pipelines").then(setPipe).catch(() => {}), 5000);
+    return () => clearInterval(t);
+  }, [pipe?.active]);
+
+  const active = pipe?.active;
+  const activeCfgs = (data.configurations || []).filter((c) => RUNNABLE_PURPOSES.includes(c.purpose) && c.active);
+
+  return (
+    <section className="prof-card">
+      <div className="ov-section-head" style={{ flexWrap: "wrap", gap: 8 }}>
+        <h3 className="prof-section-title" style={{ margin: 0 }}>{tl("Вечерен AI pipeline")}</h3>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="btn btn-ghost" disabled={!!active} onClick={() => setModal({ kind: "all" })}>{tl("Стартирай всички активни AI задачи")}</button>
+          <button className="btn btn-primary" disabled={!!active} onClick={() => setModal({ kind: "pipeline" })}><Icon name="sparkle" size={15} /> {tl("Стартирай вечерния AI pipeline")}</button>
+        </div>
+      </div>
+
+      {/* Live статус */}
+      {active ? (
+        <div className="ai-pipe-live">
+          <div className="apl-head">
+            <span className="badge blue">{tl("Изпълнява се")}</span>
+            <span className="apl-stage">{tl("Етап")}: {tl(PURPOSE_LABELS[active.current_stage] || active.current_stage || "—")}</span>
+            <span className="apl-el">{fmtTs(active.started_at)}</span>
+          </div>
+          <div className="apl-bar"><span style={{ width: `${active.total_jobs ? Math.round((active.completed_jobs + active.failed_jobs + active.skipped_jobs) / active.total_jobs * 100) : 0}%` }} /></div>
+          <div className="apl-nums">
+            <span>{tl("Общо")}: {active.total_jobs}</span>
+            <span>{tl("Готови")}: {active.completed_jobs}</span>
+            <span>{tl("Чакащи")}: {active.queued_jobs}</span>
+            <span>{tl("В ход")}: {active.running_jobs}</span>
+            <span>{tl("Неуспешни")}: {active.failed_jobs}</span>
+            <span>{tl("Пропуснати")}: {active.skipped_jobs}</span>
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            <button className="btn btn-ghost btn-sm" onClick={load}><Icon name="refresh" size={14} /> {tl("Обнови")}</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => api(`/api/admin/ai/pipelines/${active.id}/retry-failed`, { method: "POST" }).then(load)}>{tl("Повтори неуспешните")}</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => api(`/api/admin/ai/pipelines/${active.id}/cancel-pending`, { method: "POST" }).then(load)}>{tl("Отмени чакащите задачи")}</button>
+          </div>
+        </div>
+      ) : (
+        <p className="prose" style={{ color: "var(--faint)" }}>{tl("В момента няма активен pipeline.")}</p>
+      )}
+
+      {/* Действия по модел */}
+      <div className="table-scroll" style={{ marginTop: 12 }}>
+        <table className="admin-table">
+          <thead><tr><th>{tl("Предназначение")}</th><th>{tl("Модел")}</th><th>{tl("Автоматично")}</th><th>{tl("Час")}</th><th>{tl("Действия")}</th></tr></thead>
+          <tbody>
+            {activeCfgs.map((c) => {
+              const sch = schedules.find((s) => s.purpose === c.purpose);
+              return (
+                <tr key={c.purpose}>
+                  <td>{tl(PURPOSE_LABELS[c.purpose] || c.purpose)}</td>
+                  <td className="mono">{c.model_id}</td>
+                  <td>
+                    <label className="switch-sm">
+                      <input type="checkbox" checked={!!sch?.automatic_enabled} onChange={(e) => api(`/api/admin/ai/schedules/${c.purpose}`, { method: "PATCH", body: JSON.stringify({ automatic_enabled: e.target.checked ? 1 : 0 }) }).then(load).catch(() => flash(tl("Неуспешна промяна")))} />
+                      <span>{sch?.automatic_enabled ? tl("Включено") : tl("Изключено")}</span>
+                    </label>
+                  </td>
+                  <td>{sch?.preferred_time || "—"} <span className="row-sub">{sch?.timezone || "Europe/Sofia"}</span></td>
+                  <td><button className="btn btn-ghost btn-sm" disabled={!!active} onClick={() => setModal({ kind: "purpose", purpose: c.purpose })}>{tl("Стартирай сега")}</button></td>
+                </tr>
+              );
+            })}
+            {/* Бъдещ чат — показва се като изключен, БЕЗ бутон за старт */}
+            <tr style={{ opacity: 0.55 }}>
+              <td>{tl(PURPOSE_LABELS.future_chat)}</td><td className="mono">—</td>
+              <td><span className="badge neutral">{tl("Изключено")}</span></td><td>—</td>
+              <td><span className="row-sub">{tl("Неактивен (feature flag)")}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {modal && <ScopeModal modal={modal} data={data} onClose={() => setModal(null)} onStarted={() => { setModal(null); load(); flash(tl("Задачата е стартирана.")); }} flash={flash} />}
+    </section>
+  );
+}
+
+function ScopeModal({ modal, data, onClose, onStarted, flash }) {
+  const tl = useUiTr();
+  const [scope, setScope] = useState("new_and_changed");
+  const [country, setCountry] = useState("");
+  const [est, setEst] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const purpose = modal.kind === "purpose" ? modal.purpose : "procedure_analysis";
+  useEffect(() => {
+    const qs = new URLSearchParams({ scope }); if (country) qs.set("country", country);
+    api(`/api/admin/ai/purposes/${purpose}/estimate?` + qs).then(setEst).catch(() => setEst(null));
+  }, [purpose, scope, country]);
+  const title = modal.kind === "pipeline" ? tl("Стартирай вечерния AI pipeline") : modal.kind === "all" ? tl("Стартирай всички активни AI задачи") : tl(PURPOSE_LABELS[purpose] || purpose);
+  const start = async () => {
+    setBusy(true);
+    try {
+      const body = JSON.stringify({ scope, country: country || null });
+      if (modal.kind === "purpose") await api(`/api/admin/ai/purposes/${purpose}/start`, { method: "POST", body });
+      else await api("/api/admin/ai/pipelines/start", { method: "POST", body });
+      onStarted();
+    } catch (e) {
+      flash(e.code === "daily_review_running" ? tl("Изчакайте дневният преглед да приключи") : tl("Неуспешно стартиране"));
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="overlay" style={{ zIndex: 80 }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-card" role="dialog" aria-modal="true" style={{ maxWidth: 460 }}>
+        <h3 style={{ marginTop: 0 }}>{title}</h3>
+        <label className="fld-label">{tl("Обхват")}</label>
+        <select className="inp" value={scope} onChange={(e) => setScope(e.target.value)}>
+          {SCOPES.map((s) => <option key={s.key} value={s.key}>{tl(s.label)}</option>)}
+        </select>
+        <label className="fld-label" style={{ marginTop: 10 }}>{tl("Държава (по избор)")}</label>
+        <select className="inp" value={country} onChange={(e) => setCountry(e.target.value)}>
+          <option value="">{tl("Всички държави")}</option>
+          {(data.configurations ? [] : []).map(() => null)}
+          {["BG", "RO", "GR", "PL", "HR", "CZ", "PT", "SK", "HU", "SI", "IT", "ES", "DE", "FR", "LT", "LV", "EE", "NL", "BE", "SE", "FI", "AT", "IE", "DK", "CY", "MT", "LU"].map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <div className="scope-est">
+          <div><b>{est ? est.eligible : "—"}</b> {tl("допустими записа")}</div>
+          {est?.model && <div className="row-sub">{tl("Модел")}: {est.model.model_id} · {est.model.provider_key}</div>}
+          {est?.deps?.length ? <div className="row-sub">{tl("Зависимости")}: {est.deps.map((d) => tl(PURPOSE_LABELS[d] || d)).join(", ")}</div> : null}
+          {scope === "full_reanalysis" && <div className="scope-warn"><Icon name="alert" size={14} /> {tl("Повторна обработка на вече анализирани записи.")}</div>}
+        </div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
+          <button className="btn btn-ghost" onClick={onClose}>{tl("Отказ")}</button>
+          <button className="btn btn-primary" disabled={busy} onClick={start}>{busy ? tl("Стартиране…") : tl("Стартирай")}</button>
+        </div>
+      </div>
+    </div>
   );
 }
 

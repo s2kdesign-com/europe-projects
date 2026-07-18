@@ -7,6 +7,8 @@ import { handleProcedurePage, handleStatusLanding, handleProgramsIndex, handlePr
 import { generateSitemap } from "./worker/sitemap.js";
 import { handleLocalePage } from "./worker/i18n-pages.js";
 import { handlePublicAIConfig, handleAIRunReport } from "./worker/ai/handlers.js";
+import { handleAIInternal } from "./worker/ai/pipeline-handlers.js";
+import { reclaimExpiredLocks, processJobsBatch, createPipelineRun, enqueueProcedureJobs, nightlyAlreadyRan } from "./worker/ai/pipeline.js";
 import { handlePlatformStatistics } from "./worker/statistics.js";
 import { COUNTRY_CODES, DEFAULT_COUNTRY, normalizeCountry } from "./app/lib/country/countries.js";
 
@@ -79,6 +81,31 @@ function canonicalRedirect(url, env) {
 }
 
 export default {
+  // Cloudflare Cron Trigger (fallback nightly + job continuation). Ако completion
+  // report от daily review не е получен — cron стартира nightly-я; иначе само
+  // обработва чакащи jobs на малки batch-ове.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil((async () => {
+      try {
+        await reclaimExpiredLocks(env);
+        const date = new Date().toISOString().slice(0, 10);
+        const hour = new Date().getUTCHours();
+        // ~20:30 UTC ≈ 23:30 Europe/Sofia (лятно часово време) — fallback старт.
+        if (hour === 20 && !(await nightlyAlreadyRan(env, date))) {
+          const running = await env.DB.prepare("SELECT id FROM scheduled_sync_runs WHERE status='running' ORDER BY id DESC LIMIT 1").first().catch(() => null);
+          if (!running) {
+            const runId = await createPipelineRun(env, { triggerType: "fallback_cron", scheduledDate: date, scope: "new_and_changed" });
+            await enqueueProcedureJobs(env, runId, { scope: "new_and_changed" });
+            await processJobsBatch(env, { runId, limit: 5 });
+          }
+        } else {
+          // Continuation: обработи чакащи jobs от активния run.
+          const active = await env.DB.prepare("SELECT id FROM ai_pipeline_runs WHERE status='running' ORDER BY created_at DESC LIMIT 1").first().catch(() => null);
+          if (active) await processJobsBatch(env, { runId: active.id, limit: 5 });
+        }
+      } catch { /* cron не бива да хвърля */ }
+    })());
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
     const { pathname } = url;
@@ -155,6 +182,10 @@ export default {
       // Internal: отчет от Scheduled Task (HMAC + timestamp + idempotency).
       if (pathname === "/api/internal/ai-runs/report" && request.method === "POST") {
         return handleAIRunReport(request, env);
+      }
+      // Internal: nightly AI pipeline (HMAC): daily-review-completed / jobs/process / nightly/start.
+      if (pathname.startsWith("/api/internal/ai/") && request.method === "POST") {
+        return handleAIInternal(request, env, url, request.method);
       }
 
       // Приблизителна държава от Cloudflare (без raw IP). Само код на държавата.

@@ -142,7 +142,7 @@ const FALLBACK_CODES = new Set(["provider_unavailable", "timeout", "rate_limited
 export function shouldFallback(errorCode) { return FALLBACK_CODES.has(errorCode); }
 
 /** Изпълнява generate с активния модел + fallback верига. Логва в ai_execution_runs. */
-export async function AIExecutionService(env, { purpose, prompt, system, executionSource = "worker_api", countryCode = null, maxTokens }) {
+export async function AIExecutionService(env, { purpose, prompt, system, executionSource = "worker_api", countryCode = null, maxTokens, parentRunId = null }) {
   const { primary, fallbacks } = await resolveAIModel(env, purpose);
   if (!primary) throw Object.assign(new Error("no_active_model"), { code: "blocked_configuration" });
   const chain = [primary, ...fallbacks];
@@ -156,11 +156,11 @@ export async function AIExecutionService(env, { purpose, prompt, system, executi
     const startedAt = new Date().toISOString();
     try {
       const out = await provider.generate(key, { modelId: cfg.model_id, system, prompt, maxTokens: maxTokens || cfg.max_output_tokens || 1024, temperature: cfg.temperature });
-      await logRun(env, { id: runId, execution_type: "generation", purpose, provider_key: cfg.provider_key, model_id: cfg.model_id, model_display_name: cfg.display_name, execution_source: executionSource, country_code: countryCode, status: "success", started_at: startedAt, duration_ms: out.latency, input_tokens: out.inputTokens, output_tokens: out.outputTokens, cached_input_tokens: out.cachedInputTokens || null, reasoning_tokens: out.reasoningTokens || null, request_count: 1, successful_request_count: 1, provider_request_id: out.requestId, metadata_json: i > 0 ? JSON.stringify({ fallback: true, primary_model: primary.model_id, fallback_reason: lastErr && lastErr.code }) : null });
+      await logRun(env, { id: runId, execution_type: "generation", purpose, provider_key: cfg.provider_key, model_id: cfg.model_id, model_display_name: cfg.display_name, execution_source: executionSource, country_code: countryCode, status: "success", started_at: startedAt, duration_ms: out.latency, input_tokens: out.inputTokens, output_tokens: out.outputTokens, cached_input_tokens: out.cachedInputTokens || null, reasoning_tokens: out.reasoningTokens || null, request_count: 1, successful_request_count: 1, provider_request_id: out.requestId, parent_run_id: parentRunId, metadata_json: i > 0 ? JSON.stringify({ fallback: true, primary_model: primary.model_id, fallback_reason: lastErr && lastErr.code }) : null });
       return { ...out, config: cfg, usedFallback: i > 0 };
     } catch (e) {
       lastErr = e;
-      await logRun(env, { id: runId, execution_type: "generation", purpose, provider_key: cfg.provider_key, model_id: cfg.model_id, model_display_name: cfg.display_name, execution_source: executionSource, country_code: countryCode, status: "error", started_at: startedAt, request_count: 1, failed_request_count: 1, error_code: e.code || "unknown", safe_error_summary: redactSecrets(String(e.message || e)).slice(0, 300) });
+      await logRun(env, { id: runId, execution_type: "generation", purpose, provider_key: cfg.provider_key, model_id: cfg.model_id, model_display_name: cfg.display_name, execution_source: executionSource, country_code: countryCode, status: "error", started_at: startedAt, request_count: 1, failed_request_count: 1, parent_run_id: parentRunId, error_code: e.code || "unknown", safe_error_summary: redactSecrets(String(e.message || e)).slice(0, 300) });
       if (!shouldFallback(e.code)) throw e; // invalid request/config → не fallback-ваме
     }
   }
@@ -171,14 +171,14 @@ async function logRun(env, r) {
   const now = new Date().toISOString();
   try {
     await env.DB.prepare(
-      `INSERT INTO ai_execution_runs (id, execution_type, purpose, provider_key, model_id, model_display_name, execution_source, country_code, status, started_at, completed_at, duration_ms, input_tokens, output_tokens, cached_input_tokens, reasoning_tokens, request_count, successful_request_count, failed_request_count, provider_request_id, error_code, safe_error_summary, metadata_json, created_at)
-       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24)`
+      `INSERT INTO ai_execution_runs (id, execution_type, purpose, provider_key, model_id, model_display_name, execution_source, country_code, status, started_at, completed_at, duration_ms, input_tokens, output_tokens, cached_input_tokens, reasoning_tokens, request_count, successful_request_count, failed_request_count, provider_request_id, error_code, safe_error_summary, metadata_json, parent_run_id, created_at)
+       VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25)`
     ).bind(
       r.id, r.execution_type, r.purpose, r.provider_key || null, r.model_id || null, r.model_display_name || null,
       r.execution_source || null, r.country_code || null, r.status, r.started_at, now, r.duration_ms || null,
       r.input_tokens ?? null, r.output_tokens ?? null, r.cached_input_tokens ?? null, r.reasoning_tokens ?? null,
       r.request_count || null, r.successful_request_count || null, r.failed_request_count || null,
-      r.provider_request_id || null, r.error_code || null, r.safe_error_summary || null, r.metadata_json || null, now
+      r.provider_request_id || null, r.error_code || null, r.safe_error_summary || null, r.metadata_json || null, r.parent_run_id || null, now
     ).run();
   } catch { /* логът не бива да чупи заявката */ }
 }
