@@ -152,6 +152,31 @@ function SystemTab({ session }) {
 
 // --- Източници (funding_sources) — преглед, филтри, активиране, добавяне, редакция ---
 const HEALTH_OPTIONS = ["unknown", "healthy", "degraded", "failing", "blocked"];
+const PAGE_SIZE = 25;
+
+// Кратък URL (домейн) + стрелка за разгъване на пълните адреси.
+function UrlCell({ source }) {
+  const [open, setOpen] = useState(false);
+  const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; } };
+  const urls = [["Base", source.base_url], ["Покани", source.calls_url], ["Програми", source.programmes_url]].filter(([, u]) => u);
+  return (
+    <td className="url-cell">
+      <span className="url-short">
+        <a href={source.base_url} target="_blank" rel="noopener noreferrer nofollow" className="mono">{host(source.base_url)}</a>
+        <button type="button" className="url-toggle" aria-expanded={open} aria-label={open ? "Скрий пълните адреси" : "Покажи пълните адреси"} onClick={() => setOpen((v) => !v)}>
+          <Icon name="chevronRight" size={13} style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }} />
+        </button>
+      </span>
+      {open && (
+        <div className="url-full">
+          {urls.map(([label, u]) => (
+            <a key={label} href={u} target="_blank" rel="noopener noreferrer nofollow"><strong>{label}:</strong> {u}</a>
+          ))}
+        </div>
+      )}
+    </td>
+  );
+}
 const EMPTY_SOURCE = { id: "", country_code: "", name: "", authority_name: "", base_url: "", calls_url: "", source_type: "portal", source_level: "national", source_language: "", coverage_description: "", priority: 100, verified: false, enabled: false, requires_javascript: false, primary_source: false };
 
 function SourcesTab() {
@@ -159,6 +184,7 @@ function SourcesTab() {
   const [country, setCountry] = useState("");
   const [flt, setFlt] = useState("all"); // all | enabled | disabled | verified | unverified | unhealthy
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState(null); // id на редактирания или "new"
   const [form, setForm] = useState(EMPTY_SOURCE);
   const [msg, setMsg] = useState(null);
@@ -209,6 +235,9 @@ function SourcesTab() {
     if (q) { const h = `${s.id} ${s.name} ${s.authority_name || ""} ${s.base_url}`.toLowerCase(); if (!h.includes(q.toLowerCase())) return false; }
     return true;
   });
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const curPage = Math.min(page, totalPages);
+  const pageRows = rows.slice((curPage - 1) * PAGE_SIZE, curPage * PAGE_SIZE);
   const cName = (code) => (data.countries.find((c) => c.code === code)?.name_bg) || code;
   const healthTone = (h) => (h === "healthy" ? "green" : h === "degraded" ? "amber" : h === "failing" || h === "blocked" ? "red" : "neutral");
 
@@ -265,11 +294,11 @@ function SourcesTab() {
           <span className="count-dot">{rows.length}</span>
           {msg && <span className="save-ok" role="status"><Icon name="check" size={14} /> {msg}</span>}
           <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <select className="inp inp-sm" value={country} onChange={(e) => setCountry(e.target.value)} aria-label="Филтър по държава">
+            <select className="inp inp-sm" value={country} onChange={(e) => { setCountry(e.target.value); setPage(1); }} aria-label="Филтър по държава">
               <option value="">Всички държави</option>
               {data.countries.map((c) => <option key={c.code} value={c.code}>{c.code} · {c.name_bg} ({data.sources.filter((s) => s.country_code === c.code).length})</option>)}
             </select>
-            <select className="inp inp-sm" value={flt} onChange={(e) => setFlt(e.target.value)} aria-label="Филтър по статус">
+            <select className="inp inp-sm" value={flt} onChange={(e) => { setFlt(e.target.value); setPage(1); }} aria-label="Филтър по статус">
               <option value="all">Всички статуси</option>
               <option value="enabled">Само активни</option>
               <option value="disabled">Само неактивни</option>
@@ -277,7 +306,7 @@ function SourcesTab() {
               <option value="unverified">Непроверени</option>
               <option value="unhealthy">Проблемни (health)</option>
             </select>
-            <input className="inp inp-sm" placeholder="Търсене…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Търсене в източниците" />
+            <input className="inp inp-sm" placeholder="Търсене…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} aria-label="Търсене в източниците" />
             <button className="btn btn-ghost" onClick={load}><Icon name="refresh" size={16} /> Обнови</button>
             <button className="btn btn-primary" onClick={() => { setEditing("new"); setForm(EMPTY_SOURCE); }}><Icon name="sparkle" size={16} /> Добави</button>
           </div>
@@ -287,11 +316,11 @@ function SourcesTab() {
           <table className="admin-table">
             <thead><tr><th>Държава</th><th>Източник</th><th>URL</th><th>Тип/Ниво</th><th>Приор.</th><th>Verified</th><th>Активен</th><th>Health</th><th>Посл. успех</th><th></th></tr></thead>
             <tbody>
-              {rows.map((s) => (
+              {pageRows.map((s) => (
                 <tr key={s.id}>
                   <td className="nowrap">{s.country_code} · {cName(s.country_code)}</td>
                   <td><strong>{s.name}</strong>{s.authority_name ? <div className="row-sub">{s.authority_name}</div> : null}{s.requires_javascript ? <span className="badge amber" style={{ marginTop: 2 }}>JS</span> : null}</td>
-                  <td className="mono" style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}><a href={s.base_url} target="_blank" rel="noopener noreferrer nofollow">{s.base_url.replace(/^https?:\/\//, "")}</a></td>
+                  <UrlCell source={s} />
                   <td className="nowrap">{s.source_type}<div className="row-sub">{s.source_level}</div></td>
                   <td>{s.priority}</td>
                   <td>
@@ -301,7 +330,7 @@ function SourcesTab() {
                     <label className="check" style={{ margin: 0 }}><input type="checkbox" checked={!!s.enabled} disabled={saving} onChange={(e) => { if (e.target.checked && !s.verified) { flash("Първо маркирайте източника като проверен."); return; } patch(s.id, { enabled: e.target.checked }); }} /><span className="sr-only">enabled</span></label>
                   </td>
                   <td>
-                    <select className="inp inp-sm" value={s.source_health} disabled={saving} onChange={(e) => patch(s.id, { source_health: e.target.value })} aria-label="Source health">
+                    <select className={"inp inp-sm health-select h-" + s.source_health} value={s.source_health} disabled={saving} onChange={(e) => patch(s.id, { source_health: e.target.value })} aria-label="Source health">
                       {HEALTH_OPTIONS.map((h) => <option key={h} value={h}>{h}</option>)}
                     </select>
                     {s.consecutive_failures > 0 && <div className="row-sub"><span className={"badge " + healthTone(s.source_health)}>{s.consecutive_failures} грешки</span></div>}
@@ -314,6 +343,14 @@ function SourcesTab() {
           </table>
         </div>
         {rows.length === 0 && <div className="state ov-empty"><Icon name="layers" size={26} /><h3>Няма източници по този филтър</h3><p>Променете филтрите или добавете нов източник.</p></div>}
+        {rows.length > PAGE_SIZE && (
+          <div className="admin-pager">
+            <span className="pg-info">{(curPage - 1) * PAGE_SIZE + 1}–{Math.min(curPage * PAGE_SIZE, rows.length)} от {rows.length}</span>
+            <button className="btn btn-ghost" disabled={curPage <= 1} onClick={() => setPage(curPage - 1)}><Icon name="chevronRight" size={14} style={{ transform: "rotate(180deg)" }} /> Предишна</button>
+            <span className="pg-info" style={{ margin: 0 }}>стр. {curPage} / {totalPages}</span>
+            <button className="btn btn-ghost" disabled={curPage >= totalPages} onClick={() => setPage(curPage + 1)}>Следваща <Icon name="chevronRight" size={14} /></button>
+          </div>
+        )}
       </section>
 
       {editing === "new" && editForm(true)}
