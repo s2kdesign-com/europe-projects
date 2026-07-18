@@ -83,7 +83,7 @@ export default function AttentionSection({ items, now, isSaved, inCompare, onOpe
         )}
       </div>
       {items.length === 0 ? (
-        <div className="state ov-empty"><Icon name="check" size={26} /><h3>Няма спешни действия</h3><p>В момента няма изтичащи скоро, нови или променени процедури, които изискват внимание.</p></div>
+        <div className="state ov-empty"><Icon name="check" size={26} /><h3>{t("sections.attentionEmptyTitle")}</h3><p>{t("sections.attentionEmptyText")}</p></div>
       ) : (
         <div className="cards">
           {items.slice(0, limit).map(({ p, reasons }) => (

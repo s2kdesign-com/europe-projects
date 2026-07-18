@@ -54,7 +54,7 @@ degraded, blocked`.
 | CountryContext/Provider/useCountry | ✓ |
 | Country resolution (cf.country, locale, profile, guest) | ✓ |
 | Worker `?country=` филтър (default BG) + `/api/geo` | ✓ |
-| Локални SVG знамена (BG, RO, GR, PL, HR + fallback) | ✓ частично (стъпка 1) |
+| Локални SVG знамена — всичките 27 държави + fallback | ✓ (v2.22.1) |
 | CountryProvider монтиран в дървото (layout) | ✓ (v2.22.0) |
 | DashboardShell country-aware fetch (`?country=`) + abort/skeleton | ✓ (v2.22.0) |
 | Информационен модал: секция „Вашата държава“ | ✓ (v2.22.0) |
@@ -64,9 +64,12 @@ degraded, blocked`.
 | CountrySourcesPanel/Page + `/sources` + `/api/sources` | ✓ (v2.22.0) |
 | Ingestion core + `CountryConnector` интерфейс | ✓ scaffold |
 | BG reference connector stub | ✓ scaffold |
-| CountrySyncOrchestrator | ⏳ остава (само скелет в план) |
+| CountrySyncOrchestrator (код-скелет) | ✓ (v2.22.1) `src/ingestion/core` |
+| BG официални източници seed-нати в funding_sources | ✓ (5 източника) |
+| saved_procedures.country_code (migration 0011, backfill BG) | ✓ (v2.22.1) |
 | Scheduled Task prompt (документиран) | ✓ виж scheduled-task doc |
-| Country-aware saved филтър / country URL routes / Playwright | ⏳ остава |
+| Saved UI филтър „Текуща/Всички държави“ | ⏳ остава (модел готов; смисъл при 2-ра държава с данни) |
+| Country URL routes `/countries/:slug/...` / Playwright | ⏳ остава |
 
 ## Забележки за RO
 - Официални портали (проверени чрез търсене, gov домейни): **MIPE — mfe.gov.ro**
