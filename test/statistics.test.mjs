@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 import { aggregateBudgets, aggregateEurope, checkSnapshotAnomalies, pickPublishedSnapshotDate } from "../src/ingestion/core/statistics.js";
 
 let passed = 0;
-const t = (name, fn) => { fn(); passed++; console.log("ok -", name); };
+// Под vitest (globals: true) `it` е глобален → регистрира се като истински тест.
+// Без vitest (директно с `node`) пада на ръчния брояч по-долу.
+const t = typeof it === "function" ? it : (name, fn) => { fn(); passed++; console.log("ok -", name); };
 
 // --- Бюджети ---
 t("сумира само валидни структурирани EUR стойности", () => {

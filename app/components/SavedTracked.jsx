@@ -52,7 +52,9 @@ export default function SavedTracked({ savedProjects, now, savedMeta, notes, onN
     else groups.stable.push(p);
   }
 
-  const Block = ({ title, tone, items }) =>
+  // Обикновена функция (не компонент/не <Block/>) — иначе React я третира като
+  // нов тип при всеки render на SavedTracked и размонтира/монтира наново редовете.
+  const renderBlock = ({ title, tone, items }) =>
     items.length === 0 ? null : (
       <div className="saved-block">
         <div className="saved-block-head"><span className={"badge " + tone}>{title}</span><span className="count-dot">{items.length}</span></div>
@@ -74,9 +76,9 @@ export default function SavedTracked({ savedProjects, now, savedMeta, notes, onN
         <div className="state ov-empty"><Icon name="bookmark" size={26} /><h3>{t("saved.emptyTitle")}</h3><p>{t("saved.emptyText")}</p></div>
       ) : (
         <>
-          <Block title={t("saved.attention")} tone="amber" items={groups.attention} />
-          <Block title={t("saved.noChanges")} tone="green" items={groups.stable} />
-          <Block title={t("saved.done")} tone="neutral" items={groups.done} />
+          {renderBlock({ title: t("saved.attention"), tone: "amber", items: groups.attention })}
+          {renderBlock({ title: t("saved.noChanges"), tone: "green", items: groups.stable })}
+          {renderBlock({ title: t("saved.done"), tone: "neutral", items: groups.done })}
         </>
       )}
     </section>

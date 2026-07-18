@@ -13,6 +13,16 @@ export const CATEGORIES = [
 
 export const CHANGELOG_ENTRIES = [
   {
+    version: "2.31.1", category: "fix", published_at: "2026-07-18", affected_route: null,
+    title: "Тестовете вече минават изцяло в CI (GitHub Actions)",
+    summary: "Поправен бъг с компоненти, дефинирани вътре в друг компонент — водеше до размонтиране на карти/чекбоксове по средата на взаимодействие. Включени всички .test.mjs файлове в тестовия suite.",
+    content: [
+      "DashboardShell/FilterPanel/SavedTracked вече не дефинират под-компоненти вътре в render — React ги третираше като нов тип при всеки render и размонтираше DOM-а по средата на клик.",
+      "vitest вече включва и .test.mjs файловете (ai-providers, statistics, scheduler, country-foundation, profile-country, ai-pipeline) — преди се пропускаха изцяло.",
+      "Обновени тестове за реалната route-базирана навигация (usePathname/useRouter) и за новите периоди по подразбиране (7/30/90 + независим activityPeriod).",
+    ],
+  },
+  {
     version: "2.31.0", category: "feature", published_at: "2026-07-18", affected_route: "/admin",
     title: "Вечерен AI pipeline с ръчно и автоматично изпълнение",
     summary: "Активните AI модели вече могат да се стартират ръчно от администратор или автоматично в края на деня. Всеки модел изпълнява само своята задача, обработва само нови/променени записи и има отделни логове, статус и напредък.",

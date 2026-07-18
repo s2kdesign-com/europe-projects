@@ -7,7 +7,9 @@ import {
 } from "../src/ingestion/core/scheduler.js";
 
 let passed = 0;
-const t = (name, fn) => { fn(); passed++; console.log("ok -", name); };
+// Под vitest (globals: true) `it` е глобален → регистрира се като истински тест.
+// Без vitest (директно с `node`) пада на ръчния брояч по-долу.
+const t = typeof it === "function" ? it : (name, fn) => { fn(); passed++; console.log("ok -", name); };
 
 const C = (code, priority, ingestion_status = "active") => ({ code, priority, ingestion_status });
 // Интеграционен сценарий от спецификацията: BG active, RO active, GR connector_ready,

@@ -2,7 +2,28 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, within, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DashboardShell from "../app/components/DashboardShell.jsx";
+import I18nProvider from "../app/components/i18n/I18nProvider.jsx";
+import CountryProvider from "../app/components/country/CountryProvider.jsx";
 import { LS_SAVED } from "../app/lib/constants.js";
+
+// DashboardShell вече чете активния таб от реалния маршрут (usePathname), не от
+// вътрешно състояние — навигацията между /,/procedures,/calendar,/saved е истинска
+// смяна на страница (виж app/lib/routes.js). Извън Next.js App Router контекста
+// useRouter()/usePathname() хвърлят "invariant expected app router to be mounted",
+// затова мокваме next/navigation с прост, контролируем обект (nav.pathname се
+// задава директно от теста — сякаш потребителят вече е на този маршрут).
+const nav = vi.hoisted(() => ({ pathname: "/" }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => nav.pathname,
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), forward: vi.fn(), prefetch: vi.fn(), refresh: vi.fn() }),
+}));
+// next/link изисква същия App Router контекст за prefetch/навигация — за unit
+// тестовете само рендерираме обикновен <a>, навигацията не се тества тук.
+vi.mock("next/link", () => ({
+  default: ({ href, children, ...rest }) => (
+    <a href={typeof href === "string" ? href : href?.pathname || "/"} {...rest}>{children}</a>
+  ),
+}));
 
 const NOW = new Date(2026, 6, 12, 10, 0, 0);
 
@@ -21,23 +42,30 @@ const loadDetail = vi.fn(async (id) => ({
   ok: true,
 }));
 
-function renderShell(extra = {}) {
-  return render(<DashboardShell initialData={initialData} loadDetail={loadDetail} now={NOW} {...extra} />);
+// Обвива с реалните I18nProvider/CountryProvider (както RootLayout прави в app/layout.jsx)
+// — DashboardShell чете useTranslation() и useCountry() и извън тях хвърля грешка.
+function renderShell(path = "/", extra = {}) {
+  nav.pathname = path;
+  window.history.replaceState(null, "", path);
+  return render(
+    <I18nProvider>
+      <CountryProvider>
+        <DashboardShell initialData={initialData} loadDetail={loadDetail} now={NOW} {...extra} />
+      </CountryProvider>
+    </I18nProvider>
+  );
 }
 
 beforeEach(() => {
   window.localStorage.clear();
   window.history.replaceState(null, "", "/");
+  nav.pathname = "/";
   loadDetail.mockClear();
 });
 
-async function gotoProcedures(user) {
-  await user.click(screen.getByRole("button", { name: /Процедури/ }));
-}
-
 describe("DashboardShell — навигация и рендер", () => {
   it("показва KPI картите в Обзор", () => {
-    renderShell();
+    renderShell("/");
     expect(screen.getByText("Отворени процедури")).toBeInTheDocument();
     expect(screen.getByText("Изтичащи до 30 дни")).toBeInTheDocument();
     // 2 отворени (open) + 1 closing_soon = 3
@@ -46,7 +74,7 @@ describe("DashboardShell — навигация и рендер", () => {
   });
 
   it("показва резюмето от snapshot", () => {
-    renderShell();
+    renderShell("/");
     expect(screen.getByText("Тестово резюме.")).toBeInTheDocument();
   });
 });
@@ -54,8 +82,7 @@ describe("DashboardShell — навигация и рендер", () => {
 describe("Търсене и филтри", () => {
   it("българското търсене филтрира резултатите", async () => {
     const user = userEvent.setup();
-    renderShell();
-    await gotoProcedures(user);
+    renderShell("/procedures");
     const search = screen.getByLabelText("Търсене на процедури");
     await user.type(search, "иновации");
     await waitFor(() => {
@@ -66,8 +93,7 @@ describe("Търсене и филтри", () => {
 
   it("комбиниран филтър + „Изчисти всички“", async () => {
     const user = userEvent.setup();
-    renderShell();
-    await gotoProcedures(user);
+    renderShell("/procedures");
     // Отвори филтър по статус „Отворена“
     const openChk = screen.getByRole("checkbox", { name: /Отворена/ });
     await user.click(openChk);
@@ -83,8 +109,7 @@ describe("Търсене и филтри", () => {
 
   it("URL се синхронизира при търсене", async () => {
     const user = userEvent.setup();
-    renderShell();
-    await gotoProcedures(user);
+    renderShell("/procedures");
     await user.type(screen.getByLabelText("Търсене на процедури"), "зелени");
     await waitFor(() => expect(window.location.search).toContain("q=") );
   });
@@ -93,8 +118,7 @@ describe("Търсене и филтри", () => {
 describe("Запазени — устойчивост в localStorage", () => {
   it("запазването пише в localStorage", async () => {
     const user = userEvent.setup();
-    renderShell();
-    await gotoProcedures(user);
+    renderShell("/procedures");
     const card = screen.getByText("Младежка заетост+").closest("article");
     await user.click(within(card).getByRole("button", { name: /Запази/ }));
     await waitFor(() => {
@@ -107,8 +131,7 @@ describe("Запазени — устойчивост в localStorage", () => {
 describe("Сравнение — лимит 3", () => {
   it("не позволява повече от 3 процедури", async () => {
     const user = userEvent.setup();
-    renderShell();
-    await gotoProcedures(user);
+    renderShell("/procedures");
     const cards = screen.getAllByRole("article");
     for (const c of cards) {
       const btn = within(c).getByRole("button", { name: /сравнение/i });
@@ -123,10 +146,11 @@ describe("Сравнение — лимит 3", () => {
 describe("Детайли drawer — lazy документи и клавиатура", () => {
   it("отваря се, зарежда документи и се затваря с Escape", async () => {
     const user = userEvent.setup();
-    renderShell();
-    await gotoProcedures(user);
+    renderShell("/procedures");
     const card = screen.getByText("Младежка заетост+").closest("article");
-    await user.click(within(card).getByRole("button", { name: /Детайли/ }));
+    // Действието "Детайли" вече е реален линк (/procedures/:id) с preventDefault за
+    // модала (клавиатура/четци на екрана могат да го отворят и като страница).
+    await user.click(within(card).getByRole("link", { name: /Детайли/ }));
 
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toBeInTheDocument();
@@ -153,7 +177,14 @@ describe("Състояния: грешка + повторен опит", () => {
       if (calls === 1) throw new Error("boom");
       return initialData;
     });
-    render(<DashboardShell fetchList={fetchList} loadDetail={loadDetail} now={NOW} />);
+    nav.pathname = "/";
+    render(
+      <I18nProvider>
+        <CountryProvider>
+          <DashboardShell fetchList={fetchList} loadDetail={loadDetail} now={NOW} />
+        </CountryProvider>
+      </I18nProvider>
+    );
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Опитай пак/ }));
     await waitFor(() => expect(screen.getByText("Отворени процедури")).toBeInTheDocument());

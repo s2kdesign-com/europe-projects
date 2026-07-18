@@ -233,7 +233,11 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
     <ProjectListRow key={p.id} p={p} now={now} isSaved={isSavedFn(p.id)} inCompare={inCompareFn(p.id)} onOpen={openProcedure} onToggleSave={toggleSave} onToggleCompare={fx.toggleCompare} />
   );
 
-  function Results({ items }) {
+  // ВАЖНО: това е обикновена функция (не компонент, извиква се директно, не като
+  // <Results/>) — ако беше дефинирана като компонент вътре в DashboardShell, React
+  // би я третирал като НОВ тип при всеки render на родителя и би размонтирал/
+  // монтирал наново цялата решетка карти (губи фокус/скрол/DOM идентичност).
+  function renderResults(items) {
     if (items.length === 0) return <EmptyState message={t("filters.noMatch")} action={<button className="btn btn-primary" onClick={fx.clearAll}>{t("filters.clearFilters")}</button>} />;
     if (filters.view === "list") return <div className="list">{items.map(renderRow)}</div>;
     if (filters.view === "program")
@@ -288,7 +292,7 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
             </aside>
             <div>
               <ViewControls filters={filters} resultCount={filtered.length} totalCount={projects.length} onQuery={fx.setQuery} onSort={fx.setSort} onView={fx.setView} onOpenSheet={() => setSheetOpen(true)} onRemoveChip={(c) => (c.kind === "q" ? fx.setQuery("") : c.kind === "docs" ? fx.toggleInArray("docs") : c.kind === "changeWeek" ? fx.clearChangeWeek() : fx.toggleInArray(c.kind, c.val))} onClearAll={fx.clearAll} onExportCSV={() => exportCSV(filtered)} onPrint={() => window.print()} onCopyView={copyView} />
-              <Results items={filtered} />
+              {renderResults(filtered)}
             </div>
           </div>
         )}

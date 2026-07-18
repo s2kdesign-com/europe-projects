@@ -173,7 +173,7 @@ describe("groupByProgram", () => {
 });
 
 describe("URL синхронизация", () => {
-  it("serialize -> deserialize запазва състоянието", () => {
+  it("serialize -> deserialize запазва състоянието (tab вече е маршрут, не query параметър)", () => {
     const f = {
       ...EMPTY_FILTERS,
       q: "младеж",
@@ -184,7 +184,6 @@ describe("URL синхронизация", () => {
       docs: true,
       sort: "updated",
       view: "list",
-      tab: "procedures",
       selected: "abc",
     };
     const round = deserializeFilters(serializeFilters(f));
@@ -196,20 +195,25 @@ describe("URL синхронизация", () => {
     expect(round.docs).toBe(true);
     expect(round.sort).toBe("updated");
     expect(round.view).toBe("list");
-    expect(round.tab).toBe("procedures");
+    // "tab" вече е реален маршрут (/procedures, /calendar…), не query параметър —
+    // deserializeFilters винаги връща подразбиращия се tab (overview).
+    expect(round.tab).toBe(EMPTY_FILTERS.tab);
     expect(round.selected).toBe("abc");
   });
-  it("подразбиращите се стойности не се записват в URL (без периода, който винаги е там)", () => {
-    // Периодът за „Какво е ново" се записва винаги (?period=30), останалите
-    // подразбиращи се стойности се пропускат.
-    expect(serializeFilters(EMPTY_FILTERS)).toBe("period=30");
+  it("подразбиращите се стойности не се записват в URL (без периодите, които винаги са там)", () => {
+    // Периодите за „Какво е ново" (7/30/90) и „Активност на процедурите" (30/60/90)
+    // се записват винаги, останалите подразбиращи се стойности се пропускат.
+    expect(serializeFilters(EMPTY_FILTERS)).toBe("period=7&activityPeriod=90");
   });
   it("периодът се сериализира/десериализира и се валидира", () => {
-    expect(serializeFilters({ ...EMPTY_FILTERS, period: "60" })).toContain("period=60");
+    expect(serializeFilters({ ...EMPTY_FILTERS, period: "30" })).toContain("period=30");
     expect(deserializeFilters("?period=90").period).toBe("90");
-    // невалиден или липсващ период → 30
-    expect(deserializeFilters("?period=5").period).toBe("30");
-    expect(deserializeFilters("").period).toBe("30");
+    // невалиден или липсващ период → 7 (по подразбиране)
+    expect(deserializeFilters("?period=5").period).toBe("7");
+    expect(deserializeFilters("").period).toBe("7");
+    // Периодът за „Активност на процедурите" е независим (валидни ключове 30/60/90, default 90).
+    expect(serializeFilters({ ...EMPTY_FILTERS, activityPeriod: "60" })).toContain("activityPeriod=60");
+    expect(deserializeFilters("?activityPeriod=999").activityPeriod).toBe("90");
   });
   it("activeFilterCount брои филтрите (без sort/view/tab)", () => {
     expect(activeFilterCount({ ...EMPTY_FILTERS, q: "x", status: ["open"], docs: true })).toBe(3);

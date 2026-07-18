@@ -7,7 +7,9 @@ import { resolveCountry, countryFromLocales } from "../app/lib/country/resolve.j
 import { normalizeCountry, isValidCountry, getCountryBySlug, COUNTRIES } from "../app/lib/country/countries.js";
 
 let passed = 0;
-const t = (name, fn) => { fn(); passed++; console.log("ok -", name); };
+// Под vitest (globals: true) `it` е глобален → регистрира се като истински тест.
+// Без vitest (директно с `node`) пада на ръчния брояч по-долу.
+const t = typeof it === "function" ? it : (name, fn) => { fn(); passed++; console.log("ok -", name); };
 
 // --- Registry ---
 t("27 държави в регистъра", () => assert.equal(COUNTRIES.length, 27));

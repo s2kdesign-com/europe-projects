@@ -7,7 +7,9 @@ import {
 import { parseAndValidate, PROMPT_VERSIONS, buildPrompt } from "../worker/ai/prompts.js";
 
 let n = 0;
-const t = (name, fn) => { fn(); n++; console.log("ok -", name); };
+// Под vitest (globals: true) `it` е глобален → регистрира се като истински тест.
+// Без vitest (директно с `node`) пада на ръчния брояч по-долу.
+const t = typeof it === "function" ? it : (name, fn) => { fn(); n++; console.log("ok -", name); };
 
 t("future_chat и daily_review са изключени от pipeline-а", () => {
   assert.ok(isExcludedPurpose("future_chat"));

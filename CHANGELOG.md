@@ -3,6 +3,29 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.31.1] — 2026-07-18
+
+### Поправено
+- **GitHub Actions „Tests"**: вече минават всички 144 теста (преди: 12 провалени +
+  6 `.test.mjs` файла напълно пропускани от vitest). `vitest.config.js` вече включва
+  и `.test.mjs` (те ползват `it` от vitest, когато е наличен — под vitest, иначе
+  падат на ръчния brojач за директно пускане с `node`).
+- **DashboardShell/FilterPanel/SavedTracked**: премахнат бъг с компоненти,
+  дефинирани ВЪТРЕ в друг компонент (`Results`, `Group`, `Block`) — React ги
+  третираше като нов тип при всеки render на родителя и размонтираше/монтираше
+  наново цялата решетка карти/чекбоксове по средата на взаимодействие
+  (губеше клик/фокус/скрол; в тестове — detached DOM references по средата на
+  `userEvent.click`). Засегнатите вече са обикновени функции (`renderResults`,
+  `renderGroup`, `renderBlock`), извиквани директно, не като JSX тагове.
+- **test/dashboard.test.jsx**: DashboardShell вече чете активния таб от реалния
+  маршрут (`usePathname`/`useRouter`), не от вътрешно състояние — тестовете вече
+  мокват `next/navigation`/`next/link` и обвиват с `I18nProvider`/`CountryProvider`
+  (както `app/layout.jsx`), вместо да симулират клик за навигация в единична
+  инстанция.
+- **test/project-utils.test.js**: обновени очаквания за `serializeFilters`/
+  `deserializeFilters` — `tab` вече е маршрут, не query параметър; периодът по
+  подразбиране е `7` (не `30`), плюс независимия `activityPeriod` (default `90`).
+
 ## [2.31.0] — 2026-07-18
 
 ### Ново

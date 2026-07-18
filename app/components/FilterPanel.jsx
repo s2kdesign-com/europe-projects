@@ -16,7 +16,11 @@ export default function FilterPanel({ filters, programs, counts, onToggle, onCle
   const { t } = useTranslation();
   const nActive = activeFilterCount(filters);
 
-  const Group = ({ label, items, filterKey, countMap, labelFor }) => (
+  // ВАЖНО: обикновена функция (не компонент, извиква се директно, не като
+  // <Group/>) — иначе React я третира като нов тип при всеки render на
+  // FilterPanel и размонтира/монтира наново чекбоксовете (губи се клик/фокус
+  // по средата на взаимодействие, вкл. в тестове с userEvent).
+  const renderGroup = ({ label, items, filterKey, countMap, labelFor }) => (
     <fieldset className="fgroup" style={{ border: "none", margin: 0, padding: "12px 0", minInlineSize: 0 }}>
       <legend className="flabel" style={{ padding: 0 }}>{label}</legend>
       {items.map((it) => {
@@ -43,9 +47,9 @@ export default function FilterPanel({ filters, programs, counts, onToggle, onCle
         )}
       </h2>
 
-      <Group label={t("filters.statusLabel")} items={STATUS_LIST} filterKey="status" countMap={counts.status} labelFor={STATUS_KEY} />
-      <Group label={t("filters.targetGroup")} items={TARGET_GROUP_LIST} filterKey="target" countMap={counts.target} labelFor={(k) => TARGET_KEY[k]} />
-      <Group label={t("filters.deadlineLabel")} items={DEADLINE_WINDOWS} filterKey="deadline" labelFor={(k) => DEADLINE_KEY[k]} />
+      {renderGroup({ label: t("filters.statusLabel"), items: STATUS_LIST, filterKey: "status", countMap: counts.status, labelFor: STATUS_KEY })}
+      {renderGroup({ label: t("filters.targetGroup"), items: TARGET_GROUP_LIST, filterKey: "target", countMap: counts.target, labelFor: (k) => TARGET_KEY[k] })}
+      {renderGroup({ label: t("filters.deadlineLabel"), items: DEADLINE_WINDOWS, filterKey: "deadline", labelFor: (k) => DEADLINE_KEY[k] })}
 
       <fieldset className="fgroup" style={{ border: "none", margin: 0, padding: "12px 0", minInlineSize: 0 }}>
         <legend className="flabel" style={{ padding: 0 }}>{t("filters.program")}</legend>

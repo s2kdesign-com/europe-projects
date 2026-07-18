@@ -5,7 +5,9 @@ import { countryAdminLabels, normalizeCountry } from "../app/lib/country/countri
 import { revenueRanges } from "../app/lib/profile-taxonomy.js";
 
 let n = 0;
-function t(name, fn) { fn(); n++; console.log("ok -", name); }
+// Под vitest (globals: true) `it` е глобален → регистрира се като истински тест.
+// Без vitest (директно с `node`) пада на ръчния брояч по-долу.
+const t = typeof it === "function" ? it : function (name, fn) { fn(); n++; console.log("ok -", name); };
 
 t("BG етикети: Област/Община", () => {
   assert.deepEqual(countryAdminLabels("BG"), { region: "Област", municipality: "Община" });

@@ -8,7 +8,9 @@ const { encryptSecret, decryptSecret, fingerprintSecret, redactSecrets, isCrypto
 const { shouldFallback } = await import("../worker/ai/providers.js");
 
 let passed = 0;
-const t = async (name, fn) => { await fn(); passed++; console.log("ok -", name); };
+// Под vitest (globals: true) `it` е глобален → регистрира се като истински тест.
+// Без vitest (директно с `node`) пада на ръчния брояч по-долу.
+const t = typeof it === "function" ? it : async (name, fn) => { await fn(); passed++; console.log("ok -", name); };
 
 const ENV = { AI_CREDENTIALS_MASTER_KEY: Buffer.from(webcrypto.getRandomValues(new Uint8Array(32))).toString("base64") };
 const WRONG = { AI_CREDENTIALS_MASTER_KEY: Buffer.from(webcrypto.getRandomValues(new Uint8Array(32))).toString("base64") };
