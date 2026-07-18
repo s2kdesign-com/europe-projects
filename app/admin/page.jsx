@@ -21,6 +21,7 @@ function fmt(ts) {
 
 const TABS = [
   ["system", "Система", "grid"],
+  ["sources", "Източници", "layers"],
   ["users", "Потребители", "users"],
   ["errors", "Exceptions", "alert"],
   ["feedback", "Сигнали", "document"],
@@ -78,6 +79,7 @@ export default function AdminPage() {
         </div>
 
         {tab === "system" && <SystemTab session={session} />}
+        {tab === "sources" && <SourcesTab />}
         {tab === "users" && <UsersTab />}
         {tab === "errors" && <ErrorsTab />}
         {tab === "feedback" && <FeedbackTab />}
@@ -144,6 +146,178 @@ function SystemTab({ session }) {
         <p className="prose">Достъпът се управлява чрез роли: <strong>Потребител</strong> (базов достъп + профил и запазени), <strong>Премиум</strong> (за бъдещи разширени функции) и <strong>Администратор</strong> (тази конзола). Управлявайте ролите в раздел „Потребители".</p>
         <p className="chart-note"><Icon name="info" size={13} /> Данните за процедурите се обновяват автоматично всеки ден от насрочената задача. Тук няма деструктивни действия върху публичните данни.</p>
       </section>
+    </>
+  );
+}
+
+// --- Източници (funding_sources) — преглед, филтри, активиране, добавяне, редакция ---
+const HEALTH_OPTIONS = ["unknown", "healthy", "degraded", "failing", "blocked"];
+const EMPTY_SOURCE = { id: "", country_code: "", name: "", authority_name: "", base_url: "", calls_url: "", source_type: "portal", source_level: "national", source_language: "", coverage_description: "", priority: 100, verified: false, enabled: false, requires_javascript: false, primary_source: false };
+
+function SourcesTab() {
+  const [data, setData] = useState(null); // {sources, countries}
+  const [country, setCountry] = useState("");
+  const [flt, setFlt] = useState("all"); // all | enabled | disabled | verified | unverified | unhealthy
+  const [q, setQ] = useState("");
+  const [editing, setEditing] = useState(null); // id на редактирания или "new"
+  const [form, setForm] = useState(EMPTY_SOURCE);
+  const [msg, setMsg] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(() => {
+    fetch("/api/admin/sources", { credentials: "same-origin" }).then((r) => r.json()).then((d) => setData({ sources: d.sources || [], countries: d.countries || [] })).catch(() => setData({ sources: [], countries: [] }));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const flash = (m) => { setMsg(m); setTimeout(() => setMsg(null), 2500); };
+
+  const patch = async (id, body) => {
+    setSaving(true);
+    try {
+      const r = await fetch("/api/admin/sources/" + encodeURIComponent(id), { method: "PATCH", credentials: "same-origin", headers: { "content-type": "application/json", "X-Requested-With": "fetch" }, body: JSON.stringify(body) });
+      if (!r.ok) throw new Error();
+      flash("Записано."); load();
+    } catch { flash("Промяната не бе записана."); }
+    finally { setSaving(false); }
+  };
+
+  const create = async () => {
+    setSaving(true);
+    try {
+      const r = await fetch("/api/admin/sources", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json", "X-Requested-With": "fetch" }, body: JSON.stringify(form) });
+      if (!r.ok) throw new Error();
+      flash("Източникът е добавен."); setEditing(null); setForm(EMPTY_SOURCE); load();
+    } catch { flash("Добавянето не бе успешно (дублирано id или невалидни полета)."); }
+    finally { setSaving(false); }
+  };
+
+  const saveEdit = async () => {
+    const b = { ...form }; delete b.id; delete b.country_code;
+    await patch(editing, b);
+    setEditing(null); setForm(EMPTY_SOURCE);
+  };
+
+  if (data == null) return <section className="prof-card"><p className="prose">Зареждане…</p></section>;
+
+  const rows = data.sources.filter((s) => {
+    if (country && s.country_code !== country) return false;
+    if (flt === "enabled" && !s.enabled) return false;
+    if (flt === "disabled" && s.enabled) return false;
+    if (flt === "verified" && !s.verified) return false;
+    if (flt === "unverified" && s.verified) return false;
+    if (flt === "unhealthy" && ["healthy", "unknown"].includes(s.source_health)) return false;
+    if (q) { const h = `${s.id} ${s.name} ${s.authority_name || ""} ${s.base_url}`.toLowerCase(); if (!h.includes(q.toLowerCase())) return false; }
+    return true;
+  });
+  const cName = (code) => (data.countries.find((c) => c.code === code)?.name_bg) || code;
+  const healthTone = (h) => (h === "healthy" ? "green" : h === "degraded" ? "amber" : h === "failing" || h === "blocked" ? "red" : "neutral");
+
+  const editForm = (isNew) => (
+    <section className="prof-card">
+      <h2 className="prof-section-title">{isNew ? "Нов източник" : `Редакция: ${editing}`}</h2>
+      <div className="form-grid">
+        {isNew && <label className="field"><span className="field-label">ID (слъг, напр. gr-espa)</span><input className="inp" value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} /></label>}
+        {isNew && (
+          <label className="field"><span className="field-label">Държава</span>
+            <select className="inp" value={form.country_code} onChange={(e) => setForm({ ...form, country_code: e.target.value })}>
+              <option value="">—</option>
+              {data.countries.map((c) => <option key={c.code} value={c.code}>{c.code} · {c.name_bg}</option>)}
+            </select>
+          </label>
+        )}
+        <label className="field"><span className="field-label">Име</span><input className="inp" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+        <label className="field"><span className="field-label">Орган (authority)</span><input className="inp" value={form.authority_name || ""} onChange={(e) => setForm({ ...form, authority_name: e.target.value })} /></label>
+        <label className="field"><span className="field-label">Base URL</span><input className="inp" value={form.base_url} onChange={(e) => setForm({ ...form, base_url: e.target.value })} /></label>
+        <label className="field"><span className="field-label">Calls URL (покани)</span><input className="inp" value={form.calls_url || ""} onChange={(e) => setForm({ ...form, calls_url: e.target.value })} /></label>
+        <label className="field"><span className="field-label">Тип</span>
+          <select className="inp" value={form.source_type} onChange={(e) => setForm({ ...form, source_type: e.target.value })}>
+            {["portal", "authority", "agency", "application_system", "monitoring", "system", "rss", "api"].map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </label>
+        <label className="field"><span className="field-label">Ниво</span>
+          <select className="inp" value={form.source_level} onChange={(e) => setForm({ ...form, source_level: e.target.value })}>
+            {["national", "regional", "programme"].map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </label>
+        <label className="field"><span className="field-label">Език (код)</span><input className="inp inp-sm" value={form.source_language || ""} onChange={(e) => setForm({ ...form, source_language: e.target.value })} /></label>
+        <label className="field"><span className="field-label">Приоритет</span><input className="inp inp-sm" type="number" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} /></label>
+        <label className="field" style={{ gridColumn: "1 / -1" }}><span className="field-label">Покритие (описание)</span><input className="inp" value={form.coverage_description || ""} onChange={(e) => setForm({ ...form, coverage_description: e.target.value })} /></label>
+      </div>
+      <div className="check-cols" style={{ marginTop: 8 }}>
+        <label className="check"><input type="checkbox" checked={!!form.verified} onChange={(e) => setForm({ ...form, verified: e.target.checked })} /><span>Проверен (verified)</span></label>
+        <label className="check"><input type="checkbox" checked={!!form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} /><span>Активен (enabled — production sync)</span></label>
+        <label className="check"><input type="checkbox" checked={!!form.primary_source} onChange={(e) => setForm({ ...form, primary_source: e.target.checked })} /><span>Основен източник</span></label>
+        <label className="check"><input type="checkbox" checked={!!form.requires_javascript} onChange={(e) => setForm({ ...form, requires_javascript: e.target.checked })} /><span>Изисква JavaScript</span></label>
+      </div>
+      <div className="prof-actions">
+        <button className="btn btn-primary" disabled={saving} onClick={isNew ? create : saveEdit}><Icon name="check" size={16} /> {isNew ? "Добави източника" : "Запази промените"}</button>
+        <button className="btn" onClick={() => { setEditing(null); setForm(EMPTY_SOURCE); }}>Отказ</button>
+      </div>
+      <p className="chart-note"><Icon name="info" size={13} /> Добавяйте само официални източници (държавни портали и управляващи органи). „Активен“ включва източника в автоматичната синхронизация — само след проверка и QA.</p>
+    </section>
+  );
+
+  return (
+    <>
+      <section className="prof-card">
+        <div className="ov-section-head" style={{ flexWrap: "wrap", gap: 8 }}>
+          <h2 className="prof-section-title" style={{ margin: 0 }}>Източници</h2>
+          <span className="count-dot">{rows.length}</span>
+          {msg && <span className="save-ok" role="status"><Icon name="check" size={14} /> {msg}</span>}
+          <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <select className="inp inp-sm" value={country} onChange={(e) => setCountry(e.target.value)} aria-label="Филтър по държава">
+              <option value="">Всички държави</option>
+              {data.countries.map((c) => <option key={c.code} value={c.code}>{c.code} · {c.name_bg} ({data.sources.filter((s) => s.country_code === c.code).length})</option>)}
+            </select>
+            <select className="inp inp-sm" value={flt} onChange={(e) => setFlt(e.target.value)} aria-label="Филтър по статус">
+              <option value="all">Всички статуси</option>
+              <option value="enabled">Само активни</option>
+              <option value="disabled">Само неактивни</option>
+              <option value="verified">Само проверени</option>
+              <option value="unverified">Непроверени</option>
+              <option value="unhealthy">Проблемни (health)</option>
+            </select>
+            <input className="inp inp-sm" placeholder="Търсене…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Търсене в източниците" />
+            <button className="btn btn-ghost" onClick={load}><Icon name="refresh" size={16} /> Обнови</button>
+            <button className="btn btn-primary" onClick={() => { setEditing("new"); setForm(EMPTY_SOURCE); }}><Icon name="sparkle" size={16} /> Добави</button>
+          </div>
+        </div>
+
+        <div className="table-scroll">
+          <table className="admin-table">
+            <thead><tr><th>Държава</th><th>Източник</th><th>URL</th><th>Тип/Ниво</th><th>Приор.</th><th>Verified</th><th>Активен</th><th>Health</th><th>Посл. успех</th><th></th></tr></thead>
+            <tbody>
+              {rows.map((s) => (
+                <tr key={s.id}>
+                  <td className="nowrap">{s.country_code} · {cName(s.country_code)}</td>
+                  <td><strong>{s.name}</strong>{s.authority_name ? <div className="row-sub">{s.authority_name}</div> : null}{s.requires_javascript ? <span className="badge amber" style={{ marginTop: 2 }}>JS</span> : null}</td>
+                  <td className="mono" style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}><a href={s.base_url} target="_blank" rel="noopener noreferrer nofollow">{s.base_url.replace(/^https?:\/\//, "")}</a></td>
+                  <td className="nowrap">{s.source_type}<div className="row-sub">{s.source_level}</div></td>
+                  <td>{s.priority}</td>
+                  <td>
+                    <label className="check" style={{ margin: 0 }}><input type="checkbox" checked={!!s.verified} disabled={saving} onChange={(e) => patch(s.id, { verified: e.target.checked })} /><span className="sr-only">verified</span></label>
+                  </td>
+                  <td>
+                    <label className="check" style={{ margin: 0 }}><input type="checkbox" checked={!!s.enabled} disabled={saving} onChange={(e) => { if (e.target.checked && !s.verified) { flash("Първо маркирайте източника като проверен."); return; } patch(s.id, { enabled: e.target.checked }); }} /><span className="sr-only">enabled</span></label>
+                  </td>
+                  <td>
+                    <select className="inp inp-sm" value={s.source_health} disabled={saving} onChange={(e) => patch(s.id, { source_health: e.target.value })} aria-label="Source health">
+                      {HEALTH_OPTIONS.map((h) => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                    {s.consecutive_failures > 0 && <div className="row-sub"><span className={"badge " + healthTone(s.source_health)}>{s.consecutive_failures} грешки</span></div>}
+                  </td>
+                  <td className="nowrap">{s.last_success_at ? fmt(s.last_success_at) : "—"}</td>
+                  <td><button className="btn btn-ghost" onClick={() => { setEditing(s.id); setForm({ ...EMPTY_SOURCE, ...s }); }}><Icon name="document" size={14} /> Редакция</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {rows.length === 0 && <div className="state ov-empty"><Icon name="layers" size={26} /><h3>Няма източници по този филтър</h3><p>Променете филтрите или добавете нов източник.</p></div>}
+      </section>
+
+      {editing === "new" && editForm(true)}
+      {editing && editing !== "new" && editForm(false)}
     </>
   );
 }

@@ -188,6 +188,66 @@ export async function handleAuth(request, env, url) {
       return ok({});
     }
     if (pathname === "/api/admin/system" && method === "GET") return ok({ system: await systemInfo(env) });
+
+    // --- Източници (регистър funding_sources) ---
+    if (pathname === "/api/admin/sources" && method === "GET") {
+      const cc = url.searchParams.get("country");
+      const where = cc ? " WHERE country_code = ?1" : "";
+      const stmt = env.DB.prepare(`SELECT * FROM funding_sources${where} ORDER BY country_code, priority, id`);
+      const { results } = await (cc ? stmt.bind(normalizeCountry(cc) || "") : stmt).all();
+      const countries = await env.DB.prepare("SELECT code, name_bg, enabled, ingestion_status, source_count, active_source_count FROM countries ORDER BY priority").all();
+      return ok({ sources: results || [], countries: countries.results || [] });
+    }
+    if (pathname === "/api/admin/sources" && method === "POST") {
+      const b = (await readJson(request)) || {};
+      const cc = normalizeCountry(b.country_code);
+      if (!cc) return err("invalid_country", 400);
+      if (!b.id || !b.name || !b.base_url) return err("missing_fields", 400);
+      const now = nowISO();
+      try {
+        await env.DB.prepare(
+          `INSERT INTO funding_sources (id, country_code, name, authority_name, authority_type, base_url, calls_url, programmes_url, source_type, source_level, official, primary_source, coverage_description, source_language, parser_type, adapter_key, priority, enabled, verified, requires_javascript, source_health, created_at, updated_at)
+           VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,1,?11,?12,?13,'pending',?14,?15,?16,?17,?18,'unknown',?19,?19)`
+        ).bind(
+          String(b.id).slice(0, 80), cc, String(b.name).slice(0, 200), b.authority_name ? String(b.authority_name).slice(0, 200) : null,
+          b.authority_type ? String(b.authority_type).slice(0, 40) : null, String(b.base_url).slice(0, 500),
+          b.calls_url ? String(b.calls_url).slice(0, 500) : null, b.programmes_url ? String(b.programmes_url).slice(0, 500) : null,
+          b.source_type ? String(b.source_type).slice(0, 40) : "portal", b.source_level ? String(b.source_level).slice(0, 40) : "national",
+          b.primary_source ? 1 : 0, b.coverage_description ? String(b.coverage_description).slice(0, 500) : null,
+          b.source_language ? String(b.source_language).slice(0, 10) : null, cc.toLowerCase(),
+          Number.isFinite(Number(b.priority)) ? Math.floor(Number(b.priority)) : 100,
+          b.enabled ? 1 : 0, b.verified ? 1 : 0, b.requires_javascript ? 1 : 0, now
+        ).run();
+      } catch { return err("duplicate_or_invalid", 400); }
+      await env.DB.prepare("INSERT INTO source_audit_log (source_id, country_code, checked_at, checked_by, status, result_summary, notes) VALUES (?1,?2,?3,?4,'admin_created','Добавен ръчно от администратор', NULL)").bind(b.id, cc, now, s.user.email || "admin").run();
+      await env.DB.prepare("UPDATE countries SET source_count=(SELECT COUNT(*) FROM funding_sources WHERE country_code=?1), active_source_count=(SELECT COUNT(*) FROM funding_sources WHERE country_code=?1 AND enabled=1), updated_at=?2 WHERE code=?1").bind(cc, now).run();
+      return ok({});
+    }
+    if (pathname.startsWith("/api/admin/sources/") && method === "PATCH") {
+      const id = decodeURIComponent(pathname.slice("/api/admin/sources/".length));
+      const existing = await env.DB.prepare("SELECT id, country_code FROM funding_sources WHERE id=?1").bind(id).first();
+      if (!existing) return err("not_found", 404);
+      const b = (await readJson(request)) || {};
+      const now = nowISO();
+      // Whitelist на редактируемите полета.
+      const strs = ["name", "authority_name", "authority_type", "base_url", "calls_url", "programmes_url", "source_type", "source_level", "coverage_description", "source_language", "update_frequency"];
+      const bools = ["enabled", "verified", "primary_source", "requires_javascript", "robots_checked", "terms_checked"];
+      const sets = [], vals = [];
+      for (const k of strs) if (k in b) { sets.push(`${k}=?${vals.length + 1}`); vals.push(b[k] == null ? null : String(b[k]).slice(0, 500)); }
+      for (const k of bools) if (k in b) { sets.push(`${k}=?${vals.length + 1}`); vals.push(b[k] ? 1 : 0); }
+      if ("priority" in b && Number.isFinite(Number(b.priority))) { sets.push(`priority=?${vals.length + 1}`); vals.push(Math.floor(Number(b.priority))); }
+      if ("source_health" in b && ["unknown", "healthy", "degraded", "failing", "blocked"].includes(b.source_health)) { sets.push(`source_health=?${vals.length + 1}`); vals.push(b.source_health); }
+      if (!sets.length) return err("no_changes", 400);
+      sets.push(`updated_at=?${vals.length + 1}`); vals.push(now);
+      vals.push(id);
+      await env.DB.prepare(`UPDATE funding_sources SET ${sets.join(", ")} WHERE id=?${vals.length}`).bind(...vals).run();
+      if ("enabled" in b || "verified" in b) {
+        await env.DB.prepare("INSERT INTO source_audit_log (source_id, country_code, checked_at, checked_by, status, result_summary) VALUES (?1,?2,?3,?4,'admin_updated',?5)")
+          .bind(id, existing.country_code, now, s.user.email || "admin", `Администратор: enabled=${b.enabled != null ? (b.enabled ? 1 : 0) : "—"}, verified=${b.verified != null ? (b.verified ? 1 : 0) : "—"}`).run();
+      }
+      await env.DB.prepare("UPDATE countries SET source_count=(SELECT COUNT(*) FROM funding_sources WHERE country_code=?1), active_source_count=(SELECT COUNT(*) FROM funding_sources WHERE country_code=?1 AND enabled=1), updated_at=?2 WHERE code=?1").bind(existing.country_code, now).run();
+      return ok({});
+    }
     if (pathname === "/api/admin/errors" && method === "GET") return ok({ errors: await data.listErrors(env, url.searchParams.get("limit")) });
     if (pathname === "/api/admin/errors" && method === "DELETE") return ok(await data.clearErrors(env));
     if (pathname === "/api/admin/feedback" && method === "GET") return ok({ feedback: await listFeedback(env, url.searchParams.get("limit")) });
