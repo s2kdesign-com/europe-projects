@@ -399,7 +399,9 @@
     "sourcesStatSources": "Официални източника",
     "sourcesByCountry": "Източници по държава",
     "sourcesCountLabel": "{{count}} източника",
-    "sourcesCountOne": "1 източник"
+    "sourcesCountOne": "1 източник",
+    "sourcesStatProcedures": "Брой процедури",
+    "sourcesStatBudget": "Общ бюджет"
   },
   "welcome": {
     "aiBadge": "AI платформа за финансиране",

@@ -3,6 +3,18 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.30.3] — 2026-07-18
+
+### Подобрено
+- **/sources обзор**: +2 кутийки — „Брой процедури“ (totalProcedures) и „Общ бюджет“
+  (publishedBudgetEur, компактен EUR) от platform-statistics.
+
+## [2.30.2] — 2026-07-18
+
+### Подобрено
+- **Footer** центриран на 3 реда: „Made with Love 💗 by Svetlin Krastanov“
+  (→ linktr.ee/Magik3a), после s2kdesign.com © + права, после версията.
+
 ## [2.30.1] — 2026-07-18
 
 ### Подобрено

@@ -16,6 +16,7 @@ export default function SourcesOverview() {
   const uiLang = i18n.language;
   const { selectedCountry, setCountry } = useCountry();
   const [rows, setRows] = useState(null);
+  const [pstats, setPstats] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -23,8 +24,15 @@ export default function SourcesOverview() {
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
       .then((d) => { if (alive && Array.isArray(d.countries)) setRows(d.countries); })
       .catch(() => { if (alive) setRows([]); });
+    fetch("/api/public/platform-statistics")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive && d && d.summary) setPstats(d.summary); })
+      .catch(() => {});
     return () => { alive = false; };
   }, []);
+
+  const nf = useMemo(() => new Intl.NumberFormat(uiLang === "bg" ? "bg-BG" : "en-US"), [uiLang]);
+  const cf = useMemo(() => new Intl.NumberFormat(uiLang === "bg" ? "bg-BG" : "en-US", { style: "currency", currency: "EUR", notation: "compact", maximumFractionDigits: 1 }), [uiLang]);
 
   const sorted = useMemo(() => {
     if (!rows) return [];
@@ -53,6 +61,14 @@ export default function SourcesOverview() {
         <div className="so-stat">
           <span className="so-stat-num">{rows ? totalSources : "—"}</span>
           <span className="so-stat-label">{t("country.sourcesStatSources")}</span>
+        </div>
+        <div className="so-stat">
+          <span className="so-stat-num">{pstats ? nf.format(pstats.totalProcedures) : "—"}</span>
+          <span className="so-stat-label">{t("country.sourcesStatProcedures")}</span>
+        </div>
+        <div className="so-stat">
+          <span className="so-stat-num">{pstats && pstats.publishedBudgetEur != null ? cf.format(pstats.publishedBudgetEur) : "—"}</span>
+          <span className="so-stat-label">{t("country.sourcesStatBudget")}</span>
         </div>
       </div>
 

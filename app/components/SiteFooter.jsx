@@ -150,8 +150,13 @@ export default function SiteFooter({ session: sessionProp }) {
 
       <div className="sf-bottom">
         <div className="container sf-bottom-inner">
-          Made with Love <span className="heart" aria-hidden="true">💗</span> by{" "}
-          <a href="https://s2kdesign.com" target="_blank" rel="noopener noreferrer">s2kdesign.com</a> © {year} {t("footer.rights")}
+          <span className="sf-made">
+            Made with Love <span className="heart" aria-hidden="true">💗</span> by{" "}
+            <a href="https://linktr.ee/Magik3a" target="_blank" rel="noopener noreferrer">Svetlin Krastanov</a>
+          </span>
+          <span className="sf-copy">
+            <a href="https://s2kdesign.com" target="_blank" rel="noopener noreferrer">s2kdesign.com</a> © {year} {t("footer.rights")}
+          </span>
           <span className="sf-version">v{APP_VERSION}</span>
         </div>
       </div>
