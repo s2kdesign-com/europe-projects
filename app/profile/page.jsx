@@ -1,20 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AccountHeader from "../components/AccountHeader.jsx";
 import Icon from "../components/Icon.jsx";
 import { GoogleG } from "../components/UserMenu.jsx";
 import LanguageRegionSection from "../components/LanguageRegionSection.jsx";
 import { useSession } from "../hooks/useSession.js";
 import { downloadTextFile } from "../lib/browser.js";
-import { ORGANIZATION_TYPES, ORG_SIZES, EMPLOYEE_RANGES, REVENUE_RANGES, SECTORS, REGIONS, APPLICANT_TYPES, INTERESTS } from "../lib/profile-taxonomy.js";
+import { ORGANIZATION_TYPES, ORG_SIZES, EMPLOYEE_RANGES, revenueRanges, SECTORS, APPLICANT_TYPES, INTERESTS } from "../lib/profile-taxonomy.js";
+import { useCountry } from "../components/country/CountryProvider.jsx";
+import { countryAdminLabels } from "../lib/country/countries.js";
 import { useUiTranslate, UiTrContext, useUiTr } from "../lib/i18n/ui-translate.js";
 
 // Всички български етикети на страницата (структура + таксономия) — за batch превод.
 const TAXONOMY_LABELS = [
   ...ORGANIZATION_TYPES.map((x) => x.label), ...ORG_SIZES.map((x) => x.label),
-  ...EMPLOYEE_RANGES.map((x) => x.label), ...REVENUE_RANGES.map((x) => x.label),
-  ...SECTORS, ...REGIONS, ...APPLICANT_TYPES.map((x) => x.label), ...INTERESTS.map((x) => x.label),
+  ...EMPLOYEE_RANGES.map((x) => x.label),
+  ...SECTORS, ...APPLICANT_TYPES.map((x) => x.label), ...INTERESTS.map((x) => x.label),
 ];
 const STRUCT_LABELS = [
   "Моят профил", "Използва се за препоръки и филтриране. Данните се пазят в акаунта ви.",
@@ -57,6 +59,32 @@ export default function ProfilePage() {
   const [prefs, setPrefs] = useState(EMPTY_PREFS);
   const [completion, setCompletion] = useState(0);
   const [programs, setPrograms] = useState([]);
+  // Country-aware профилни опции: региони, програми и валута за избраната държава
+  // (НЕ hardcoded български области/BGN). Виж /api/countries/profile-options.
+  const { selectedCountry } = useCountry();
+  const [copts, setCopts] = useState({ regions: [], programmes: [], currency: "EUR", coverageStatus: "none" });
+  const prevCountryRef = useRef(null);
+  useEffect(() => {
+    let alive = true;
+    const controller = new AbortController();
+    fetch("/api/countries/profile-options?country=" + encodeURIComponent(selectedCountry), { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
+      .then((d) => { if (alive && d.ok) setCopts(d); })
+      .catch(() => {});
+    return () => { alive = false; controller.abort(); };
+  }, [selectedCountry]);
+  // Смяна на държавата при попълнени country-specific стойности → потвърждение +
+  // изчистване САМО на несъвместимите (региони/община/програми); универсалните остават.
+  useEffect(() => {
+    if (prevCountryRef.current == null) { prevCountryRef.current = selectedCountry; return; }
+    if (prevCountryRef.current === selectedCountry) return;
+    const hadCountryData = profile.region || profile.municipality || (profile.preferred_regions || []).length || (profile.preferred_programs || []).length;
+    if (hadCountryData) {
+      const okd = confirm("Промяна на държавата за финансиране\n\nРегионите, програмите и част от финансовите предпочитания са специфични за държавата. При промяната несъвместимите стойности ще бъдат изчистени.");
+      if (okd) setProfile((f) => ({ ...f, region: "", municipality: "", preferred_regions: [], preferred_programs: [] }));
+    }
+    prevCountryRef.current = selectedCountry;
+  }, [selectedCountry]); // eslint-disable-line react-hooks/exhaustive-deps
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
   const [formError, setFormError] = useState(null);
@@ -75,7 +103,7 @@ export default function ProfilePage() {
         const [p, pr, proj] = await Promise.all([
           fetch("/api/profile", { credentials: "same-origin" }).then((r) => r.json()),
           fetch("/api/preferences", { credentials: "same-origin" }).then((r) => r.json()),
-          fetch("/api/projects").then((r) => r.json()).catch(() => ({ projects: [] })),
+          fetch("/api/projects?country=" + encodeURIComponent(selectedCountry)).then((r) => r.json()).catch(() => ({ projects: [] })),
         ]);
         if (!alive) return;
         if (p.profile) {
@@ -83,7 +111,7 @@ export default function ProfilePage() {
           setCompletion(p.profile.profile_completion_percentage || 0);
         }
         if (pr.preferences) setPrefs({ ...EMPTY_PREFS, ...pr.preferences });
-        setPrograms([...new Set((proj.projects || []).map((x) => x.program).filter(Boolean))].sort((a, b) => a.localeCompare(b, "bg")));
+        setPrograms([...new Set((proj.projects || []).map((x) => x.program).filter(Boolean))].sort((a, b) => a.localeCompare(b, "bg"))); // fallback; профилът ползва copts.programmes
       } finally {
         if (alive) setReady(true);
       }
@@ -94,6 +122,30 @@ export default function ProfilePage() {
   const set = (k, v) => setProfile((f) => ({ ...f, [k]: v }));
   const toggleArr = (k, val) => setProfile((f) => ({ ...f, [k]: (f[k] || []).includes(val) ? f[k].filter((x) => x !== val) : [...(f[k] || []), val] }));
   const setPref = (k, v) => setPrefs((p) => ({ ...p, [k]: v }));
+
+  const adminL = countryAdminLabels(selectedCountry);
+  // value = стабилен код; ако старата запазена стойност е име (стар BG формат) —
+  // добавяме я като опция, за да не се "губи" визуално, докато не бъде презаписана.
+  const regionOptions = useMemo(() => {
+    const opts = (copts.regions || []).map((r) => ({ key: r.code, label: r.name }));
+    const known = new Set(opts.flatMap((o) => [o.key, o.label]));
+    if (profile.region && !known.has(profile.region)) opts.unshift({ key: profile.region, label: profile.region });
+    return opts;
+  }, [copts.regions, profile.region]);
+  const regionValue = profile.region;
+  const programmeOptions = useMemo(() => {
+    const fromCountry = (copts.programmes || []).map((p2) => ({ key: p2.name, label: p2.name }));
+    if (fromCountry.length) return fromCountry;
+    return programs.map((p2) => ({ key: p2, label: p2 }));
+  }, [copts.programmes, programs]);
+  // Динамичните имена (региони/програми) също минават през batch превода.
+  const dynamicLabels = useMemo(() => [
+    ...regionOptions.map((o) => o.label),
+    ...programmeOptions.map((o) => o.label),
+    adminL.region, adminL.municipality,
+    `Годишен оборот (${copts.currency || "EUR"}, по избор)`,
+    ...revenueRanges(copts.currency).map((x) => x.label),
+  ], [regionOptions, programmeOptions, adminL, copts.currency]);
 
   const budgetInvalid = useMemo(() => {
     const mn = Number(profile.minimum_project_budget), mx = Number(profile.maximum_project_budget);
@@ -134,7 +186,7 @@ export default function ProfilePage() {
     window.location.href = "/";
   };
 
-  const tl = useUiTranslate(ALL_PROFILE_LABELS);
+  const tl = useUiTranslate([...ALL_PROFILE_LABELS, ...dynamicLabels]);
 
   // --- Състояния ---
   if (session.loading) return <><AccountHeader session={session} /><main id="main" className="container page"><p className="prose">{tl("Зареждане…")}</p></main></>;
@@ -193,11 +245,11 @@ export default function ProfilePage() {
           <div className="form-grid">
             <Field label="Име на организацията"><input className="inp" value={profile.organization_name} onChange={(e) => set("organization_name", e.target.value)} /></Field>
             <Field label="Тип организация"><Select value={profile.organization_type} onChange={(v) => set("organization_type", v)} options={ORGANIZATION_TYPES} /></Field>
-            <Field label="Регион"><Select value={profile.region} onChange={(v) => set("region", v)} options={REGIONS.map((r) => ({ key: r, label: r }))} /></Field>
-            <Field label="Община"><input className="inp" value={profile.municipality} onChange={(e) => set("municipality", e.target.value)} /></Field>
+            <Field label={adminL.region}><Select value={regionValue} onChange={(v) => set("region", v)} options={regionOptions} /></Field>
+            <Field label={adminL.municipality}><input className="inp" value={profile.municipality} onChange={(e) => set("municipality", e.target.value)} /></Field>
             <Field label="Размер"><Select value={profile.organization_size} onChange={(v) => set("organization_size", v)} options={ORG_SIZES} /></Field>
             <Field label="Брой служители"><Select value={profile.employee_count_range} onChange={(v) => set("employee_count_range", v)} options={EMPLOYEE_RANGES} /></Field>
-            <Field label="Годишен оборот (по избор)"><Select value={profile.annual_revenue_range} onChange={(v) => set("annual_revenue_range", v)} options={REVENUE_RANGES} /></Field>
+            <Field label={`Годишен оборот (${copts.currency || "EUR"}, по избор)`}><Select value={profile.annual_revenue_range} onChange={(v) => set("annual_revenue_range", v)} options={revenueRanges(copts.currency)} /></Field>
             <Field label="Основен сектор"><Select value={profile.primary_sector} onChange={(v) => set("primary_sector", v)} options={SECTORS.map((s) => ({ key: s, label: s }))} /></Field>
           </div>
           <CheckGroup legend="Допълнителни сектори" items={SECTORS.map((s) => ({ key: s, label: s }))} selected={profile.additional_sectors} onToggle={(v) => toggleArr("additional_sectors", v)} />
@@ -214,7 +266,7 @@ export default function ProfilePage() {
 
         {/* 4. Предпочитания за финансиране */}
         <Section title="Предпочитания за финансиране">
-          <CheckGroup legend="Предпочитани програми" items={programs.map((p) => ({ key: p, label: p }))} selected={profile.preferred_programs} onToggle={(v) => toggleArr("preferred_programs", v)} />
+          <CheckGroup legend="Предпочитани програми" items={programmeOptions} selected={profile.preferred_programs} onToggle={(v) => toggleArr("preferred_programs", v)} />
           <CheckGroup legend="Тип кандидат" items={APPLICANT_TYPES} selected={profile.applicant_types} onToggle={(v) => toggleArr("applicant_types", v)} />
           <div className="form-grid">
             <Field label="Мин. бюджет (EUR)"><input className="inp" type="number" min="0" value={profile.minimum_project_budget} onChange={(e) => set("minimum_project_budget", e.target.value)} /></Field>
@@ -222,7 +274,7 @@ export default function ProfilePage() {
             <Field label="Макс. собствено финансиране (%)"><input className="inp" type="number" min="0" max="100" value={profile.maximum_self_financing_percentage} onChange={(e) => set("maximum_self_financing_percentage", e.target.value)} /></Field>
           </div>
           {budgetInvalid && <p className="field-err"><Icon name="alert" size={13} /> {tl("Минималният бюджет е по-голям от максималния.")}</p>}
-          <CheckGroup legend="Предпочитани региони" items={REGIONS.map((r) => ({ key: r, label: r }))} selected={profile.preferred_regions} onToggle={(v) => toggleArr("preferred_regions", v)} />
+          <CheckGroup legend="Предпочитани региони" items={regionOptions} selected={profile.preferred_regions} onToggle={(v) => toggleArr("preferred_regions", v)} />
         </Section>
 
         {/* 5. Известия */}

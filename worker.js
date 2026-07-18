@@ -165,6 +165,29 @@ export default {
         return json({ countries: rows.results || [], ok: true });
       }
 
+      // Country-aware профилни опции (batch): региони + програми + валута.
+      // Профилът НЕ ползва hardcoded български области/програми/BGN.
+      if (pathname === "/api/countries/profile-options") {
+        const country = requestedCountry(url);
+        if (!country) return json({ ok: false, error: "invalid_country" }, 400);
+        const regions = await env.DB.prepare(
+          "SELECT code, name, native_name FROM country_regions WHERE country_code=?1 AND enabled=1 AND level=1 ORDER BY sort_order"
+        ).bind(country).all();
+        const programmes = await env.DB.prepare(
+          "SELECT program AS name, COUNT(*) AS active_count FROM projects WHERE country_code=?1 AND program IS NOT NULL AND program != '' GROUP BY program ORDER BY active_count DESC"
+        ).bind(country).all();
+        const meta = await env.DB.prepare("SELECT code, currency_code, enabled, coverage_status, ingestion_status FROM countries WHERE code=?1").bind(country).first();
+        return json({
+          ok: true,
+          country,
+          currency: meta ? meta.currency_code : "EUR",
+          enabled: meta ? !!meta.enabled : false,
+          coverageStatus: meta ? meta.coverage_status : "none",
+          regions: regions.results || [],
+          programmes: programmes.results || [],
+        });
+      }
+
       // Публичен списък на официалните източници за държава. Само безопасни полета —
       // без вътрешни parser грешки / инфраструктурни детайли.
       if (pathname === "/api/sources") {

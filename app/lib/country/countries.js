@@ -59,3 +59,24 @@ export function countryLabel(country, uiLang) {
   if (!country) return "";
   return uiLang === "bg" ? country.nameBg : country.english;
 }
+
+// Административни етикети per държава (на български — превеждат се чрез batch
+// превода в UI-то). НЕ използваме „Област" за всички държави.
+const ADMIN_LABELS = {
+  BG: { region: "Област", municipality: "Община" },
+  RO: { region: "Окръг", municipality: "Община / населено място" },
+  DE: { region: "Федерална провинция", municipality: "Община" },
+  PL: { region: "Воеводство", municipality: "Гмина" },
+  GR: { region: "Регион", municipality: "Община" },
+  AT: { region: "Федерална провинция", municipality: "Община" },
+  ES: { region: "Автономна област", municipality: "Община" },
+  IT: { region: "Регион", municipality: "Община" },
+  FR: { region: "Регион", municipality: "Община" },
+  NL: { region: "Провинция", municipality: "Община" },
+  BE: { region: "Регион", municipality: "Община" },
+  CZ: { region: "Край", municipality: "Община" },
+  SK: { region: "Край", municipality: "Община" },
+};
+export function countryAdminLabels(code) {
+  return ADMIN_LABELS[normalizeCountry(code)] || { region: "Регион", municipality: "Община" };
+}

@@ -27,12 +27,19 @@ export const EMPLOYEE_RANGES = [
   { key: "250+", label: "250+" },
 ];
 
-export const REVENUE_RANGES = [
-  { key: "lt100k", label: "до 100 хил. лв." },
-  { key: "100k-1m", label: "100 хил. – 1 млн. лв." },
-  { key: "1m-5m", label: "1 – 5 млн. лв." },
-  { key: "gt5m", label: "над 5 млн. лв." },
-];
+// Оборотни диапазони — валутата е country-specific (НЕ hardcode-ната като лв.).
+// Ключовете са стабилни; етикетът се генерира с валутата на избраната държава.
+export function revenueRanges(currencyCode = "EUR") {
+  const cur = currencyCode || "EUR";
+  return [
+    { key: "lt100k", label: `до 100 хил. ${cur}` },
+    { key: "100k-1m", label: `100 хил. – 1 млн. ${cur}` },
+    { key: "1m-5m", label: `1 – 5 млн. ${cur}` },
+    { key: "gt5m", label: `над 5 млн. ${cur}` },
+  ];
+}
+// Съвместимост (стар списък — BGN); новият код ползва revenueRanges(currency).
+export const REVENUE_RANGES = revenueRanges("BGN");
 
 export const SECTORS = [
   "Информационни технологии",
