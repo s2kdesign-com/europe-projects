@@ -28,6 +28,11 @@ export default function SystemWelcomeModal({ onClose, onLogin, initialSection = 
   const trapRef = useFocusTrap(true, onClose);
   const [aiOpen, setAiOpen] = useState(initialSection === "ai");
   const aiRef = useRef(null);
+  // Публична безопасна AI конфигурация (както във footer-а) — без ключове/вътрешни данни.
+  const [aiCfg, setAiCfg] = useState({ dailyReview: { provider: "Anthropic", model: "Claude Opus 4.8" }, systemAI: null });
+  useEffect(() => {
+    fetch("/api/ai/public-configuration").then((r) => (r.ok ? r.json() : null)).then((d) => { if (d && d.ok) setAiCfg(d); }).catch(() => {});
+  }, []);
   const { selectedCountry, suggestedCountry, setCountry } = useCountry();
   const [countryCollapsed, setCountryCollapsed] = useState(false);
   const uiLang = i18n.language;
@@ -129,13 +134,31 @@ export default function SystemWelcomeModal({ onClose, onLogin, initialSection = 
             </p>
           </section>
 
-          {/* Секция 3 — Полезно */}
+          {/* Секция 3 — AI модели (публична безопасна конфигурация) */}
+          <section className="welcome-sec welcome-ai-models">
+            <h3>{t("ai.modelsTitle")}</h3>
+            <p className="wm-ai-row"><Icon name="sparkle" size={13} aria-hidden="true" /> {t("ai.dailyUses", { model: aiCfg.dailyReview?.model || "Claude Opus 4.8", provider: aiCfg.dailyReview?.provider || "Anthropic" })}</p>
+            {aiCfg.systemAI && (
+              <p className="wm-ai-row"><Icon name="sparkle" size={13} aria-hidden="true" /> {aiCfg.systemAI.status === "active"
+                ? t("ai.systemUses", { model: aiCfg.systemAI.model, provider: aiCfg.systemAI.provider })
+                : t("ai.systemConfigured", { model: aiCfg.systemAI.model, provider: aiCfg.systemAI.provider })}</p>
+            )}
+            <button className="welcome-link" onClick={() => { setAiOpen(true); if (aiRef.current) aiRef.current.scrollIntoView({ block: "center", behavior: "smooth" }); }}>
+              <Icon name="sparkle" size={16} /> {t("ai.howWeUse")}
+            </button>
+          </section>
+
+          {/* Секция 4 — Полезно */}
           <section className="welcome-sec welcome-links">
             <h3>{t("welcome.usefulTitle")}</h3>
             <div className="welcome-links-row">
               <a className="welcome-link" href="/changelog"><Icon name="sparkle" size={16} /> {t("welcome.linkChangelog")}</a>
-              <a className="welcome-link" href="/cookies"><Icon name="info" size={16} /> {t("welcome.linkCookies")}</a>
+              <a className="welcome-link" href="/about"><Icon name="info" size={16} /> {t("footer.aboutSystem")}</a>
+              <a className="welcome-link" href="/sources"><Icon name="layers" size={16} /> {t("country.sourcesTitle")}</a>
+              <a className="welcome-link" href="/how-ai-works"><Icon name="sparkle" size={16} /> {t("footer.howAiWorks")}</a>
+              <a className="welcome-link" href="/terms"><Icon name="document" size={16} /> {t("footer.terms")}</a>
               <a className="welcome-link" href="/privacy"><Icon name="alert" size={16} /> {t("welcome.linkPrivacy")}</a>
+              <a className="welcome-link" href="/cookies"><Icon name="info" size={16} /> {t("welcome.linkCookies")}</a>
             </div>
             <p className="welcome-version">{APP_VERSION_LABEL}</p>
           </section>
