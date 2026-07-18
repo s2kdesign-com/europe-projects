@@ -88,6 +88,9 @@ export default function AboutPage() {
   const topBudget = [...countries].filter((c) => c.publishedBudgetEur > 0).sort((a, b) => b.publishedBudgetEur - a.publishedBudgetEur).slice(0, 5);
   const maxActive = topActive.length ? topActive[0].activeProcedures : 1;
   const chartRows = [...countries].sort((a, b) => b.totalProcedures - a.totalProcedures || b.activeSources - a.activeSources);
+  const sortedCountries = chartRows;
+  const [tableExpanded, setTableExpanded] = useState(false);
+  const tableRows = tableExpanded ? sortedCountries : sortedCountries.slice(0, 10);
   const [showAllChart, setShowAllChart] = useState(false);
   const visibleChart = showAllChart ? chartRows : chartRows.slice(0, 10);
   const maxTotal = Math.max(1, ...chartRows.map((c) => c.totalProcedures));
@@ -192,19 +195,19 @@ export default function AboutPage() {
                     </div>
                   )}
 
-                  {/* Текстова алтернатива на картата */}
-                  <details className="euro-table-details">
-                    <summary>{t("about.dataTable")}</summary>
+                  {/* Таблица с данни по държави: 10 реда + „Виж повече" */}
+                  <div className="euro-data-table">
+                    <h4 className="ab-h4">{t("about.dataTable")}</h4>
                     <div className="table-scroll">
                       <table className="admin-table">
                         <thead><tr><th>{t("country.label")}</th><th>{t("about.activeProcedures")}</th><th>{t("about.totalProcedures")}</th><th>{t("about.publishedBudget")}</th><th>{t("about.sources")}</th><th>{t("about.lastSync")}</th></tr></thead>
                         <tbody>
-                          {countries.map((c) => (
+                          {tableRows.map((c) => (
                             <tr key={c.code}>
-                              <td>{c.code} · {cName(c)}</td>
+                              <td><img className="country-flag" src={`/flags/${c.code.toLowerCase()}.svg`} alt="" aria-hidden="true" width={18} height={12} /> {cName(c)}</td>
                               <td>{nf.format(c.activeProcedures)}</td>
                               <td>{nf.format(c.totalProcedures)}</td>
-                              <td>{c.publishedBudgetEur != null ? cf.format(c.publishedBudgetEur) : "—"}</td>
+                              <td>{c.publishedBudgetEur != null ? cfc.format(c.publishedBudgetEur) : "—"}</td>
                               <td>{nf.format(c.activeSources)}</td>
                               <td>{c.lastSuccessfulSyncAt ? df.format(new Date(c.lastSuccessfulSyncAt)) : "—"}</td>
                             </tr>
@@ -212,7 +215,12 @@ export default function AboutPage() {
                         </tbody>
                       </table>
                     </div>
-                  </details>
+                    {sortedCountries.length > 10 && (
+                      <button className="btn btn-ghost btn-sm" onClick={() => setTableExpanded((v) => !v)} aria-expanded={tableExpanded}>
+                        {tableExpanded ? t("about.showLess") : `${t("about.showMore")} (${sortedCountries.length - 10})`}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Summary панел */}

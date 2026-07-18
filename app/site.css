@@ -437,3 +437,10 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
 @media (max-width: 640px) {
   .profile-savebar { width: calc(100% - 24px); justify-content: space-between; bottom: 12px; }
 }
+
+/* ── /about: таблица с данни по държави (v2.29.0) ───────────────────────── */
+.euro-data-table { margin-top: 18px; }
+.euro-data-table .ab-h4 { margin: 0 0 8px; font-size: 0.95rem; }
+.euro-data-table .table-scroll { border: 1px solid var(--line, #e3e8ef); border-radius: 10px; }
+.euro-data-table .country-flag { vertical-align: -1px; margin-right: 6px; border-radius: 2px; }
+.euro-data-table .btn-ghost { margin-top: 10px; }
