@@ -71,6 +71,10 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
 .welcome-login-text { margin: 10px 0; font-size: 13.5px; color: var(--muted); }
 .welcome-guest { width: 100%; justify-content: center; }
 /* Официални източници (страница + панел) */
+.sources-page-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
+.sources-page-head h1 { margin: 0; }
+.sources-page-lang { min-width: 220px; }
+@media (max-width: 560px) { .sources-page-lang { width: 100%; } }
 .sources-panel { margin-top: 8px; }
 .sources-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 .sources-head h2 { margin: 0; font-size: 18px; }

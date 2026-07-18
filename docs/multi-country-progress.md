@@ -1,7 +1,7 @@
 # Multi‑country rollout — прогрес
 
 Статус: жив документ. Поддържа се след всяка завършена стъпка.
-Последна редакция: 2026‑07‑18.
+Последна редакция: 2026‑07‑18 (run-20260718-0000).
 
 Легенда за статуси: `not_started, researching, sources_verified,
 connector_in_progress, connector_ready, dry_run_passed, backfilling, active,
@@ -14,33 +14,39 @@ degraded, blocked`.
 
 | Country | Research | Sources verified | Connector | Dry run | Backfill | Daily sync | UI enabled | QA |
 |---------|----------|------------------|-----------|---------|----------|------------|------------|----|
-| BG България (reference) | ✓ | ✓ | ✓ (external Scheduled Task) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| RO Румъния | ✓ | partial | connector_in_progress | ✗ | ✗ | ✗ | ✗ | ✗ |
-| GR Гърция | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| PL Полша | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| HR Хърватия | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| CZ Чехия | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| PT Португалия | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| SK Словакия | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| HU Унгария | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| SI Словения | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| IT Италия | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| ES Испания | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| DE Германия | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| FR Франция | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| LT Литва | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| LV Латвия | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| EE Естония | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| NL Нидерландия | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| BE Белгия | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| SE Швеция | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| FI Финландия | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| AT Австрия | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| IE Ирландия | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| DK Дания | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| CY Кипър | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| MT Малта | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
-| LU Люксембург | ✗ | ✗ | not_started | ✗ | ✗ | ✗ | ✗ | ✗ |
+| BG България (reference) | ✓ | ✓ (5 източника) | ✓ (Scheduled Task) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| RO Румъния | ✓ | partial (4; формат неуточнен) | connector_in_progress | ✗ | ✗ | ✗ | ✗ | ✗ |
+| GR Гърция | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| PL Полша | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| HR Хърватия | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| CZ Чехия | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| PT Португалия | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| SK Словакия | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| HU Унгария | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| SI Словения | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| IT Италия | portal ✓ | portal verified (ЕК; regional adapters) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| ES Испания | portal ✓ | portal verified (ЕК; regional adapters) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| DE Германия | portal ✓ | portal verified (ЕК; Länder adapters) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| FR Франция | portal ✓ | portal verified (ЕК; regional adapters) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| LT Литва | portal ✓ | portal verified (ЕК; esinvesticijos.lt за проверка) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| LV Латвия | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| EE Естония | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| NL Нидерландия | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| BE Белгия | portal ✓ | portal verified (ЕК; регионални програми) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| SE Швеция | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| FI Финландия | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| AT Австрия | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| IE Ирландия | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| DK Дания | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| CY Кипър | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| MT Малта | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+| LU Люксембург | portal ✓ | portal verified (ЕК) | researching | ✗ | ✗ | ✗ | ✗ | ✗ |
+
+Забележка (2026-07-18): Всичките 27 държави имат записан официален национален
+портал във `funding_sources` (verified=1, enabled=0 до QA) с доказателство в
+`source_audit_log` — официалният списък на ЕК „National single portals“
+(commission.europa.eu). „portal ✓“ = порталът е потвърден; техническият формат
+(API/RSS/HTML/JS) и пълното покритие се установяват при rollout-а на държавата.
 
 ## Foundation (общо, не per държава)
 | Компонент | Статус |
@@ -84,3 +90,11 @@ degraded, blocked`.
   automation или намиране на structured endpoint. Затова RO **не** е активна.
 - Следваща стъпка за RO: потвърди listing формата (search endpoint/RSS/HTML под JS),
   запиши в `funding_sources`, имплементирай `fetchCalls`, fixtures, dry run.
+- **2026-07-18 rollout check (run-20260718-0000):** raw fetch на `mfe.gov.ro/informatii-de-interes-public/anunturi/`
+  потвърди `requires_javascript=0` — server-rendered HTML таблица (Data publicare|Titlu|Descriere|
+  Categorie anunt|Status), но извадката съдържа само архивни записи от 2019‑2020, не текущия програмен
+  период 2021‑2027 — нужен е верният URL/секция за актуални покани преди implementация на parser.
+  `oportunitati-ue.gov.ro/en/apeluri/` пак върна празно тяло на суров fetch → JS-rendered SPA
+  потвърдено повторно; нужна е browser automation или открит JSON/API endpoint зад страницата.
+  Доказателства записани в `source_audit_log` (ro-mfe, ro-oportunitati). `rollout_status` остава
+  `sources_verified` — не е готов connector.

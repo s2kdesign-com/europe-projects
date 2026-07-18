@@ -44,7 +44,7 @@ export default function SiteFooter({ session: sessionProp }) {
           </div>
           <div className="sf-links">
             <button className="sf-link" onClick={() => emit("open-welcome")}>{t("footer.aboutSystem")}</button>
-            <button className="sf-link" onClick={() => emit("open-welcome")}>{t("footer.dataSources")}</button>
+            <a className="sf-link" href="/sources">{t("footer.dataSources")}</a>
           </div>
         </div>
 
