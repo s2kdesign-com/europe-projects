@@ -4,6 +4,7 @@
 import {
   createPipelineRun, enqueueProcedureJobs, processJobsBatch, reclaimExpiredLocks,
   cancelPendingJobs, retryFailedJobs, nightlyAlreadyRan, isExcludedPurpose, isPipelinePurpose,
+  recomputeAllAggregates, budgetDiagnostics,
 } from "./pipeline.js";
 
 const NO_STORE = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
@@ -121,6 +122,17 @@ export async function handleAIPipeline(request, env, url, userId, method, readJs
     await env.DB.prepare(`UPDATE ai_schedules SET ${sets.join(", ")}, updated_at=?${binds.length - 1} WHERE purpose=?${binds.length}`).bind(...binds).run();
     await audit(env, { actor: userId, action: "schedule_change", purpose, next: JSON.stringify(body) });
     return ok();
+  }
+
+  // Преизчисляване на агрегатите (БЕЗ AI разход) — от вече записаните валидни данни.
+  if (p === "/api/admin/ai/recompute-aggregates" && method === "POST") {
+    const n = await recomputeAllAggregates(env);
+    await audit(env, { actor: userId, action: "recompute_aggregates", next: JSON.stringify({ countries: n }) });
+    return ok({ recomputed: n });
+  }
+  // Диагностика на бюджетите по държави.
+  if (p === "/api/admin/ai/budget-diagnostics" && method === "GET") {
+    return ok({ diagnostics: await budgetDiagnostics(env) });
   }
 
   // Safe detail за един execution run (за разгъване в „AI логове").

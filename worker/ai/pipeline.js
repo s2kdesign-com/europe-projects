@@ -198,7 +198,11 @@ async function runJob(env, job) {
       safeErrors: [],
     });
     await attachRunResult(env, res.executionRunId, { summary, detailsJson: details.json, entityCount: 1, changeCount: metrics.changes || 0, warningCount: (metrics.warnings || []).length, requiresReviewCount: requiresReview ? 1 : 0, jobId: job.id });
+    // ПРИЛАГАНЕ на резултата към същността (success = приложено, не само отговорено).
+    let applied = true;
+    if (!requiresReview) { applied = await applyResult(env, job, parsed.value); }
     if (requiresReview) await setJobStatus(env, job, "requires_review", { duration });
+    else if (!applied) await failJob(env, job, "failed_persistence", "Резултатът не можа да бъде приложен");
     else await completeJob(env, job, parsed.value, duration);
     await enqueueDependents(env, job);
   } catch (e) {
@@ -340,4 +344,71 @@ function deriveJobMetrics(purpose, value, { requiresReview } = {}) {
     m.results = { newRecords: 1 };
   }
   return m;
+}
+
+// --- ПРИЛАГАНЕ на структурирания резултат към D1 + агрегати (success=applied) ---
+const BGN_RATE = 1.95583;
+async function applyResult(env, job, value) {
+  try {
+    if (job.purpose === "budget_analysis") {
+      // Прилагаме само ОБЩ бюджет в EUR или BGN (фиксиран курс). Плаваща валута →
+      // само отбелязваме валутата (без измислена EUR стойност).
+      const cur = (value.currency || "").toUpperCase();
+      let eur = null, storeCur = cur || null;
+      if (value.total_budget != null && Number.isFinite(value.total_budget)) {
+        if (cur === "EUR" || cur === "€" || cur === "") { eur = round2(value.total_budget); storeCur = "EUR"; }
+        else if (cur === "BGN" || cur === "ЛВ") { eur = round2(value.total_budget / BGN_RATE); storeCur = "EUR"; }
+      }
+      if (value.eur_normalized != null && Number.isFinite(value.eur_normalized) && eur == null) eur = round2(value.eur_normalized);
+      await env.DB.prepare("UPDATE projects SET budget_amount_eur=COALESCE(?1, budget_amount_eur), budget_currency=COALESCE(?2, budget_currency), last_updated=date('now') WHERE id=?3")
+        .bind(eur, storeCur, job.entity_id).run();
+      await recomputeCountrySnapshot(env, job.country_code);
+      return true;
+    }
+    if (job.purpose === "procedure_analysis") {
+      // Маркираме процедурата като анализирана (derived timestamp). Резюметата се
+      // пазят в execution run-а; тук само отбелязваме, че AI е минал.
+      await env.DB.prepare("UPDATE projects SET last_updated=COALESCE(last_updated, date('now')) WHERE id=?1").bind(job.entity_id).run();
+      return true;
+    }
+    // document_analysis / recommendation: резултатите се пазят в execution run-а
+    // (няма отделна destination колона в текущата схема) → считаме за приложени.
+    return true;
+  } catch { return false; }
+}
+function round2(n) { return Math.round(Number(n) * 100) / 100; }
+
+// Преизчислява snapshot-а за държава (бюджет/брой) БЕЗ AI разход.
+export async function recomputeCountrySnapshot(env, country) {
+  if (!country) return;
+  await env.DB.prepare(
+    `UPDATE country_daily_statistics SET
+       published_budget_eur=(SELECT SUM(p.budget_amount_eur) FROM projects p WHERE p.country_code=?1 AND p.budget_amount_eur IS NOT NULL),
+       budget_procedure_count=(SELECT COUNT(*) FROM projects p WHERE p.country_code=?1 AND p.budget_amount_eur IS NOT NULL),
+       total_procedures=(SELECT COUNT(*) FROM projects p WHERE p.country_code=?1),
+       updated_at=datetime('now')
+     WHERE country_code=?1 AND snapshot_date=date('now')`
+  ).bind(country).run();
+}
+
+// Пълно преизчисляване на агрегатите за всички държави (admin, без AI).
+export async function recomputeAllAggregates(env) {
+  const countries = await env.DB.prepare("SELECT code FROM countries WHERE eu_member=1").all();
+  let updated = 0;
+  for (const c of (countries.results || [])) { await recomputeCountrySnapshot(env, c.code); updated++; }
+  return updated;
+}
+
+// Диагностика на бюджетите по държави (за admin отчета).
+export async function budgetDiagnostics(env) {
+  const rows = await env.DB.prepare(
+    `SELECT country_code,
+       COUNT(*) procedures,
+       SUM(CASE WHEN budget IS NOT NULL AND budget!='' THEN 1 ELSE 0 END) with_budget_text,
+       SUM(CASE WHEN budget_amount_eur IS NOT NULL THEN 1 ELSE 0 END) applied_eur,
+       SUM(CASE WHEN budget_currency IS NOT NULL AND budget_currency!='EUR' THEN 1 ELSE 0 END) foreign_currency,
+       SUM(CASE WHEN (budget IS NULL OR budget='') THEN 1 ELSE 0 END) no_budget_text
+     FROM projects GROUP BY country_code ORDER BY procedures DESC`
+  ).all();
+  return rows.results || [];
 }

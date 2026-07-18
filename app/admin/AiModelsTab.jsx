@@ -53,7 +53,7 @@ export default function AiModelsTab() {
   useEffect(() => { load(); }, [load]);
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(null), 3000); };
 
-  if (data == null) return <section className="prof-card"><p className="prose">Зареждане…</p></section>;
+  if (data == null) return <section className="prof-card"><p className="prose">{tl("Зареждане…")}</p></section>;
 
   const cfgFor = (purpose) => data.configurations.filter((c) => c.purpose === purpose);
   const activeFor = (purpose) => cfgFor(purpose).find((c) => c.active);
@@ -174,6 +174,7 @@ function PipelinePanel({ data, flash }) {
       <div className="ov-section-head" style={{ flexWrap: "wrap", gap: 8 }}>
         <h3 className="prof-section-title" style={{ margin: 0 }}>{tl("Вечерен AI pipeline")}</h3>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="btn btn-ghost" onClick={() => api("/api/admin/ai/recompute-aggregates", { method: "POST" }).then((d) => flash(tl("Агрегатите са преизчислени за") + " " + d.recomputed + " " + tl("държави"))).catch(() => flash(tl("Неуспешно преизчисляване")))}>{tl("Преизчисли агрегатите")}</button>
           <button className="btn btn-ghost" disabled={!!active} onClick={() => setModal({ kind: "all" })}>{tl("Стартирай всички активни AI задачи")}</button>
           <button className="btn btn-primary" disabled={!!active} onClick={() => setModal({ kind: "pipeline" })}><Icon name="sparkle" size={15} /> {tl("Стартирай вечерния AI pipeline")}</button>
         </div>
@@ -479,7 +480,7 @@ function DailyRuns({ summary }) {
   return (
     <section className="prof-card">
       <h3 className="prof-section-title">{tl("Дневна процедура")}</h3>
-      {!s ? <p className="prose">Няма налични данни</p> : (
+      {!s ? <p className="prose">{tl("Няма налични данни")}</p> : (
         <dl className="sys-grid">
           <div><dt>{tl("Статус")}</dt><dd><span className={"badge " + b[0]}>{b[1]}</span></dd></div>
           <div><dt>{tl("График")}</dt><dd>{tl("Всеки ден в 08:00 (Claude Scheduled Tasks)")}</dd></div>
@@ -529,7 +530,7 @@ function RunsLog() {
           <button className="btn btn-ghost" onClick={load}><Icon name="refresh" size={15} /> {tl("Обнови")}</button>
         </div>
       </div>
-      {rows == null ? <p className="prose">Зареждане…</p> : rows.length === 0 ? (
+      {rows == null ? <p className="prose">{tl("Зареждане…")}</p> : rows.length === 0 ? (
         <div className="state ov-empty"><Icon name="sparkle" size={26} /><h3>{tl("Няма AI логове")}</h3><p>{tl("Тук се записват дневните прегледи и runtime AI заявките (без prompts и без отговори).")}</p></div>
       ) : (
         <>

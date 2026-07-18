@@ -3,6 +3,21 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.33.0] — 2026-07-18
+
+### Поправено
+- **Обзор**: 8 KPI карти на един ред (`.ov-kpi` repeat(8), компактни отстъпи; 4×2
+  таблет, 2 колони телефон; правилните класове .kpi-n/.kpi-l).
+- **AI apply**: executor-ите вече ПРИЛАГАТ резултата — budget_analysis пише
+  `budget_amount_eur`/`budget_currency` в projects (EUR директно, BGN по 1.95583,
+  плаваща валута → NULL) и извиква recomputeCountrySnapshot; „success“ = приложено,
+  иначе `failed_persistence`.
+- **Recompute + диагностика**: `/api/admin/ai/recompute-aggregates` (без AI) +
+  `/api/admin/ai/budget-diagnostics`; бутон „Преизчисли агрегатите“.
+- **/about**: голото „—“ в таблицата → „Няма структурирани бюджетни данни“.
+  Диагноза: AT/CZ/EE/SK/DE без публикуван общ бюджет; PL/HU/DK/SE в национална валута.
+- Тестове: `test/ai-apply.test.mjs` (7). Общо 102 unit теста.
+
 ## [2.32.0] — 2026-07-18
 
 ### Ново

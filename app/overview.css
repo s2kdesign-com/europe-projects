@@ -45,7 +45,15 @@
 .feed-period .segmented button { min-height: 40px; padding: 0 14px; }
 
 /* ---- KPI (наследява .kpi-grid/.kpi от globals) ---- */
-.ov-kpi { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+/* 8-те карти се събират на един ред на desktop (≥1160px). Компактни отстъпи,
+   етикет на два реда, без изрязване на числото. Tablet → 4×2, mobile → 2 кол. */
+.ov-kpi { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px; }
+.ov-kpi .kpi { padding: 12px 12px 11px; min-height: 92px; gap: 4px; border-radius: 12px; }
+.ov-kpi .kpi-ico { width: 28px; height: 28px; }
+.ov-kpi .kpi-n { font-size: clamp(20px, 2vw, 26px); line-height: 1.05; }
+.ov-kpi .kpi-l { font-size: 11.5px; line-height: 1.25; }
+@media (max-width: 1159px) { .ov-kpi { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .ov-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ---- Reasons (внимание) ---- */
 .reasons { display: flex; flex-wrap: wrap; gap: 6px; }

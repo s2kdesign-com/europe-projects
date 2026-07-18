@@ -207,7 +207,7 @@ export default function AboutPage() {
                               <td><img className="country-flag" src={`/flags/${c.code.toLowerCase()}.svg`} alt="" aria-hidden="true" width={18} height={12} /> {cName(c)}</td>
                               <td>{nf.format(c.activeProcedures)}</td>
                               <td>{nf.format(c.totalProcedures)}</td>
-                              <td>{c.publishedBudgetEur != null ? cfc.format(c.publishedBudgetEur) : "—"}</td>
+                              <td>{c.publishedBudgetEur != null ? cfc.format(c.publishedBudgetEur) : <span className="ab-nobudget">{t("about.budgetNoData")}</span>}</td>
                               <td>{nf.format(c.activeSources)}</td>
                               <td>{c.lastSuccessfulSyncAt ? df.format(new Date(c.lastSuccessfulSyncAt)) : "—"}</td>
                             </tr>
