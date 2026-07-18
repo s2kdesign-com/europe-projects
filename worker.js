@@ -6,6 +6,7 @@ import { logError } from "./worker/db.js";
 import { handleProcedurePage, handleStatusLanding, handleProgramsIndex, handleProgramLanding, handleCandidateLanding, handleDeadlineLanding } from "./worker/procedure-page.js";
 import { generateSitemap } from "./worker/sitemap.js";
 import { handleLocalePage } from "./worker/i18n-pages.js";
+import { handlePublicAIConfig, handleAIRunReport } from "./worker/ai/handlers.js";
 import { COUNTRY_CODES, DEFAULT_COUNTRY, normalizeCountry } from "./app/lib/country/countries.js";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" };
@@ -134,6 +135,15 @@ export default {
     }
 
     try {
+      // Публична безопасна AI конфигурация (за footer-а) — само display данни.
+      if (pathname === "/api/ai/public-configuration" && request.method === "GET") {
+        return handlePublicAIConfig(env);
+      }
+      // Internal: отчет от Scheduled Task (HMAC + timestamp + idempotency).
+      if (pathname === "/api/internal/ai-runs/report" && request.method === "POST") {
+        return handleAIRunReport(request, env);
+      }
+
       // Приблизителна държава от Cloudflare (без raw IP). Само код на държавата.
       if (pathname === "/api/geo") {
         const cc = normalizeCountry(request.cf && request.cf.country);

@@ -1,6 +1,7 @@
 // Достъп до данните за автентикирани потребители (D1, параметризирани заявки).
 
 import { nowISO, uuid } from "./util.js";
+import { redactSecrets } from "./ai/crypto.js";
 
 const PROFILE_ARRAYS = ["additional_sectors", "preferred_programs", "applicant_types", "preferred_activities", "preferred_regions"];
 const PROFILE_BOOLS = ["youth_employment_interest", "innovation_interest", "digitalization_interest", "green_transition_interest", "research_interest", "training_interest"];
@@ -202,7 +203,7 @@ export async function clearErrors(env) {
 export async function logError(env, e = {}) {
   try {
     await env.DB.prepare("INSERT INTO error_log (created_at, source, method, path, status, message, detail, user_id) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)")
-      .bind(nowISO(), (e.source || "server").slice(0, 20), (e.method || "").slice(0, 10), (e.path || "").slice(0, 300), e.status || null, (e.message || "").slice(0, 500), (e.detail || "").slice(0, 2000), e.userId || null)
+      .bind(nowISO(), (e.source || "server").slice(0, 20), (e.method || "").slice(0, 10), (e.path || "").slice(0, 300), e.status || null, redactSecrets((e.message || "")).slice(0, 500), redactSecrets((e.detail || "")).slice(0, 2000), e.userId || null)
       .run();
   } catch { /* журналът не бива да чупи заявката */ }
 }

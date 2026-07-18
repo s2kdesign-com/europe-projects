@@ -3,6 +3,33 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.25.0] — 2026-07-18
+
+### Добавено (AI управление)
+- **Migration 0013:** `ai_providers`, `ai_provider_credentials` (AES-256-GCM,
+  master key = Cloudflare secret `AI_CREDENTIALS_MASTER_KEY`, НЕ в D1/frontend),
+  `ai_model_configurations` (уникална активна per purpose), `ai_execution_runs`,
+  `ai_audit_log`. Seeds: daily_review = Claude Opus 4.8 (`claude-opus-4-8`,
+  потвърден от Anthropic docs); GPT-5.6 = НЕАКТИВЕН до реална валидация на точния
+  model ID (нива Sol/Terra/Luna).
+- **Provider слой** (`worker/ai/`): единен интерфейс + Anthropic/OpenAI адаптери
+  (testConnection/validateModel/listModels/generate), AIExecutionService с
+  fallback само при временни грешки, redaction на тайни в логовете.
+- **Admin API:** `/api/admin/ai/providers` (+key/test/models/refresh),
+  `/api/admin/ai/configurations/:purpose`, `/api/admin/ai/runs`, `/api/admin/ai/summary`
+  — само за админ, no-store, одит в `ai_audit_log`.
+- **Публично:** `GET /api/ai/public-configuration` (само display данни).
+- **Internal:** `POST /api/internal/ai-runs/report` (HMAC + timestamp + idempotency,
+  secret `SCHEDULED_TASK_REPORTING_SECRET`).
+- **Админ таб „AI модели“:** summary карти (дневен преглед с бадж „Управлява се от
+  Claude Scheduled Tasks“ + desired/actual разделение, системен AI, бъдещ чат,
+  заявки днес), provider карти (ключ: добави/замени/тест/премахни; само last 4),
+  активни модели с валидация, „Дневна процедура“ и AI логове с филтри/страници.
+- **Footer:** блок „AI модели“ от публичната конфигурация + „Как използваме AI“.
+- **Scheduled Task:** добавена reporting стъпка (ai_execution_runs, idempotent).
+- **Тестове:** 7 нови (crypto roundtrip/wrong key/IV, fingerprint, redaction,
+  fallback правила). Публичният чат остава изключен (AI_CHAT_ENABLED=false).
+
 ## [2.24.1] — 2026-07-18
 
 ### Подобрено (админ)

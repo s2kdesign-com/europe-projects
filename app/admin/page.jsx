@@ -6,6 +6,7 @@ import Icon from "../components/Icon.jsx";
 import { GoogleG } from "../components/UserMenu.jsx";
 import { useSession } from "../hooks/useSession.js";
 import { APP_VERSION } from "../lib/version.js";
+import AiModelsTab from "./AiModelsTab.jsx";
 
 const ROLES = [
   { key: "user", label: "Потребител" },
@@ -22,6 +23,7 @@ function fmt(ts) {
 const TABS = [
   ["system", "Система", "grid"],
   ["sources", "Източници", "layers"],
+  ["ai", "AI модели", "sparkle"],
   ["users", "Потребители", "users"],
   ["errors", "Exceptions", "alert"],
   ["feedback", "Сигнали", "document"],
@@ -80,6 +82,7 @@ export default function AdminPage() {
 
         {tab === "system" && <SystemTab session={session} />}
         {tab === "sources" && <SourcesTab />}
+        {tab === "ai" && <AiModelsTab />}
         {tab === "users" && <UsersTab />}
         {tab === "errors" && <ErrorsTab />}
         {tab === "feedback" && <FeedbackTab />}

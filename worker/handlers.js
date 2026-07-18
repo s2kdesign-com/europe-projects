@@ -7,6 +7,7 @@ import { listChangelog, addFeedback, listFeedback } from "./changelog.js";
 import * as data from "./db.js";
 import { LOCALE_CODES } from "../app/lib/i18n/locales.js";
 import { normalizeCountry } from "../app/lib/country/countries.js";
+import { handleAdminAI } from "./ai/handlers.js";
 import { getSupportedLanguages, translateBatch } from "./translation.js";
 import { isTranslationConfigured } from "./gauth.js";
 import { GLOSSARY_VERSION } from "../app/lib/i18n/glossary.js";
@@ -179,6 +180,12 @@ export async function handleAuth(request, env, url) {
 
   if (pathname.startsWith("/api/admin/")) {
     if (s.user.role !== "admin") return err("forbidden", 403);
+    // AI управление (доставчици/модели/логове) — отделен модул.
+    if (pathname.startsWith("/api/admin/ai/")) {
+      const aiResp = await handleAdminAI(request, env, url, userId, method, readJson);
+      if (aiResp) return aiResp;
+      return err("not_found", 404);
+    }
     if (pathname === "/api/admin/users" && method === "GET") return ok({ users: await data.listUsers(env) });
     if (pathname.startsWith("/api/admin/users/") && method === "PATCH") {
       const id = decodeURIComponent(pathname.slice("/api/admin/users/".length));

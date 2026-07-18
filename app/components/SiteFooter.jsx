@@ -18,9 +18,13 @@ export default function SiteFooter({ session: sessionProp }) {
   const session = sessionProp || own;
   const { t } = useTranslation();
   const [hasNew, setHasNew] = useState(false);
+  // Публична безопасна AI конфигурация (без ключове/вътрешни параметри).
+  // Безопасен статичен fallback при недостъпна конфигурация.
+  const [aiCfg, setAiCfg] = useState({ dailyReview: { provider: "Anthropic", model: "Claude Opus 4.8" }, systemAI: null });
 
   useEffect(() => {
     try { setHasNew(window.localStorage.getItem(CHANGELOG_SEEN_KEY) !== APP_VERSION); } catch { /* ignore */ }
+    fetch("/api/ai/public-configuration").then((r) => (r.ok ? r.json() : null)).then((d) => { if (d && d.ok) setAiCfg(d); }).catch(() => {});
   }, []);
 
   const year = new Date().getFullYear();
@@ -41,6 +45,17 @@ export default function SiteFooter({ session: sessionProp }) {
           <div className="sf-tags" aria-hidden="true">
             <span className="sf-tag"><span className="live-dot" /> {t("footer.tagAiAnalysis")}</span>
             <span className="sf-tag"><span className="live-dot" /> {t("footer.tagDailyUpdate")}</span>
+          </div>
+          {/* AI модели — компактно, от публичната безопасна конфигурация. */}
+          <div className="sf-ai-models">
+            <h4 className="sf-title">{t("ai.modelsTitle")}</h4>
+            <p className="sf-ai-row"><Icon name="sparkle" size={12} aria-hidden="true" /> {t("ai.dailyUses", { model: aiCfg.dailyReview?.model || "Claude Opus 4.8", provider: aiCfg.dailyReview?.provider || "Anthropic" })}</p>
+            {aiCfg.systemAI && (
+              <p className="sf-ai-row"><Icon name="sparkle" size={12} aria-hidden="true" /> {aiCfg.systemAI.status === "active"
+                ? t("ai.systemUses", { model: aiCfg.systemAI.model, provider: aiCfg.systemAI.provider })
+                : t("ai.systemConfigured", { model: aiCfg.systemAI.model, provider: aiCfg.systemAI.provider })}</p>
+            )}
+            <button className="sf-link" onClick={openAiInfo}>{t("ai.howWeUse")}</button>
           </div>
           <div className="sf-links">
             <button className="sf-link" onClick={() => emit("open-welcome")}>{t("footer.aboutSystem")}</button>

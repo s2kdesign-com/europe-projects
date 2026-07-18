@@ -6,3 +6,11 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 AUTH_SECRET=
 APP_URL=http://localhost:8787
+
+# AI управление (виж админ таб „AI модели"). Задават се в прод с wrangler secret put:
+#   wrangler secret put AI_CREDENTIALS_MASTER_KEY        # base64 32 байта: openssl rand -base64 32
+#   wrangler secret put SCHEDULED_TASK_REPORTING_SECRET  # дълъг случаен низ (HMAC за /api/internal/ai-runs/report)
+AI_CREDENTIALS_MASTER_KEY=
+SCHEDULED_TASK_REPORTING_SECRET=
+# Feature flag за бъдещия публичен AI чат (изключен по подразбиране).
+AI_CHAT_ENABLED=false
