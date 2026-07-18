@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import AppHeader from "../components/AppHeader.jsx";
 import CountrySelector from "../components/country/CountrySelector.jsx";
 import CountrySourcesPanel from "../components/country/CountrySourcesPanel.jsx";
+import SourcesOverview from "../components/country/SourcesOverview.jsx";
 import { useSession } from "../hooks/useSession.js";
 import { pathForTab } from "../lib/routes.js";
 
@@ -27,6 +28,7 @@ export default function SourcesPage() {
             <CountrySelector variant="footer" id="sources-country" />
           </div>
         </div>
+        <SourcesOverview />
         <CountrySourcesPanel />
       </main>
     </>
