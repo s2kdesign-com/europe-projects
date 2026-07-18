@@ -143,9 +143,9 @@ export default function SystemWelcomeModal({ onClose, onLogin, initialSection = 
                 ? t("ai.systemUses", { model: aiCfg.systemAI.model, provider: aiCfg.systemAI.provider })
                 : t("ai.systemConfigured", { model: aiCfg.systemAI.model, provider: aiCfg.systemAI.provider })}</p>
             )}
-            <button className="welcome-link" onClick={() => { setAiOpen(true); if (aiRef.current) aiRef.current.scrollIntoView({ block: "center", behavior: "smooth" }); }}>
+            <a className="welcome-link" href="/about#how-we-use-ai">
               <Icon name="sparkle" size={16} /> {t("ai.howWeUse")}
-            </button>
+            </a>
           </section>
 
           {/* Секция 4 — Полезно */}

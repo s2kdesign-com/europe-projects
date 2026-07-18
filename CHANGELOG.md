@@ -3,6 +3,43 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.26.0] — 2026-07-18
+
+### Добавено (нова /about страница)
+- **Три секции с anchors** (#about-system, #how-we-use-ai, #how-ai-works) + sticky
+  локална навигация (IntersectionObserver, aria-current, hash history).
+- **Hero** с реален статус ред (държави/източници/процедури/последно обновяване от
+  snapshot) + CTA + Share/Copy.
+- **Карта на покритието** (tile grid cartogram, локални SVG знамена, синя
+  последователна скала + легенда, keyboard focus, панел вместо hover-only tooltip,
+  видима таблица-алтернатива). Държави без данни → „Източниците се добавят“.
+- **Обобщение**: totals + водещи по активни процедури и по публикуван бюджет
+  (отделни класации); бюджет = САМО валидни структурирани EUR стойности
+  (dedup, без измислени суми; NULL при липса + дисклеймър).
+- **Migration 0014:** `country_daily_statistics` (unique snapshot_date+country,
+  publish_status published/pending_review) — populate-нат днешен snapshot (27
+  държави, 42/20 BG). Дневната процедура записва snapshot САМО при успешен run;
+  anomaly проверки → pending_review (не заменя последния успешен).
+- **Public API:** `GET /api/public/platform-statistics` (последен успешен snapshot,
+  ETag, cache 300s + stale-while-revalidate; само публични полета).
+- **AI public config** разширен: lastSuccessfulRunAt/countriesReviewed/actualModel
+  (от реалния run log — desired ≠ actual).
+- **SEO:** нови metadata + WebPage/BreadcrumbList/WebApplication JSON-LD.
+- **Footer:** „За системата“ → /about#about-system, „Как работи AI“ →
+  /about#how-ai-works, „Как използваме AI“ → /about#how-we-use-ai.
+- **Тестове:** 12 нови (budget exclusion/dedup/null, Europe totals, anomaly
+  правила, partial sync protection) — общо 60 минават.
+
+## [2.25.2] — 2026-07-18
+
+### Подобрено (преводи)
+- **Брандът „Европроекти“ се превежда** (AppHeader, AccountHeader, SiteFooter —
+  през `common.appName`); „Към таблото“ също (`common.backToDashboard`).
+- **Администрация:** page-head, табове, вход/достъп екрани, „Система“ секциите и
+  „Източници“ (филтри, бутони, таблични заглавия, пагинация) — batch превод.
+- **/sources:** динамичните описания (покритие/орган от D1) се превеждат.
+- AccountHeader ползва CountryLogoMark (знаме) като останалите хедъри.
+
 ## [2.25.1] — 2026-07-18
 
 ### Подобрено

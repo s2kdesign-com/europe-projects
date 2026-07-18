@@ -7,6 +7,23 @@ import { GoogleG } from "../components/UserMenu.jsx";
 import { useSession } from "../hooks/useSession.js";
 import { APP_VERSION } from "../lib/version.js";
 import AiModelsTab from "./AiModelsTab.jsx";
+import { useUiTranslate, UiTrContext, useUiTr } from "../lib/i18n/ui-translate.js";
+
+// Основните видими низове в администрацията — batch превод при чужд UI език.
+const ADMIN_LABELS = [
+  "Настройки · Администрация", "Системни настройки, потребители, журнал на грешките и сигнали.",
+  "Система", "Източници", "AI модели", "Потребители", "Exceptions", "Сигнали", "Раздели",
+  "Зареждане…", "Обнови", "Добави", "Редакция", "Изчисти", "Търсене…",
+  "Всички държави", "Всички статуси", "Само активни", "Само неактивни", "Само проверени",
+  "Непроверени", "Проблемни (health)", "Държава", "Източник", "Тип/Ниво", "Приор.",
+  "Активен", "Посл. успех", "Предишна", "Следваща", "Няма източници по този филтър",
+  "Променете филтрите или добавете нов източник.", "Системна информация", "Версия",
+  "Влезли сте като", "Домейн", "Съхранение", "Общо процедури", "Отворени", "С документи",
+  "Последно обновяване", "Многоезичност и превод", "База данни", "Роли",
+  "Вход е необходим", "Настройките са достъпни само за администратори.",
+  "Продължи с Google", "Към таблото", "Няма достъп",
+  "Тази страница е само за администратори. Ако смятате, че това е грешка, свържете се с администратор.",
+];
 
 const ROLES = [
   { key: "user", label: "Потребител" },
@@ -32,8 +49,9 @@ const TABS = [
 export default function AdminPage() {
   const session = useSession();
   const [tab, setTab] = useState("system");
+  const tl = useUiTranslate(ADMIN_LABELS);
 
-  if (session.loading) return <><AccountHeader session={session} /><main id="main" className="container page"><p className="prose">Зареждане…</p></main></>;
+  if (session.loading) return <><AccountHeader session={session} /><main id="main" className="container page"><p className="prose">{tl("Зареждане…")}</p></main></>;
 
   if (!session.authenticated)
     return (
@@ -42,10 +60,10 @@ export default function AdminPage() {
         <main id="main" className="auth-wrap">
           <section className="auth-card">
             <span className="auth-mark" aria-hidden="true"><Icon name="filter" size={26} /></span>
-            <h1>Вход е необходим</h1>
-            <p className="auth-desc">Настройките са достъпни само за администратори.</p>
-            <button className="btn btn-google btn-google-lg" onClick={() => session.login("/admin")}><GoogleG size={20} /> Продължи с Google</button>
-            <a className="auth-secondary" href="/">Към таблото</a>
+            <h1>{tl("Вход е необходим")}</h1>
+            <p className="auth-desc">{tl("Настройките са достъпни само за администратори.")}</p>
+            <button className="btn btn-google btn-google-lg" onClick={() => session.login("/admin")}><GoogleG size={20} /> {tl("Продължи с Google")}</button>
+            <a className="auth-secondary" href="/">{tl("Към таблото")}</a>
           </section>
         </main>
       </>
@@ -58,24 +76,24 @@ export default function AdminPage() {
         <main id="main" className="auth-wrap">
           <section className="auth-card">
             <span className="auth-mark" aria-hidden="true" style={{ background: "linear-gradient(135deg,var(--red),#8a1420)" }}><Icon name="alert" size={26} /></span>
-            <h1>Няма достъп</h1>
-            <p className="auth-desc">Тази страница е само за администратори. Ако смятате, че това е грешка, свържете се с администратор.</p>
-            <a className="btn btn-primary" href="/">Към таблото</a>
+            <h1>{tl("Няма достъп")}</h1>
+            <p className="auth-desc">{tl("Тази страница е само за администратори. Ако смятате, че това е грешка, свържете се с администратор.")}</p>
+            <a className="btn btn-primary" href="/">{tl("Към таблото")}</a>
           </section>
         </main>
       </>
     );
 
   return (
-    <>
+    <UiTrContext.Provider value={tl}>
       <AccountHeader session={session} />
       <main id="main" className="container page admin">
-        <div className="page-head"><h1>Настройки · Администрация</h1><p>Системни настройки, потребители, журнал на грешките и сигнали.</p></div>
+        <div className="page-head"><h1>{tl("Настройки · Администрация")}</h1><p>{tl("Системни настройки, потребители, журнал на грешките и сигнали.")}</p></div>
 
-        <div className="admin-tabs" role="tablist" aria-label="Раздели">
+        <div className="admin-tabs" role="tablist" aria-label={tl("Раздели")}>
           {TABS.map(([k, l, ic]) => (
             <button key={k} role="tab" aria-selected={tab === k} className="admin-tab" onClick={() => setTab(k)}>
-              <Icon name={ic} size={16} /> <span className="tab-label">{l}</span>
+              <Icon name={ic} size={16} /> <span className="tab-label">{tl(l)}</span>
             </button>
           ))}
         </div>
@@ -87,11 +105,12 @@ export default function AdminPage() {
         {tab === "errors" && <ErrorsTab />}
         {tab === "feedback" && <FeedbackTab />}
       </main>
-    </>
+    </UiTrContext.Provider>
   );
 }
 
 function SystemTab({ session }) {
+  const tl = useUiTr();
   const [stats, setStats] = useState(null);
   const [sys, setSys] = useState(null);
   const [build, setBuild] = useState(null);
@@ -108,23 +127,23 @@ function SystemTab({ session }) {
   return (
     <>
       <section className="prof-card">
-        <h2 className="prof-section-title">Системна информация</h2>
+        <h2 className="prof-section-title">{tl("Системна информация")}</h2>
         <dl className="sys-grid">
-          <div><dt>Версия</dt><dd>{APP_VERSION}</dd></div>
-          <div><dt>Влезли сте като</dt><dd>{session.user?.email} <span className="role-chip">админ</span></dd></div>
-          <div><dt>Билд (build ID)</dt><dd className="mono">{build?.buildId || "…"}</dd></div>
-          <div><dt>Домейн</dt><dd className="mono">{sys?.appUrl ? sys.appUrl.replace(/^https?:\/\//, "") : "euro-funds.eu"}</dd></div>
-          <div><dt>Съхранение</dt><dd>Cloudflare D1 + Worker</dd></div>
-          <div><dt>Източници</dt><dd>eufunds.bg, esf.bg, az.government.bg, ПКИП</dd></div>
-          <div><dt>Общо процедури</dt><dd>{stats ? stats.total : "…"}</dd></div>
-          <div><dt>Отворени</dt><dd>{stats ? stats.open : "…"}</dd></div>
-          <div><dt>С документи</dt><dd>{stats ? stats.docs : "…"}</dd></div>
-          <div><dt>Последно обновяване</dt><dd>{stats ? stats.snapshot : "…"}</dd></div>
+          <div><dt>{tl("Версия")}</dt><dd>{APP_VERSION}</dd></div>
+          <div><dt>{tl("Влезли сте като")}</dt><dd>{session.user?.email} <span className="role-chip">админ</span></dd></div>
+          <div><dt>Build ID</dt><dd className="mono">{build?.buildId || "…"}</dd></div>
+          <div><dt>{tl("Домейн")}</dt><dd className="mono">{sys?.appUrl ? sys.appUrl.replace(/^https?:\/\//, "") : "euro-funds.eu"}</dd></div>
+          <div><dt>{tl("Съхранение")}</dt><dd>Cloudflare D1 + Worker</dd></div>
+          <div><dt>{tl("Източници")}</dt><dd>eufunds.bg, esf.bg, az.government.bg, ПКИП</dd></div>
+          <div><dt>{tl("Общо процедури")}</dt><dd>{stats ? stats.total : "…"}</dd></div>
+          <div><dt>{tl("Отворени")}</dt><dd>{stats ? stats.open : "…"}</dd></div>
+          <div><dt>{tl("С документи")}</dt><dd>{stats ? stats.docs : "…"}</dd></div>
+          <div><dt>{tl("Последно обновяване")}</dt><dd>{stats ? stats.snapshot : "…"}</dd></div>
         </dl>
       </section>
 
       <section className="prof-card">
-        <h2 className="prof-section-title">Многоезичност и превод</h2>
+        <h2 className="prof-section-title">{tl("Многоезичност и превод")}</h2>
         <dl className="sys-grid">
           <div><dt>Статус на превода</dt><dd>{tr ? (tr.configured ? <span className="role-chip" style={{ background: "var(--green-bg,#dcfce7)", color: "var(--green-ink,#15803d)" }}>активен</span> : <span className="role-chip" style={{ background: "var(--amber-bg,#fef3c7)", color: "var(--amber-ink,#92400e)" }}>неактивен</span>) : "…"}</dd></div>
           <div><dt>Доставчик</dt><dd>{tr?.provider || "…"}</dd></div>
@@ -138,7 +157,7 @@ function SystemTab({ session }) {
       </section>
 
       <section className="prof-card">
-        <h2 className="prof-section-title">База данни</h2>
+        <h2 className="prof-section-title">{tl("База данни")}</h2>
         <dl className="sys-grid">
           <div><dt>Потребители</dt><dd>{c ? c.users : "…"}</dd></div>
           <div><dt>Запазени процедури</dt><dd>{c ? c.saved : "…"}</dd></div>
@@ -183,6 +202,7 @@ function UrlCell({ source }) {
 const EMPTY_SOURCE = { id: "", country_code: "", name: "", authority_name: "", base_url: "", calls_url: "", source_type: "portal", source_level: "national", source_language: "", coverage_description: "", priority: 100, verified: false, enabled: false, requires_javascript: false, primary_source: false };
 
 function SourcesTab() {
+  const tl = useUiTr();
   const [data, setData] = useState(null); // {sources, countries}
   const [country, setCountry] = useState("");
   const [flt, setFlt] = useState("all"); // all | enabled | disabled | verified | unverified | unhealthy
@@ -293,31 +313,31 @@ function SourcesTab() {
     <>
       <section className="prof-card">
         <div className="ov-section-head" style={{ flexWrap: "wrap", gap: 8 }}>
-          <h2 className="prof-section-title" style={{ margin: 0 }}>Източници</h2>
+          <h2 className="prof-section-title" style={{ margin: 0 }}>{tl("Източници")}</h2>
           <span className="count-dot">{rows.length}</span>
           {msg && <span className="save-ok" role="status"><Icon name="check" size={14} /> {msg}</span>}
           <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <select className="inp inp-sm" value={country} onChange={(e) => { setCountry(e.target.value); setPage(1); }} aria-label="Филтър по държава">
-              <option value="">Всички държави</option>
+            <select className="inp inp-sm" value={country} onChange={(e) => { setCountry(e.target.value); setPage(1); }} aria-label={tl("Всички държави")}>
+              <option value="">{tl("Всички държави")}</option>
               {data.countries.map((c) => <option key={c.code} value={c.code}>{c.code} · {c.name_bg} ({data.sources.filter((s) => s.country_code === c.code).length})</option>)}
             </select>
-            <select className="inp inp-sm" value={flt} onChange={(e) => { setFlt(e.target.value); setPage(1); }} aria-label="Филтър по статус">
-              <option value="all">Всички статуси</option>
-              <option value="enabled">Само активни</option>
-              <option value="disabled">Само неактивни</option>
-              <option value="verified">Само проверени</option>
-              <option value="unverified">Непроверени</option>
-              <option value="unhealthy">Проблемни (health)</option>
+            <select className="inp inp-sm" value={flt} onChange={(e) => { setFlt(e.target.value); setPage(1); }} aria-label={tl("Всички статуси")}>
+              <option value="all">{tl("Всички статуси")}</option>
+              <option value="enabled">{tl("Само активни")}</option>
+              <option value="disabled">{tl("Само неактивни")}</option>
+              <option value="verified">{tl("Само проверени")}</option>
+              <option value="unverified">{tl("Непроверени")}</option>
+              <option value="unhealthy">{tl("Проблемни (health)")}</option>
             </select>
-            <input className="inp inp-sm" placeholder="Търсене…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} aria-label="Търсене в източниците" />
-            <button className="btn btn-ghost" onClick={load}><Icon name="refresh" size={16} /> Обнови</button>
-            <button className="btn btn-primary" onClick={() => { setEditing("new"); setForm(EMPTY_SOURCE); }}><Icon name="sparkle" size={16} /> Добави</button>
+            <input className="inp inp-sm" placeholder={tl("Търсене…")} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} aria-label={tl("Търсене…")} />
+            <button className="btn btn-ghost" onClick={load}><Icon name="refresh" size={16} /> {tl("Обнови")}</button>
+            <button className="btn btn-primary" onClick={() => { setEditing("new"); setForm(EMPTY_SOURCE); }}><Icon name="sparkle" size={16} /> {tl("Добави")}</button>
           </div>
         </div>
 
         <div className="table-scroll">
           <table className="admin-table">
-            <thead><tr><th>Държава</th><th>Източник</th><th>URL</th><th>Тип/Ниво</th><th>Приор.</th><th>Verified</th><th>Активен</th><th>Health</th><th>Посл. успех</th><th></th></tr></thead>
+            <thead><tr><th>{tl("Държава")}</th><th>{tl("Източник")}</th><th>URL</th><th>{tl("Тип/Ниво")}</th><th>{tl("Приор.")}</th><th>Verified</th><th>{tl("Активен")}</th><th>Health</th><th>{tl("Посл. успех")}</th><th></th></tr></thead>
             <tbody>
               {pageRows.map((s) => (
                 <tr key={s.id}>
@@ -339,19 +359,19 @@ function SourcesTab() {
                     {s.consecutive_failures > 0 && <div className="row-sub"><span className={"badge " + healthTone(s.source_health)}>{s.consecutive_failures} грешки</span></div>}
                   </td>
                   <td className="nowrap">{s.last_success_at ? fmt(s.last_success_at) : "—"}</td>
-                  <td><button className="btn btn-ghost" onClick={() => { setEditing(s.id); setForm({ ...EMPTY_SOURCE, ...s }); }}><Icon name="document" size={14} /> Редакция</button></td>
+                  <td><button className="btn btn-ghost" onClick={() => { setEditing(s.id); setForm({ ...EMPTY_SOURCE, ...s }); }}><Icon name="document" size={14} /> {tl("Редакция")}</button></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        {rows.length === 0 && <div className="state ov-empty"><Icon name="layers" size={26} /><h3>Няма източници по този филтър</h3><p>Променете филтрите или добавете нов източник.</p></div>}
+        {rows.length === 0 && <div className="state ov-empty"><Icon name="layers" size={26} /><h3>{tl("Няма източници по този филтър")}</h3><p>{tl("Променете филтрите или добавете нов източник.")}</p></div>}
         {rows.length > PAGE_SIZE && (
           <div className="admin-pager">
-            <span className="pg-info">{(curPage - 1) * PAGE_SIZE + 1}–{Math.min(curPage * PAGE_SIZE, rows.length)} от {rows.length}</span>
-            <button className="btn btn-ghost" disabled={curPage <= 1} onClick={() => setPage(curPage - 1)}><Icon name="chevronRight" size={14} style={{ transform: "rotate(180deg)" }} /> Предишна</button>
-            <span className="pg-info" style={{ margin: 0 }}>стр. {curPage} / {totalPages}</span>
-            <button className="btn btn-ghost" disabled={curPage >= totalPages} onClick={() => setPage(curPage + 1)}>Следваща <Icon name="chevronRight" size={14} /></button>
+            <span className="pg-info">{(curPage - 1) * PAGE_SIZE + 1}–{Math.min(curPage * PAGE_SIZE, rows.length)} / {rows.length}</span>
+            <button className="btn btn-ghost" disabled={curPage <= 1} onClick={() => setPage(curPage - 1)}><Icon name="chevronRight" size={14} style={{ transform: "rotate(180deg)" }} /> {tl("Предишна")}</button>
+            <span className="pg-info" style={{ margin: 0 }}>{curPage} / {totalPages}</span>
+            <button className="btn btn-ghost" disabled={curPage >= totalPages} onClick={() => setPage(curPage + 1)}>{tl("Следваща")} <Icon name="chevronRight" size={14} /></button>
           </div>
         )}
       </section>

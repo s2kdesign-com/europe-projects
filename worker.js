@@ -7,6 +7,7 @@ import { handleProcedurePage, handleStatusLanding, handleProgramsIndex, handlePr
 import { generateSitemap } from "./worker/sitemap.js";
 import { handleLocalePage } from "./worker/i18n-pages.js";
 import { handlePublicAIConfig, handleAIRunReport } from "./worker/ai/handlers.js";
+import { handlePlatformStatistics } from "./worker/statistics.js";
 import { COUNTRY_CODES, DEFAULT_COUNTRY, normalizeCountry } from "./app/lib/country/countries.js";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" };
@@ -138,6 +139,10 @@ export default {
       // Публична безопасна AI конфигурация (за footer-а) — само display данни.
       if (pathname === "/api/ai/public-configuration" && request.method === "GET") {
         return handlePublicAIConfig(env);
+      }
+      // Публична платформена статистика (за /about) — последният успешен snapshot.
+      if (pathname === "/api/public/platform-statistics" && request.method === "GET") {
+        return handlePlatformStatistics(request, env);
       }
       // Internal: отчет от Scheduled Task (HMAC + timestamp + idempotency).
       if (pathname === "/api/internal/ai-runs/report" && request.method === "POST") {

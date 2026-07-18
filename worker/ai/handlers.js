@@ -206,6 +206,18 @@ export async function handlePublicAIConfig(env) {
       if (s.updated_at > (updatedAt || "")) updatedAt = s.updated_at;
     }
   } catch { /* пада към статичния fallback */ }
+  // Безопасни run метаданни (без вътрешни грешки/ID-та): последен успешен дневен
+  // преглед + брой държави от отчета му. ACTUAL модел от лога, не desired.
+  let lastRunAt = null, countriesReviewed = null, actualModel = null;
+  try {
+    const r = await env.DB.prepare("SELECT completed_at, model_display_name, metadata_json FROM ai_execution_runs WHERE purpose='daily_review' AND status IN ('success','partial') ORDER BY started_at DESC LIMIT 1").first();
+    if (r) {
+      lastRunAt = r.completed_at || null;
+      actualModel = r.model_display_name || null;
+      try { const m = JSON.parse(r.metadata_json || "{}"); if (Array.isArray(m.countries)) countriesReviewed = m.countries.length; } catch { /* no-op */ }
+    }
+  } catch { /* no-op */ }
+  if (daily) { daily.lastSuccessfulRunAt = lastRunAt; daily.countriesReviewed = countriesReviewed; daily.actualModel = actualModel; }
   return new Response(JSON.stringify({ dailyReview: daily, systemAI: system, lastUpdatedAt: updatedAt, ok: true }), {
     status: 200, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=300" },
   });

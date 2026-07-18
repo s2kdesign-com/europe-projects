@@ -36,7 +36,7 @@ export default function SiteFooter({ session: sessionProp }) {
         <div className="sf-col">
           <div className="sf-brand">
             <span className="brand-mark" aria-hidden="true"><Icon name="euro" size={20} /></span>
-            <span className="brand-name">Европроекти</span>
+            <span className="brand-name">{t("common.appName")}</span>
             <span className="sf-ai-badge"><Icon name="sparkle" size={13} aria-hidden="true" /> {t("footer.aiBadge")}</span>
           </div>
           <p className="sf-desc">{t("footer.brandDesc1")}</p>
@@ -55,10 +55,10 @@ export default function SiteFooter({ session: sessionProp }) {
                 ? t("ai.systemUses", { model: aiCfg.systemAI.model, provider: aiCfg.systemAI.provider })
                 : t("ai.systemConfigured", { model: aiCfg.systemAI.model, provider: aiCfg.systemAI.provider })}</p>
             )}
-            <button className="sf-link" onClick={openAiInfo}>{t("ai.howWeUse")}</button>
+            <a className="sf-link" href="/about#how-we-use-ai">{t("ai.howWeUse")}</a>
           </div>
           <div className="sf-links">
-            <button className="sf-link" onClick={() => emit("open-welcome")}>{t("footer.aboutSystem")}</button>
+            <a className="sf-link" href="/about#about-system">{t("footer.aboutSystem")}</a>
             <a className="sf-link" href="/sources">{t("footer.dataSources")}</a>
           </div>
         </div>
@@ -114,9 +114,9 @@ export default function SiteFooter({ session: sessionProp }) {
             <a className="sf-link" href="/calendar">{t("navigation.calendar")}</a>
             <a className="sf-link" href="/saved">{t("navigation.saved")}</a>
             <a className="sf-link" href="/changelog">{t("navigation.changelog")}{hasNew && <span className="new-dot" aria-label="нова версия" />}</a>
-            <button className="sf-link" onClick={() => emit("open-welcome")}>{t("footer.aboutSystem")}</button>
+            <a className="sf-link" href="/about#about-system">{t("footer.aboutSystem")}</a>
             <a className="sf-link" href="/sources">{t("country.sourcesTitle")}</a>
-            <button className="sf-link" onClick={openAiInfo}>{t("footer.howAiWorks")}</button>
+            <a className="sf-link" href="/about#how-ai-works">{t("footer.howAiWorks")}</a>
             <a className="sf-link" href="/terms">{t("footer.terms")}</a>
             <a className="sf-link" href="/privacy">{t("footer.privacy")}</a>
             <a className="sf-link" href="/cookies">{t("footer.cookies")}</a>

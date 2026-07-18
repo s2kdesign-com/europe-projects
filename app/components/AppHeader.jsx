@@ -93,10 +93,10 @@ export default function AppHeader({ tab, onTab, savedCount, session }) {
     <header className={"appbar mobile-header" + (compact ? " is-compact" : "")}>
       <div className="appbar-inner">
         <div className="appbar-top" ref={topRef}>
-          <a className="brand" href="/" onClick={goHome} aria-label="Европроекти — начало">
+          <a className="brand" href="/" onClick={goHome} aria-label={tr("common.appName")}>
             <CountryLogoMark size={20} />
             <span>
-              <span className="brand-name">Европроекти</span>
+              <span className="brand-name">{tr("common.appName")}</span>
               <br />
               <span className="brand-sub">{tr("common.tagline")}</span>
             </span>

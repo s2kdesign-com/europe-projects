@@ -9,6 +9,7 @@ import Icon from "../Icon.jsx";
 import { useCountry } from "./CountryProvider.jsx";
 import { FlagImg } from "./CountrySelector.jsx";
 import { formatDate } from "../../lib/project-utils.js";
+import { useUiTranslate } from "../../lib/i18n/ui-translate.js";
 
 const HEALTH_TONE = { healthy: "on", unknown: "soon", degraded: "soon", failing: "soon", blocked: "soon" };
 
@@ -18,6 +19,8 @@ export default function CountrySourcesPanel({ compact = false }) {
   const [data, setData] = useState({ sources: [], meta: null });
   const [phase, setPhase] = useState("loading");
   const cLabel = country ? (i18n.language === "bg" ? country.nameBg : country.english) : selectedCountry;
+  // Динамичните описания от D1 (покритие/орган) са на български — batch превод.
+  const tl = useUiTranslate(data.sources.flatMap((s) => [s.coverage_description, s.authority_name]).filter(Boolean));
 
   useEffect(() => {
     let alive = true;
@@ -53,8 +56,8 @@ export default function CountrySourcesPanel({ compact = false }) {
                 {s.primary_source ? <span className="country-status on">{t("country.active")}</span> : null}
                 <span className={"country-status " + (HEALTH_TONE[s.source_health] || "soon")}>{s.source_health}</span>
               </div>
-              {s.authority_name && <div className="source-auth">{s.authority_name}</div>}
-              {s.coverage_description && <div className="source-cov">{t("country.coverage")}: {s.coverage_description}</div>}
+              {s.authority_name && <div className="source-auth">{tl(s.authority_name)}</div>}
+              {s.coverage_description && <div className="source-cov">{t("country.coverage")}: {tl(s.coverage_description)}</div>}
               <div className="source-links">
                 <a href={s.base_url} target="_blank" rel="noopener noreferrer nofollow"><Icon name="external" size={13} /> {s.base_url}</a>
                 {s.calls_url && s.calls_url !== s.base_url && (
