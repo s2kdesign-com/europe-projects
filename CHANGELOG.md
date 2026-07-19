@@ -3,6 +3,32 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.43.0] — 2026-07-19
+
+### Добавено
+- **Google Analytics 4 (G-EDMN8Q86T6)** с **Google Consent Mode v2**: `gtag.js` в
+  `<head>` (layout.jsx), `analytics_storage='denied'` по подразбиране + `anonymize_ip`.
+  Инлайн скриптът чете запомнено съгласие (`evroproekti_cookie_consent_v1.analytics`)
+  и разрешава преди `config`, за да не се губи първият page_view.
+- **Consent update**: `AppChrome.saveConsent` вика `gtag('consent','update',...)` при
+  избор в банера (grant/deny) — замени стария placeholder.
+- **Cookie политика**: добавени `_ga`/`_ga_EDMN8Q86T6` редове + обновена секция 4
+  (GA4 + Consent Mode); `legalDocumentVersion` 1.0 → 1.1, `legalLastUpdated` 19.07.2026.
+- Работи на всички локали (/bg,/en,/de) — `worker/i18n-pages.js` прави само точкови
+  замени и не маха head скриптовете (проверено).
+
+## [2.42.2] — 2026-07-19
+
+### Поправено
+- **Грешни/бъдещи дати в „AI логове"**: (1) дневната Claude scheduled task пишеше
+  `started_at`/`completed_at` от собствения run-id вместо от D1 часовника — промптът
+  вече задължава всички времена от `datetime('now')`/`date('now')`/`strftime` (UTC);
+  (2) `fmtTs` в `AiModelsTab.jsx` четеше SQLite `YYYY-MM-DD HH:MM:SS` (UTC без зона)
+  като местно време — сега naive стойностите се третират като UTC.
+- **D1 cleanup**: 30 `daily_review` реда с бъдещ `started_at` нормализирани към
+  реалното време на вписване (`julianday` сравнение + `datetime()` канонизация; без
+  триене на логове).
+
 ## [2.42.1] — 2026-07-19
 
 ### Поправено

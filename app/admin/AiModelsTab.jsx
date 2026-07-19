@@ -19,7 +19,12 @@ function chatModels(models) {
 
 const fmtTs = (ts) => {
   if (!ts) return "—";
-  const d = new Date(ts);
+  let s = String(ts);
+  // Бекендът пише времена в UTC. SQLite datetime('now') връща „YYYY-MM-DD HH:MM:SS"
+  // БЕЗ часова зона — new Date() го чете като МЕСТНО и го измества. Нормализираме
+  // такива стойности към UTC (T + Z), за да съвпадат с ISO „…Z" стойностите.
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(s)) s = s.replace(" ", "T") + "Z";
+  const d = new Date(s);
   return isNaN(d) ? ts : d.toLocaleString("bg-BG", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 };
 const PURPOSE_LABELS = {

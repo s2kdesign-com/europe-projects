@@ -33,6 +33,19 @@ window.__I18N_INITIAL=l;
 
 const SITE_URL = "https://euro-funds.eu";
 
+// Google Analytics (gtag.js) с Google Consent Mode v2. По подразбиране аналитичните
+// бисквитки са ОТКАЗАНИ (EU/GDPR) — GA се зарежда, но не пише бисквитки и не събира,
+// докато потребителят не даде съгласие през cookie банера. Ако вече е дал съгласие
+// (localStorage evroproekti_cookie_consent_v1.analytics=true) → разрешаваме още тук,
+// преди config, за да не се губи първият page_view при връщащи се потребители.
+// Update при промяна на избора се прави в AppChrome.saveConsent (gtag consent update).
+const GA_ID = "G-EDMN8Q86T6";
+const GTAG_INIT = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
+var __an='denied';try{var c=JSON.parse(localStorage.getItem('evroproekti_cookie_consent_v1')||'null');if(c&&c.analytics)__an='granted';}catch(e){}
+gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:__an,wait_for_update:500});
+gtag('js',new Date());
+gtag('config','${GA_ID}',{anonymize_ip:true});`;
+
 const TITLE = "Европроекти — Европейско финансиране за 27-те държави от ЕС";
 const DESCRIPTION =
   "Ежедневно обновяван преглед на активни и предстоящи процедури за европейско финансиране в 27-те държави от ЕС — срокове, бюджети и допустими кандидати. Данни от официални национални източници, структурирани с AI.";
@@ -90,6 +103,9 @@ export default function RootLayout({ children }) {
     <html lang="bg" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH }} />
+        {/* Google Analytics (gtag.js) + Consent Mode v2 — виж GTAG_INIT по-горе */}
+        <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} />
+        <script dangerouslySetInnerHTML={{ __html: GTAG_INIT }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       </head>
       <body>

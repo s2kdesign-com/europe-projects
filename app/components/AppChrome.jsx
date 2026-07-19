@@ -80,8 +80,11 @@ export default function AppChrome() {
     setConsent(c);
     cookieResolvedRef.current = true;
     setCookieMode(null);
-    // Тук би се приложил Google Consent Mode update (analytics_storage) — само ако
-    // има интегриран Google tag. В момента системата няма аналитични скриптове.
+    // Google Consent Mode v2 update — GA (gtag.js) е зареден в layout.jsx с default
+    // analytics_storage='denied'. Тук отразяваме реалния избор на потребителя.
+    if (typeof window !== "undefined" && typeof window.gtag === "function") {
+      window.gtag("consent", "update", { analytics_storage: c.analytics ? "granted" : "denied" });
+    }
     // Ако cookie изборът е бил направен след 5-те секунди — показваме модала след ~500 ms.
     if (introPendingRef.current && !introSeenRef.current) {
       introPendingRef.current = false;
