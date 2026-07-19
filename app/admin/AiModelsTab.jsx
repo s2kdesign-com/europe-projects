@@ -5,7 +5,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Icon from "../components/Icon.jsx";
-import { priceLabel, useForLabel, AI_PRICING_DATE } from "../lib/ai-pricing.js";
+import { priceLabel, useForLabel, AI_PRICING_DATE, estimateCost, costLabel } from "../lib/ai-pricing.js";
 import { useUiTr } from "../lib/i18n/ui-translate.js";
 
 // Само chat-подходящи модели за системния анализ (без audio/tts/image/и т.н.).
@@ -26,6 +26,16 @@ const PURPOSE_LABELS = {
   daily_review: "Дневен преглед", procedure_analysis: "Системен AI анализ", document_analysis: "Преглед на документи",
   budget_analysis: "Анализ на бюджети", recommendation: "Персонализирани препоръки", future_chat: "Бъдещ AI чат", fallback: "Резервен",
 };
+// Кратко описание за какво служи всеки AI агент (под името в таблицата).
+const AGENT_DESC = {
+  daily_review: "Ежедневно проверява източниците и извлича новите/променени процедури.",
+  procedure_analysis: "Структурира процедурите — резюме, кандидати, дейности, срокове, региони.",
+  document_analysis: "Класифицира документите и извлича условия, приложения и промени.",
+  budget_analysis: "Извлича структуриран бюджет — обща сума, валута, съфинансиране.",
+  recommendation: "Сравнява процедурите с профила и обяснява защо са подходящи.",
+  future_chat: "Бъдещ асистент за въпроси (неактивен).",
+};
+
 const TEST_ERRORS = {
   invalid_key: "Ключът е невалиден", model_not_available: "Няма достъп до избрания модел", rate_limited: "Rate limit — опитайте по-късно",
   provider_unavailable: "Доставчикът е недостъпен", timeout: "Изтекло време (timeout)", configuration_error: "Грешка в конфигурацията",
@@ -567,22 +577,24 @@ function ActiveModels({ data, onChanged, flash }) {
       <p className="prose">Този модел се използва за ежедневната проверка и анализ на процедурите, когато Scheduled Task архитектурата позволява изборът да се управлява от системата. Дневният преглед носи бадж „Управлява се от Claude Scheduled Tasks“ — изборът тук е desired модел и не се прилага автоматично върху задачата.</p>
       <div className="table-scroll">
         <table className="admin-table">
-          <thead><tr><th>{tl("Предназначение")}</th><th>{tl("Доставчик")}</th><th>{tl("Модел (display)")}</th><th>Model ID</th><th>{tl("Цена (~1M)")}</th><th>{tl("Статус")}</th><th>{tl("Валидация")}</th><th>{tl("Използван")}</th></tr></thead>
+          <thead><tr><th>{tl("Предназначение")}</th><th>{tl("Доставчик")}</th><th>{tl("Модел (display)")}</th><th>Model ID</th><th>{tl("Цена (~1M)")}</th><th>{tl("Статус")}</th><th>{tl("Валидация")}</th><th>{tl("Разход 30 дни")}</th><th>{tl("Разход 1 година")}</th><th>{tl("Използван")}</th></tr></thead>
           <tbody>
             {Object.keys(PURPOSE_LABELS).filter((k) => k !== "fallback").map((k) => {
               const rows = data.configurations.filter((c) => c.purpose === k);
-              if (!rows.length) return <tr key={k}><td>{tl(PURPOSE_LABELS[k])}</td><td colSpan={7} className="row-sub">{tl("Няма конфигурация (наследява системния модел)")}</td></tr>;
+              if (!rows.length) return <tr key={k}><td>{tl(PURPOSE_LABELS[k])}</td><td colSpan={9} className="row-sub">{tl("Няма конфигурация (наследява системния модел)")}</td></tr>;
               return rows.map((c) => {
                 const u = (data.usage || []).find((x) => x.model_id === c.model_id);
                 return (
                   <tr key={c.id}>
-                    <td>{tl(PURPOSE_LABELS[k])}{k === "daily_review" ? <div className="row-sub"><span className="badge amber">Claude Scheduled Tasks</span></div> : null}</td>
+                    <td>{tl(PURPOSE_LABELS[k])}{AGENT_DESC[k] ? <div className="agent-desc">{tl(AGENT_DESC[k])}</div> : null}{k === "daily_review" ? <div className="row-sub"><span className="badge amber">Claude Scheduled Tasks</span></div> : null}</td>
                     <td>{c.provider_key === "anthropic" ? "Anthropic" : "OpenAI"}</td>
                     <td>{c.display_name}</td>
                     <td className="mono">{c.model_id}</td>
                     <td className="nowrap">{priceLabel(c.model_id) || "—"}</td>
                     <td>{c.active ? <span className="badge green">{tl("Активен")}</span> : <span className="badge neutral">{tl("Неактивен")}</span>}</td>
                     <td>{c.validation_status}</td>
+                    <td className="nowrap mono">{u ? (costLabel(estimateCost(c.model_id, u.in_30d, u.out_30d)) || "—") : "—"}</td>
+                    <td className="nowrap mono">{u ? (costLabel(estimateCost(c.model_id, u.in_365d, u.out_365d)) || "—") : "—"}</td>
                     <td className="nowrap">{u ? <>{u.runs} {tl("заявки")}{u.tokens ? <div className="row-sub">{u.tokens} {tl("токена")}</div> : null}<div className="row-sub">{fmtTs(u.last_used_at)}</div></> : "—"}</td>
                   </tr>
                 );

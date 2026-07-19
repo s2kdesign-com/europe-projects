@@ -38,3 +38,18 @@ export function priceLabel(modelId) {
 export function useForLabel(modelId) {
   return AI_USE_FOR[modelId] || null;
 }
+
+// Приблизителен разход в USD от реалните токени (input/output) по официалните цени
+// за 1M токена. Връща null, ако моделът няма ценова конфигурация.
+export function estimateCost(modelId, inputTokens = 0, outputTokens = 0) {
+  const p = AI_PRICING[modelId];
+  if (!p) return null;
+  return (Number(inputTokens || 0) / 1e6) * p.in + (Number(outputTokens || 0) / 1e6) * p.out;
+}
+// Форматира разход в USD (по-малките суми с повече знаци).
+export function costLabel(usd) {
+  if (usd == null) return null;
+  if (usd === 0) return "$0";
+  if (usd < 0.01) return "<$0.01";
+  return "$" + usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: usd < 1 ? 4 : 2 });
+}

@@ -131,3 +131,6 @@
 .nightly-time { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding: 10px 12px; background: var(--surface-2, #f4f7fb); border-radius: 8px; }
 .nightly-time label { font-weight: 700; font-size: 13px; }
 .nightly-time .row-sub { color: var(--faint); }
+
+/* Описание под името на AI агента (v2.37.0) */
+.agent-desc { font-size: 11.5px; color: var(--muted); margin-top: 2px; max-width: 260px; line-height: 1.3; }

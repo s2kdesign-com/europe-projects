@@ -73,7 +73,20 @@ export async function handleAdminAI(request, env, url, userId, method, readJson)
     const creds = await env.DB.prepare("SELECT provider_key, secret_last_four, created_at, rotated_at, updated_at FROM ai_provider_credentials").all();
     const configs = await env.DB.prepare("SELECT * FROM ai_model_configurations ORDER BY purpose, active DESC, fallback_priority").all();
     // Използване по модел (от execution логовете) — за колоната „Използван".
-    const usage = await env.DB.prepare("SELECT model_id, COUNT(*) AS runs, SUM(COALESCE(input_tokens,0)+COALESCE(output_tokens,0)) AS tokens, MAX(started_at) AS last_used_at FROM ai_execution_runs WHERE model_id IS NOT NULL GROUP BY model_id").all();
+    // Използване + токени по прозорци (30 дни / 1 година) за изчисляване на разхода.
+    const d30 = new Date(Date.now() - 30 * 86400000).toISOString();
+    const d365 = new Date(Date.now() - 365 * 86400000).toISOString();
+    const usage = await env.DB.prepare(
+      `SELECT model_id,
+         COUNT(*) AS runs,
+         SUM(COALESCE(input_tokens,0)+COALESCE(output_tokens,0)) AS tokens,
+         MAX(started_at) AS last_used_at,
+         SUM(CASE WHEN started_at >= ?1 THEN COALESCE(input_tokens,0) ELSE 0 END) AS in_30d,
+         SUM(CASE WHEN started_at >= ?1 THEN COALESCE(output_tokens,0) ELSE 0 END) AS out_30d,
+         SUM(CASE WHEN started_at >= ?2 THEN COALESCE(input_tokens,0) ELSE 0 END) AS in_365d,
+         SUM(CASE WHEN started_at >= ?2 THEN COALESCE(output_tokens,0) ELSE 0 END) AS out_365d
+       FROM ai_execution_runs WHERE model_id IS NOT NULL GROUP BY model_id`
+    ).bind(d30, d365).all();
     const credMap = Object.fromEntries((creds.results || []).map((c) => [c.provider_key, c]));
     const providers = (provs.results || []).map((p) => ({
       ...p,
