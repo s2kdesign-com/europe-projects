@@ -5,7 +5,7 @@ import {
   createPipelineRun, enqueueProcedureJobs, processJobsBatch, reclaimExpiredLocks,
   cancelPendingJobs, retryFailedJobs, nightlyAlreadyRan, isExcludedPurpose, isPipelinePurpose,
   recomputeAllAggregates, budgetDiagnostics, stopPipeline, stopPurpose, recoverStuckJobs,
-  jobsSummary, stuckJobCount,
+  jobsSummary, stuckJobCount, driveJobs,
 } from "./pipeline.js";
 
 const NO_STORE = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
@@ -59,6 +59,16 @@ export async function handleAIPipeline(request, env, url, userId, method, readJs
     const active = await env.DB.prepare("SELECT * FROM ai_pipeline_runs WHERE status IN ('running','stopping') ORDER BY created_at DESC LIMIT 1").first();
     const stuck = await stuckJobCount(env);
     return ok({ active: active || null, stuck });
+  }
+
+  // Ръчно задвижване: обработва чакащите задачи в рамките на времеви бюджет
+  // (за да не се чака cron-а). Реални provider заявки → реален разход.
+  const drive = /^\/api\/admin\/ai\/pipelines\/([\w-]+)\/process$/.exec(p);
+  if (drive && method === "POST") {
+    await reclaimExpiredLocks(env);
+    const res = await driveJobs(env, { runId: drive[1], budgetMs: 20000, batch: 4 });
+    await audit(env, { actor: userId, action: "pipeline_process", next: JSON.stringify({ runId: drive[1], ...res }) });
+    return ok(res);
   }
 
   // Безопасно спиране на целия pipeline.
@@ -139,6 +149,16 @@ export async function handleAIPipeline(request, env, url, userId, method, readJs
   if (p === "/api/admin/ai/schedules" && method === "GET") {
     const rows = await env.DB.prepare("SELECT * FROM ai_schedules ORDER BY purpose").all();
     return ok({ schedules: rows.results || [] });
+  }
+  // Глобален час на nightly старта — прилага preferred_time/timezone на всички
+  // изпълними purposes (cron-ът чете procedure_analysis като начало на pipeline-а).
+  if (p === "/api/admin/ai/schedules/nightly-time" && method === "PATCH") {
+    const body = (await readJson()) || {};
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(body.preferred_time || "")) return err("invalid_time");
+    const tz = body.timezone || "Europe/Sofia";
+    await env.DB.prepare("UPDATE ai_schedules SET preferred_time=?1, timezone=?2, updated_at=?3 WHERE purpose != 'future_chat'").bind(body.preferred_time, tz, nowISO()).run();
+    await audit(env, { actor: userId, action: "schedule_nightly_time", next: JSON.stringify({ preferred_time: body.preferred_time, timezone: tz }) });
+    return ok({ preferred_time: body.preferred_time, timezone: tz });
   }
   const sched = /^\/api\/admin\/ai\/schedules\/([\w]+)$/.exec(p);
   if (sched && method === "PATCH") {
@@ -244,8 +264,8 @@ export async function handleAIInternal(request, env, url, method) {
   // Continuation: обработи следващ batch jobs (вика се от cron/self).
   if (p === "/api/internal/ai/jobs/process" && method === "POST") {
     await reclaimExpiredLocks(env);
-    const n = await processJobsBatch(env, { runId: body.runId || null, limit: body.limit || 5 });
-    return ok({ processed: n });
+    const res = await driveJobs(env, { runId: body.runId || null, budgetMs: body.budgetMs || 20000, batch: body.batch || 4 });
+    return ok(res);
   }
 
   // Fallback nightly (cron), ако completion report не е получен.

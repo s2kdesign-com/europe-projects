@@ -3,6 +3,23 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.36.0] — 2026-07-19
+
+### Ново
+- **Настройка на часа за nightly старт**: dropdown в admin (PipelinePanel) →
+  `PATCH /api/admin/ai/schedules/nightly-time` обновява preferred_time/timezone на
+  всички изпълними purposes. `scheduled()` вече чете preferred_time+timezone
+  (Europe/Sofia) и стартира в прозорец [want, want+2min) вместо hardcoded UTC hour.
+
+## [2.35.1] — 2026-07-19
+
+### Поправено
+- **Pipeline не се самозадвижваше** — обработката зависеше само от cron `*/15` по 5
+  задачи (без continuation), затова 395 чакащи изглеждаха „заседнали“ с В ход:0.
+  Добавен `driveJobs` (time-budgeted цикъл ~20-22s), cron → `*/2`, scheduled()+internal
+  jobs/process ползват driveJobs, нов admin endpoint `/pipelines/:id/process` + бутон
+  „Обработи чакащите сега“.
+
 ## [2.35.0] — 2026-07-18
 
 ### Ново

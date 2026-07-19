@@ -162,6 +162,20 @@ export async function processJobsBatch(env, { runId = null, limit = 5, workerId 
   return processed;
 }
 
+// Изтегля задачи в цикъл в рамките на времеви бюджет (Workers не може дълъг request,
+// затова обработваме колкото стигнем и разчитаме на continuation/cron за остатъка).
+// Това прави pipeline-а самозадвижващ се вместо да чака 5 задачи на 15 мин.
+export async function driveJobs(env, { runId = null, budgetMs = 20000, batch = 4 } = {}) {
+  const deadline = Date.now() + budgetMs;
+  let total = 0, rounds = 0;
+  while (Date.now() < deadline) {
+    const n = await processJobsBatch(env, { runId, limit: batch });
+    total += n; rounds++;
+    if (n === 0) break; // няма готови задачи → спираме
+  }
+  return { processed: total, rounds };
+}
+
 async function runJob(env, job) {
   const t0 = Date.now();
   try {

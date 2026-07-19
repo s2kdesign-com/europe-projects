@@ -8,7 +8,7 @@ import { generateSitemap } from "./worker/sitemap.js";
 import { handleLocalePage } from "./worker/i18n-pages.js";
 import { handlePublicAIConfig, handleAIRunReport } from "./worker/ai/handlers.js";
 import { handleAIInternal } from "./worker/ai/pipeline-handlers.js";
-import { reclaimExpiredLocks, processJobsBatch, createPipelineRun, enqueueProcedureJobs, nightlyAlreadyRan } from "./worker/ai/pipeline.js";
+import { reclaimExpiredLocks, processJobsBatch, driveJobs, createPipelineRun, enqueueProcedureJobs, nightlyAlreadyRan } from "./worker/ai/pipeline.js";
 import { handlePlatformStatistics } from "./worker/statistics.js";
 import { COUNTRY_CODES, DEFAULT_COUNTRY, normalizeCountry } from "./app/lib/country/countries.js";
 
@@ -88,20 +88,33 @@ export default {
     ctx.waitUntil((async () => {
       try {
         await reclaimExpiredLocks(env);
+        // Настройваем от админа час на nightly старта (ai_schedules.preferred_time на
+        // procedure_analysis, в неговата timezone — по подразбиране 23:30 Europe/Sofia).
+        const cfg = await env.DB.prepare("SELECT preferred_time, timezone FROM ai_schedules WHERE purpose='procedure_analysis'").first().catch(() => null);
+        const tz = (cfg && cfg.timezone) || "Europe/Sofia";
+        const want = (cfg && cfg.preferred_time) || "23:30";
+        // Текущо време в конфигурираната зона (HH:MM).
+        let localHM = "00:00";
+        try {
+          const parts = new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+          localHM = parts;
+        } catch { /* при невалидна зона → UTC */ localHM = new Date().toISOString().slice(11, 16); }
+        // Cron-ът е на всеки 2 мин → съвпадение в прозорец [want, want+2min).
+        const toMin = (hm) => { const [h, m] = String(hm).split(":").map(Number); return h * 60 + m; };
+        const nowMin = toMin(localHM), wantMin = toMin(want);
+        const inWindow = nowMin >= wantMin && nowMin < wantMin + 2;
         const date = new Date().toISOString().slice(0, 10);
-        const hour = new Date().getUTCHours();
-        // ~20:30 UTC ≈ 23:30 Europe/Sofia (лятно часово време) — fallback старт.
-        if (hour === 20 && !(await nightlyAlreadyRan(env, date))) {
+        if (inWindow && !(await nightlyAlreadyRan(env, date))) {
           const running = await env.DB.prepare("SELECT id FROM scheduled_sync_runs WHERE status='running' ORDER BY id DESC LIMIT 1").first().catch(() => null);
           if (!running) {
             const runId = await createPipelineRun(env, { triggerType: "fallback_cron", scheduledDate: date, scope: "new_and_changed" });
             await enqueueProcedureJobs(env, runId, { scope: "new_and_changed" });
-            await processJobsBatch(env, { runId, limit: 5 });
+            await driveJobs(env, { runId, budgetMs: 22000, batch: 4 });
           }
         } else {
           // Continuation: обработи чакащи jobs от активния run.
-          const active = await env.DB.prepare("SELECT id FROM ai_pipeline_runs WHERE status='running' ORDER BY created_at DESC LIMIT 1").first().catch(() => null);
-          if (active) await processJobsBatch(env, { runId: active.id, limit: 5 });
+          const active = await env.DB.prepare("SELECT id FROM ai_pipeline_runs WHERE status IN ('running','stopping') ORDER BY created_at DESC LIMIT 1").first().catch(() => null);
+          if (active) await driveJobs(env, { runId: active.id, budgetMs: 22000, batch: 4 });
         }
       } catch { /* cron не бива да хвърля */ }
     })());

@@ -126,3 +126,8 @@
 .stats-cats li { margin: 3px 0; }
 .stats-cats b { color: var(--ink); }
 @media (max-width: 640px) { .apl-stages { grid-template-columns: 1fr 1fr; } .jobs-sum { grid-template-columns: repeat(2, 1fr); } }
+
+/* Час на автоматичното изпълнение (nightly cron старт) — v2.36.0 */
+.nightly-time { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding: 10px 12px; background: var(--surface-2, #f4f7fb); border-radius: 8px; }
+.nightly-time label { font-weight: 700; font-size: 13px; }
+.nightly-time .row-sub { color: var(--faint); }

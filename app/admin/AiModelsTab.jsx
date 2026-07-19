@@ -171,9 +171,11 @@ function PipelinePanel({ data, flash }) {
   const [jobSum, setJobSum] = useState(null);
   const [modal, setModal] = useState(null); // { kind: purpose|all|pipeline|stop|stopPurpose|stats }
   const [stuck, setStuck] = useState(0);
+  const [proc, setProc] = useState(false);
+  const [nightlyTime, setNightlyTime] = useState("23:30");
   const load = useCallback(() => {
     api("/api/admin/ai/pipelines").then((d) => setPipe(d)).catch(() => setPipe({ pipelines: [], active: null }));
-    api("/api/admin/ai/schedules").then((d) => setSchedules(d.schedules || [])).catch(() => setSchedules([]));
+    api("/api/admin/ai/schedules").then((d) => { setSchedules(d.schedules || []); const pa = (d.schedules || []).find((s) => s.purpose === "procedure_analysis"); if (pa?.preferred_time) setNightlyTime(pa.preferred_time); }).catch(() => setSchedules([]));
     api("/api/admin/ai/pipelines/active").then((d) => setStuck(d.stuck || 0)).catch(() => {});
   }, []);
   const loadJobSum = useCallback((runId) => {
@@ -263,6 +265,9 @@ function PipelinePanel({ data, flash }) {
           </div>
 
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+            <button className="btn btn-primary btn-sm" disabled={proc} onClick={async () => { setProc(true); try { const d = await api(`/api/admin/ai/pipelines/${active.id}/process`, { method: "POST" }); flash(tl("Обработени задачи") + ": " + d.processed); } catch { flash(tl("Неуспешно")); } setProc(false); load(); loadJobSum(active.id); }}>
+              <Icon name={proc ? "clock" : "sparkle"} size={14} /> {proc ? tl("Обработва…") : tl("Обработи чакащите сега")}
+            </button>
             <button className="btn btn-ghost btn-sm" onClick={() => { load(); loadJobSum(active.id); }}><Icon name="refresh" size={14} /> {tl("Обнови")}</button>
             <button className="btn btn-ghost btn-sm" onClick={() => api(`/api/admin/ai/pipelines/${active.id}/retry-failed`, { method: "POST" }).then(() => { load(); loadJobSum(active.id); })}>{tl("Повтори неуспешните")}</button>
             <button className="btn btn-ghost btn-sm" onClick={() => api(`/api/admin/ai/pipelines/${active.id}/cancel-pending`, { method: "POST" }).then(() => { load(); loadJobSum(active.id); })}>{tl("Отмени чакащите задачи")}</button>
@@ -271,6 +276,16 @@ function PipelinePanel({ data, flash }) {
       ) : (
         <p className="prose" style={{ color: "var(--faint)" }}>{tl("В момента няма активен pipeline.")}</p>
       )}
+
+      {/* Час на автоматичното изпълнение (nightly cron старт) */}
+      <div className="nightly-time">
+        <label htmlFor="nightly-time-sel">{tl("Час на автоматичното изпълнение")}</label>
+        <select id="nightly-time-sel" className="inp inp-sm" value={nightlyTime}
+          onChange={(e) => { const v = e.target.value; setNightlyTime(v); api("/api/admin/ai/schedules/nightly-time", { method: "PATCH", body: JSON.stringify({ preferred_time: v, timezone: "Europe/Sofia" }) }).then(() => { flash(tl("Часът е записан") + ": " + v); load(); }).catch(() => flash(tl("Неуспешна промяна"))); }}>
+          {["21:00", "21:30", "22:00", "22:30", "23:00", "23:30", "00:00", "00:30", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00"].map((h) => <option key={h} value={h}>{h}</option>)}
+        </select>
+        <span className="row-sub">Europe/Sofia · {tl("cron проверява на всеки 2 мин")}</span>
+      </div>
 
       {/* Действия по агент */}
       <div className="table-scroll" style={{ marginTop: 12 }}>
