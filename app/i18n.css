@@ -100,7 +100,7 @@
 .lang-auto-toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 
 /* Съдържателни страници (/about, /how-ai-works) */
-.prose-page { max-width: 820px; }
+.prose-page { max-width: var(--maxw); }
 .prose-page h1 { font-size: 28px; letter-spacing: -0.02em; margin: 12px 0 12px; }
 .prose-page h2 { font-size: 20px; margin: 24px 0 8px; }
 .prose-page p { color: var(--ink, #1e293b); }
