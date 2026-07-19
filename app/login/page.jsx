@@ -5,6 +5,7 @@ import AccountHeader from "../components/AccountHeader.jsx";
 import Icon from "../components/Icon.jsx";
 import { GoogleG } from "../components/UserMenu.jsx";
 import { useSession } from "../hooks/useSession.js";
+import { useUiTranslate } from "../lib/i18n/ui-translate.js";
 
 const ERRORS = {
   cancelled: "Входът беше отменен. Можете да опитате отново.",
@@ -17,7 +18,17 @@ const ERRORS = {
   oauth_not_configured: "Входът все още не е конфигуриран на сървъра.",
 };
 
+const LABELS = [
+  ...Object.values(ERRORS),
+  "Вход в Европроекти",
+  "Влезте, за да синхронизирате запазените процедури, да настроите своя профил и да получавате по-подходящи възможности за финансиране.",
+  "Пренасочване…", "Продължи с Google", "Разгледай без вход",
+  "Google ни предоставя само основна информация (име, имейл, снимка). Не получаваме вашата парола. Повече в",
+  "поверителност",
+];
+
 export default function LoginPage() {
+  const tl = useUiTranslate(LABELS);
   const session = useSession();
   const [error, setError] = useState(null);
   const [returnTo, setReturnTo] = useState("/");
@@ -50,27 +61,25 @@ export default function LoginPage() {
       <main id="main" className="auth-wrap">
         <section className="auth-card" aria-labelledby="login-title">
           <span className="auth-mark" aria-hidden="true"><Icon name="euro" size={26} /></span>
-          <h1 id="login-title">Вход в Европроекти</h1>
+          <h1 id="login-title">{tl("Вход в Европроекти")}</h1>
           <p className="auth-desc">
-            Влезте, за да синхронизирате запазените процедури, да настроите своя профил и да
-            получавате по-подходящи възможности за финансиране.
+            {tl("Влезте, за да синхронизирате запазените процедури, да настроите своя профил и да получавате по-подходящи възможности за финансиране.")}
           </p>
 
           {error && (
             <div className="auth-error" role="alert">
-              <Icon name="alert" size={18} /> <span>{error}</span>
+              <Icon name="alert" size={18} /> <span>{tl(error)}</span>
             </div>
           )}
 
           <button ref={btnRef} className="btn btn-google btn-google-lg" onClick={start} disabled={submitting}>
-            <GoogleG size={20} /> {submitting ? "Пренасочване…" : "Продължи с Google"}
+            <GoogleG size={20} /> {submitting ? tl("Пренасочване…") : tl("Продължи с Google")}
           </button>
 
-          <a className="auth-secondary" href="/">Разгледай без вход</a>
+          <a className="auth-secondary" href="/">{tl("Разгледай без вход")}</a>
 
           <p className="auth-privacy">
-            <Icon name="info" size={14} /> Google ни предоставя само основна информация (име, имейл, снимка).
-            Не получаваме вашата парола. Повече в <a href="/profile#privacy">поверителност</a>.
+            <Icon name="info" size={14} /> {tl("Google ни предоставя само основна информация (име, имейл, снимка). Не получаваме вашата парола. Повече в")} <a href="/profile#privacy">{tl("поверителност")}</a>.
           </p>
         </section>
       </main>

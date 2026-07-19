@@ -3,6 +3,8 @@
 // Малки, достъпни SVG диаграми без външна библиотека. Цветовете идват от
 // CSS променливите (тема). Всяка диаграма има скрита таблица за екранни четци.
 
+import { useUiTranslate } from "../lib/i18n/ui-translate.js";
+
 const PALETTE = ["var(--primary)", "var(--green)", "var(--amber)", "var(--violet)", "var(--blue)", "var(--red)", "var(--neutral)"];
 
 // ВАЖНО: таблицата за екранни четци се загръща в <div className="sr-only">.
@@ -98,6 +100,7 @@ export function ColumnChart({ title, data, series }) {
 }
 
 export function DonutChart({ title, data }) {
+  const tl = useUiTranslate(["общо"]);
   const total = data.reduce((a, d) => a + d.value, 0) || 1;
   const R = 52, C = 2 * Math.PI * R, cx = 70, cy = 70;
   let offset = 0;
@@ -130,7 +133,7 @@ export function DonutChart({ title, data }) {
             return seg;
           })}
           <text x={cx} y={cy - 2} textAnchor="middle" fontSize="22" fontWeight="800" fill="var(--ink)">{total}</text>
-          <text x={cx} y={cy + 14} textAnchor="middle" fontSize="9" fill="var(--muted)">общо</text>
+          <text x={cx} y={cy + 14} textAnchor="middle" fontSize="9" fill="var(--muted)">{tl("общо")}</text>
         </svg>
         <div className="chart-legend col">
           {data.map((d, i) => (

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AccountHeader from "../components/AccountHeader.jsx";
 import Icon from "../components/Icon.jsx";
 import { useSession } from "../hooks/useSession.js";
+import { useUiTranslate } from "../lib/i18n/ui-translate.js";
 import { categoryMeta } from "../lib/changelog-data.js";
 import { APP_VERSION, APP_VERSION_LABEL, CHANGELOG_SEEN_KEY } from "../lib/version.js";
 
@@ -17,7 +18,16 @@ const FILTERS = [
 const ROUTE_HREF = { overview: "/?tab=overview", procedures: "/?tab=procedures", calendar: "/?tab=calendar", saved: "/?tab=saved", changelog: "/changelog" };
 const ROUTE_LABEL = { overview: "Обзор", procedures: "Процедури", calendar: "Календар", saved: "Запазени", changelog: "Промени" };
 
+const LABELS = [
+  ...FILTERS.map((f) => f.label), ...Object.values(ROUTE_LABEL),
+  "Какво ново в Европроекти", "Всички подобрения, нови функции, корекции и промени в данните на системата.",
+  "Системата се развива активно", "Търсене в промените", "Търсене…", "Няма резултати",
+  "Опитайте с друг филтър или дума за търсене.", "Грешка при зареждане", "Опитай пак",
+  "История на промените", "Зареждане…", "Достигнахте началото на историята.", "Обратно нагоре", "Виж",
+];
+
 export default function ChangelogPage() {
+  const tl = useUiTranslate(LABELS);
   const session = useSession();
   const [items, setItems] = useState([]);
   const [cursor, setCursor] = useState(null);
@@ -92,37 +102,37 @@ export default function ChangelogPage() {
       <AccountHeader session={session} />
       <main id="main" className="container page changelog">
         <div className="cl-head">
-          <h1>Какво ново в Европроекти</h1>
-          <p>Всички подобрения, нови функции, корекции и промени в данните на системата.</p>
+          <h1>{tl("Какво ново в Европроекти")}</h1>
+          <p>{tl("Всички подобрения, нови функции, корекции и промени в данните на системата.")}</p>
           <div className="cl-meta">
             <span className="badge blue">{APP_VERSION_LABEL}</span>
-            <span className="cl-status"><span className="live-dot" /> Системата се развива активно</span>
+            <span className="cl-status"><span className="live-dot" /> {tl("Системата се развива активно")}</span>
           </div>
         </div>
 
         <div className="cl-controls">
           <div className="searchbox" style={{ maxWidth: 320 }}>
             <Icon name="search" size={18} />
-            <label htmlFor="cl-q" className="sr-only">Търсене в промените</label>
-            <input id="cl-q" className="search" type="search" placeholder="Търсене…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <label htmlFor="cl-q" className="sr-only">{tl("Търсене в промените")}</label>
+            <input id="cl-q" className="search" type="search" placeholder={tl("Търсене…")} value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <div className="chips">
             {FILTERS.map((f) => (
-              <button key={f.key} className={"chip" + (category === f.key ? " chip-on" : "")} aria-pressed={category === f.key} onClick={() => setCategory(f.key)}>{f.label}</button>
+              <button key={f.key} className={"chip" + (category === f.key ? " chip-on" : "")} aria-pressed={category === f.key} onClick={() => setCategory(f.key)}>{tl(f.label)}</button>
             ))}
           </div>
         </div>
 
         {status === "loading" && <div className="cl-timeline">{[0, 1, 2].map((i) => <div className="skeleton-card" key={i} style={{ marginBottom: 12 }}><div className="sk sk-pill" /><div className="sk sk-line sk-title" style={{ marginTop: 12 }} /><div className="sk sk-line" style={{ width: "90%" }} /></div>)}</div>}
 
-        {status === "empty" && <div className="state ov-empty"><Icon name="search" size={28} /><h3>Няма резултати</h3><p>Опитайте с друг филтър или дума за търсене.</p></div>}
+        {status === "empty" && <div className="state ov-empty"><Icon name="search" size={28} /><h3>{tl("Няма резултати")}</h3><p>{tl("Опитайте с друг филтър или дума за търсене.")}</p></div>}
 
         {status === "error" && items.length === 0 && (
-          <div className="state error" role="alert"><Icon name="alert" size={28} /><h3>Грешка при зареждане</h3><button className="btn btn-primary" onClick={() => fetchPage(true, category, q, null)}><Icon name="refresh" size={16} /> Опитай пак</button></div>
+          <div className="state error" role="alert"><Icon name="alert" size={28} /><h3>{tl("Грешка при зареждане")}</h3><button className="btn btn-primary" onClick={() => fetchPage(true, category, q, null)}><Icon name="refresh" size={16} /> {tl("Опитай пак")}</button></div>
         )}
 
         {items.length > 0 && (
-          <ol className="cl-timeline" aria-label="История на промените">
+          <ol className="cl-timeline" aria-label={tl("История на промените")}>
             {items.map((e) => {
               const cm = categoryMeta(e.category);
               return (
@@ -140,7 +150,7 @@ export default function ChangelogPage() {
                       <ul className="cl-list">{e.content.map((c, i) => <li key={i}>{c}</li>)}</ul>
                     )}
                     {e.affected_route && ROUTE_HREF[e.affected_route] && (
-                      <a className="cl-route" href={ROUTE_HREF[e.affected_route]}><Icon name="arrowRight" size={14} /> Виж „{ROUTE_LABEL[e.affected_route]}“</a>
+                      <a className="cl-route" href={ROUTE_HREF[e.affected_route]}><Icon name="arrowRight" size={14} /> {tl("Виж")} „{tl(ROUTE_LABEL[e.affected_route])}“</a>
                     )}
                   </div>
                 </li>
@@ -150,12 +160,12 @@ export default function ChangelogPage() {
         )}
 
         <div ref={sentinelRef} aria-hidden="true" />
-        {status === "loading-more" && <p className="cl-more"><span className="live-dot" /> Зареждане…</p>}
-        {status === "error" && items.length > 0 && <p className="cl-more"><button className="btn" onClick={() => fetchPage(false, category, q, cursor)}><Icon name="refresh" size={14} /> Опитай пак</button></p>}
-        {!hasMore && items.length > 0 && <p className="cl-end">Достигнахте началото на историята.</p>}
+        {status === "loading-more" && <p className="cl-more"><span className="live-dot" /> {tl("Зареждане…")}</p>}
+        {status === "error" && items.length > 0 && <p className="cl-more"><button className="btn" onClick={() => fetchPage(false, category, q, cursor)}><Icon name="refresh" size={14} /> {tl("Опитай пак")}</button></p>}
+        {!hasMore && items.length > 0 && <p className="cl-end">{tl("Достигнахте началото на историята.")}</p>}
 
         {showTop && (
-          <button className="cl-top" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} aria-label="Обратно нагоре">
+          <button className="cl-top" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} aria-label={tl("Обратно нагоре")}>
             <Icon name="chevronDown" size={18} style={{ transform: "rotate(180deg)" }} />
           </button>
         )}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Icon from "./Icon.jsx";
+import { useUiTranslate } from "../lib/i18n/ui-translate.js";
 import { useTranslatedProject } from "./i18n/TranslatedProjects.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import { daysLeft, countdownLabel, formatDate } from "../lib/project-utils.js";
@@ -62,6 +63,7 @@ function Row({ p, now, saved, savedMeta, onOpen, onToggleSave, onCalendar }) {
 
 export default function UpcomingDeadlines({ buckets, now, isSaved, savedMeta, onOpen, onToggleSave, onCalendar, onOpenCalendar }) {
   const { t } = useTranslation();
+  const tl = useUiTranslate(["Изглед", "По спешност", "Списък", "Календар"]);
   const [view, setView] = useState("grouped");
   const total = buckets.reduce((a, b) => a + b.items.length, 0);
 
@@ -70,10 +72,10 @@ export default function UpcomingDeadlines({ buckets, now, isSaved, savedMeta, on
       <div className="ov-section-head">
         <h2 id="dl-h"><Icon name="clock" size={18} /> {t("sections.upcoming")}</h2>
         <span className="count-dot">{total}</span>
-        <div className="segmented ov-view" role="group" aria-label="Изглед">
-          <button aria-pressed={view === "grouped"} onClick={() => setView("grouped")} title="По спешност"><Icon name="layers" size={15} /></button>
-          <button aria-pressed={view === "list"} onClick={() => setView("list")} title="Списък"><Icon name="list" size={15} /></button>
-          <button onClick={onOpenCalendar} title="Календар"><Icon name="calendar" size={15} /></button>
+        <div className="segmented ov-view" role="group" aria-label={tl("Изглед")}>
+          <button aria-pressed={view === "grouped"} onClick={() => setView("grouped")} title={tl("По спешност")}><Icon name="layers" size={15} /></button>
+          <button aria-pressed={view === "list"} onClick={() => setView("list")} title={tl("Списък")}><Icon name="list" size={15} /></button>
+          <button onClick={onOpenCalendar} title={tl("Календар")}><Icon name="calendar" size={15} /></button>
         </div>
       </div>
 

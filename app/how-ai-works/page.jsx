@@ -1,6 +1,8 @@
+import AutoTranslateRegion from "../components/i18n/AutoTranslateRegion.jsx";
+
 export default function HowAiWorksPage() {
   return (
-    <main id="main" className="container page prose-page">
+    <AutoTranslateRegion as="main" id="main" className="container page prose-page">
       <nav className="crumbs" aria-label="breadcrumbs">
         <a href="/">Начало</a> › <span aria-current="page">Как работи AI</span>
       </nav>
@@ -40,6 +42,6 @@ export default function HowAiWorksPage() {
       </p>
 
       <p><a className="btn btn-primary" href="/procedures">Разгледай процедурите →</a></p>
-    </main>
+    </AutoTranslateRegion>
   );
 }

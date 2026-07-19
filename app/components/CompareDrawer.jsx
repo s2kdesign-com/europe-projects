@@ -3,6 +3,7 @@
 import Icon from "./Icon.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import { useFocusTrap } from "../hooks/useFocusTrap.js";
+import { useUiTranslate } from "../lib/i18n/ui-translate.js";
 import { daysLeft, countdownLabel, formatDate, targetGroup, isNovel } from "../lib/project-utils.js";
 
 const ROWS = [
@@ -17,7 +18,14 @@ const ROWS = [
   { key: "source", label: "Източник" },
 ];
 
+const LABELS = [
+  ...ROWS.map((r) => r.label),
+  "Младежка заетост", "Общи / бизнес", "Да", "Не", "Страница",
+  "Сравнение на процедури", "Затвори", "Характеристика",
+];
+
 export default function CompareDrawer({ projects, onClose, onRemove }) {
+  const tl = useUiTranslate(LABELS);
   const trapRef = useFocusTrap(true, onClose);
 
   const cell = (p, key) => {
@@ -42,14 +50,14 @@ export default function CompareDrawer({ projects, onClose, onRemove }) {
       case "program":
         return p.program || "—";
       case "target":
-        return targetGroup(p) === "youth" ? "Младежка заетост" : "Общи / бизнес";
+        return targetGroup(p) === "youth" ? tl("Младежка заетост") : tl("Общи / бизнес");
       case "docs":
         return p.doc_count || 0;
       case "new":
-        return isNovel(p) ? "Да" : "Не";
+        return isNovel(p) ? tl("Да") : tl("Не");
       case "source":
         return p.link ? (
-          <a href={p.link} target="_blank" rel="noreferrer"><Icon name="external" size={14} /> Страница</a>
+          <a href={p.link} target="_blank" rel="noreferrer"><Icon name="external" size={14} /> {tl("Страница")}</a>
         ) : (
           "—"
         );
@@ -62,8 +70,8 @@ export default function CompareDrawer({ projects, onClose, onRemove }) {
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="compare-panel" role="dialog" aria-modal="true" aria-labelledby="cmp-title" ref={trapRef}>
         <div className="drawer-head">
-          <h2 id="cmp-title" style={{ marginTop: 0 }}>Сравнение на процедури</h2>
-          <button className="drawer-close" onClick={onClose} aria-label="Затвори">
+          <h2 id="cmp-title" style={{ marginTop: 0 }}>{tl("Сравнение на процедури")}</h2>
+          <button className="drawer-close" onClick={onClose} aria-label={tl("Затвори")}>
             <Icon name="close" size={20} />
           </button>
         </div>
@@ -71,7 +79,7 @@ export default function CompareDrawer({ projects, onClose, onRemove }) {
           <table className="compare-table">
             <thead>
               <tr>
-                <th scope="col"><span className="sr-only">Характеристика</span></th>
+                <th scope="col"><span className="sr-only">{tl("Характеристика")}</span></th>
                 {projects.map((p) => (
                   <th scope="col" key={p.id}>
                     <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
@@ -87,7 +95,7 @@ export default function CompareDrawer({ projects, onClose, onRemove }) {
             <tbody>
               {ROWS.map((r) => (
                 <tr key={r.key}>
-                  <th scope="row">{r.label}</th>
+                  <th scope="row">{tl(r.label)}</th>
                   {projects.map((p) => (
                     <td key={p.id}>{cell(p, r.key)}</td>
                   ))}

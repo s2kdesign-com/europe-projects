@@ -4,8 +4,17 @@ import Icon from "./Icon.jsx";
 import { SORT_OPTIONS, VIEWS, STATUS, TARGET_GROUP, DEADLINE_WINDOWS } from "../lib/constants.js";
 import { activeFilterCount } from "../lib/project-utils.js";
 import { formatWeekLabel } from "../lib/overview-utils.js";
+import { useUiTranslate } from "../lib/i18n/ui-translate.js";
 
 const VIEW_ICON = { cards: "grid", list: "list", program: "layers" };
+
+const LABELS = [
+  "Търсене на процедури", "Търси по име, програма, кандидати…", "Филтри", "Сортиране",
+  "Изглед", "Свали филтрираните като CSV", "Печат на филтрираните",
+  "Копирай връзка към този изглед", "Печат", "Сподели", "от", "процедури",
+  "С документи", "Нови", "Актуализирани", "Изчисти всички", "Премахни филтър",
+  ...SORT_OPTIONS.map((s) => s.label), ...VIEWS.map((v) => v.label),
+];
 
 function isoToDate(s) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ""));
@@ -46,6 +55,7 @@ export default function ViewControls({
   onPrint,
   onCopyView,
 }) {
+  const tl = useUiTranslate(LABELS);
   const chips = chipLabels(filters);
   const nActive = activeFilterCount(filters);
 
@@ -54,69 +64,69 @@ export default function ViewControls({
       <div className="toolbar">
         <div className="searchbox">
           <Icon name="search" size={18} />
-          <label htmlFor="proc-search" className="sr-only">Търсене на процедури</label>
+          <label htmlFor="proc-search" className="sr-only">{tl("Търсене на процедури")}</label>
           <input
             id="proc-search"
             className="search"
             type="search"
-            placeholder="Търси по име, програма, кандидати…"
+            placeholder={tl("Търси по име, програма, кандидати…")}
             value={filters.q}
             onChange={(e) => onQuery(e.target.value)}
           />
         </div>
 
         <button className="btn filter-toggle" onClick={onOpenSheet} aria-haspopup="dialog">
-          <Icon name="filter" size={16} /> Филтри{nActive ? ` (${nActive})` : ""}
+          <Icon name="filter" size={16} /> {tl("Филтри")}{nActive ? ` (${nActive})` : ""}
         </button>
 
-        <label htmlFor="proc-sort" className="sr-only">Сортиране</label>
+        <label htmlFor="proc-sort" className="sr-only">{tl("Сортиране")}</label>
         <select id="proc-sort" className="select" value={filters.sort} onChange={(e) => onSort(e.target.value)}>
           {SORT_OPTIONS.map((s) => (
-            <option key={s.key} value={s.key}>{s.label}</option>
+            <option key={s.key} value={s.key}>{tl(s.label)}</option>
           ))}
         </select>
 
-        <div className="segmented" role="group" aria-label="Изглед">
+        <div className="segmented" role="group" aria-label={tl("Изглед")}>
           {VIEWS.map((v) => (
             <button
               key={v.key}
               aria-pressed={filters.view === v.key}
               onClick={() => onView(v.key)}
-              title={v.label}
+              title={tl(v.label)}
             >
               <Icon name={VIEW_ICON[v.key]} size={16} />
-              <span className="sr-only">{v.label}</span>
+              <span className="sr-only">{tl(v.label)}</span>
             </button>
           ))}
         </div>
 
-        <button className="btn btn-ghost" onClick={onExportCSV} title="Свали филтрираните като CSV">
+        <button className="btn btn-ghost" onClick={onExportCSV} title={tl("Свали филтрираните като CSV")}>
           <Icon name="download" size={16} /> CSV
         </button>
-        <button className="btn btn-ghost" onClick={onPrint} title="Печат на филтрираните">
-          <Icon name="print" size={16} /> Печат
+        <button className="btn btn-ghost" onClick={onPrint} title={tl("Печат на филтрираните")}>
+          <Icon name="print" size={16} /> {tl("Печат")}
         </button>
-        <button className="btn btn-ghost" onClick={onCopyView} title="Копирай връзка към този изглед">
-          <Icon name="link" size={16} /> Сподели
+        <button className="btn btn-ghost" onClick={onCopyView} title={tl("Копирай връзка към този изглед")}>
+          <Icon name="link" size={16} /> {tl("Сподели")}
         </button>
       </div>
 
       <div className="result-bar">
         <span className="result-count" aria-live="polite">
-          <strong>{resultCount}</strong> от {totalCount} процедури
+          <strong>{resultCount}</strong> {tl("от")} {totalCount} {tl("процедури")}
         </span>
         {chips.length > 0 && (
           <div className="chips">
             {chips.map((c) => (
               <span className="chip" key={c.key}>
-                {c.label}
-                <button onClick={() => onRemoveChip(c)} aria-label={`Премахни филтър: ${c.label}`}>
+                {tl(c.label)}
+                <button onClick={() => onRemoveChip(c)} aria-label={`${tl("Премахни филтър")}: ${tl(c.label)}`}>
                   <Icon name="close" size={14} />
                 </button>
               </span>
             ))}
             <button className="btn btn-ghost" style={{ minHeight: 32, padding: "2px 10px" }} onClick={onClearAll}>
-              Изчисти всички
+              {tl("Изчисти всички")}
             </button>
           </div>
         )}
