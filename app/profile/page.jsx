@@ -315,10 +315,10 @@ export default function ProfilePage() {
         <Section title="Акаунт и поверителност" id="privacy">
           <p className="prose">{tl("Влезли сте като")} <strong>{u.email}</strong>. {tl("Google ни предоставя само основна идентичност; паролата ви никога не достига до нас.")}</p>
           <p className="prose">{tl("Запазените процедури и профилът се пазят в базата (Cloudflare D1), обвързани с акаунта ви. Преди вход временните запазвания живеят само в текущия браузър.")}</p>
-          <div className="prof-actions">
+          <div className="prof-actions prof-actions-privacy">
             <button className="btn" onClick={exportData}><Icon name="download" size={16} /> {tl("Изтегли моите данни")}</button>
             <button className="btn" onClick={() => session.logout()}><Icon name="external" size={16} /> {tl("Изход")}</button>
-            <button className="btn btn-danger" onClick={() => setConfirmDelete(true)}><Icon name="close" size={16} /> {tl("Изтрий акаунта")}</button>
+            <button className="btn btn-danger prof-delete" onClick={() => setConfirmDelete(true)}><Icon name="close" size={16} /> {tl("Изтрий акаунта")}</button>
           </div>
         </Section>
       </main>

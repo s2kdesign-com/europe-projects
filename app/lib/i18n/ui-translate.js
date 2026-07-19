@@ -8,6 +8,16 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useLanguage } from "../../components/i18n/I18nProvider.jsx";
 import { translateItems } from "./translate-client.js";
 
+// Ръчни преводи за термини, които машинният превод бърка (напр. „Изход" → „Exodus").
+// Ключ: изходният български текст → { lang: превод }.
+const UI_OVERRIDES = {
+  "Изход": { en: "Sign off", de: "Abmelden" },
+};
+function overrideFor(lang, bg) {
+  const o = UI_OVERRIDES[bg];
+  return o && o[lang] ? o[lang] : null;
+}
+
 // Контекст, за да могат вложените компоненти (полета/секции) да превеждат етикетите
 // си без изрично подаване на функцията.
 export const UiTrContext = createContext((x) => x);
@@ -32,5 +42,5 @@ export function useUiTranslate(labels) {
     return () => { alive = false; };
   }, [sig]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return (bg) => map.get(bg) || bg;
+  return (bg) => overrideFor(lang, bg) || map.get(bg) || bg;
 }

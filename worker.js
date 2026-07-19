@@ -5,7 +5,7 @@ import { handleAuth } from "./worker/handlers.js";
 import { logError } from "./worker/db.js";
 import { handleProcedurePage, handleStatusLanding, handleProgramsIndex, handleProgramLanding, handleCandidateLanding, handleDeadlineLanding } from "./worker/procedure-page.js";
 import { generateSitemap } from "./worker/sitemap.js";
-import { handleLocalePage } from "./worker/i18n-pages.js";
+import { handleLocalePage, handleRootSocial } from "./worker/i18n-pages.js";
 import { handlePublicAIConfig, handleAIRunReport } from "./worker/ai/handlers.js";
 import { handleAIInternal } from "./worker/ai/pipeline-handlers.js";
 import { reclaimExpiredLocks, processJobsBatch, driveJobs, createPipelineRun, enqueueProcedureJobs, nightlyAlreadyRan } from "./worker/ai/pipeline.js";
@@ -153,11 +153,21 @@ export default {
       }
     }
 
-    // Езикови URL-и (/en, /de) → БГ статика с преведен <head> + hreflang.
-    if (request.method === "GET" && /^\/(en|de)(\/|$)/.test(pathname)) {
+    // Езикови URL-и (/bg, /en, /de) → БГ статика с локализиран <head> + пълни
+    // социални OG тагове + hreflang.
+    if (request.method === "GET" && /^\/(bg|en|de)(\/|$)/.test(pathname)) {
       try {
         const loc = await handleLocalePage(request, env, url);
         if (loc) return loc;
+      } catch (e) {
+        await logError(env, { source: "server", method: "GET", path: pathname, status: 500, message: String((e && e.message) || e), detail: "" }).catch(() => {});
+      }
+    }
+    // Бара / (и app-shell пътищата без префикс) → английски социални OG тагове.
+    if (request.method === "GET" && (pathname === "/" || /^\/(procedures|calendar|saved|changelog|about|how-ai-works|terms|privacy|cookies|sources)$/.test(pathname))) {
+      try {
+        const rootSoc = await handleRootSocial(request, env, url);
+        if (rootSoc) return rootSoc;
       } catch (e) {
         await logError(env, { source: "server", method: "GET", path: pathname, status: 500, message: String((e && e.message) || e), detail: "" }).catch(() => {});
       }

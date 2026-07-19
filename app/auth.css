@@ -85,3 +85,10 @@
   .um-name { display: none; }
   .appbar-account { margin-left: auto; }
 }
+
+/* Профил → Акаунт и поверителност: „Изтрий акаунта" вдясно и плътно червен (v2.39.0) */
+.prof-actions-privacy .prof-delete { margin-left: auto; }
+.prof-delete { background: var(--red, #b32433); border-color: var(--red, #b32433); color: #fff; font-weight: 700; }
+.prof-delete:hover { background: var(--red-ink, #861420); border-color: var(--red-ink, #861420); color: #fff; }
+.prof-delete .icon { color: #fff; }
+@media (max-width: 560px) { .prof-actions-privacy .prof-delete { margin-left: 0; } }

@@ -14,14 +14,14 @@ const emit = (name) => window.dispatchEvent(new CustomEvent(name));
 // „Как работи AI" — отваря посрещащия модал директно на AI секцията (без втори модал).
 const openAiInfo = () => window.dispatchEvent(new CustomEvent("open-welcome", { detail: { section: "ai" } }));
 
-// Компактна footer стат-карта с достъпно име (числото е акцентът).
-function FooterStat({ n, label, desc }) {
+// Компактна footer стат-карта с достъпно име (числото е акцентът). Кликаема връзка.
+function FooterStat({ n, label, desc, href }) {
   return (
-    <div className="sf-stat" title={desc || undefined}>
+    <a className="sf-stat sf-stat-link" href={href} title={desc || undefined}>
       <span className="sf-stat-n">{n}</span>
       <span className="sf-stat-l">{label}</span>
       {desc ? <span className="sr-only">{desc}</span> : null}
-    </div>
+    </a>
   );
 }
 
@@ -170,13 +170,14 @@ export default function SiteFooter({ session: sessionProp }) {
               [0, 1, 2, 3].map((i) => <div key={i} className="sf-stat sf-stat-sk" aria-hidden="true"><span className="sk-n" /><span className="sk-l" /></div>)
             ) : (
               <>
-                <FooterStat n={nf(pstats.countries)} label={t("country.sourcesStatCountries")} />
-                <FooterStat n={nf(pstats.activeSources)} label={t("country.sourcesStatSources")} />
-                <FooterStat n={nf(pstats.totalProcedures)} label={t("country.sourcesStatProcedures")} />
+                <FooterStat n={nf(pstats.countries)} label={t("country.sourcesStatCountries")} href="/about#about-system" />
+                <FooterStat n={nf(pstats.activeSources)} label={t("country.sourcesStatSources")} href="/sources" />
+                <FooterStat n={nf(pstats.totalProcedures)} label={t("country.sourcesStatProcedures")} href="/about#how-we-use-ai" />
                 <FooterStat
                   n={pstats.publishedBudgetEur != null ? cf(pstats.publishedBudgetEur) : t("footer.noConfirmedData")}
                   label={t("country.sourcesStatBudget")}
                   desc={t("about.budgetDisclaimerShort")}
+                  href="/about#about-system"
                 />
               </>
             )}

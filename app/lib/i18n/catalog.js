@@ -39,7 +39,15 @@ function hash(str) {
 }
 
 const FLAT_BG = flatten(bg);
-const CATALOG_VERSION = hash(JSON.stringify(FLAT_BG));
+
+// Ръчни преводи, които машинният превод бърка (напр. „Изход" → „Exodus" вместо
+// „Sign off"). Прилагат се СЛЕД генерирането. Ключът е плоският i18n ключ.
+const OVERRIDES = {
+  en: { "menu.logout": "Sign off", "footer.logout": "Sign off" },
+  de: { "menu.logout": "Abmelden", "footer.logout": "Abmelden" },
+};
+// Версията на каталога зависи и от override-ите (при промяна → нов кеш).
+const CATALOG_VERSION = hash(JSON.stringify(FLAT_BG) + JSON.stringify(OVERRIDES));
 
 function lsGet(lang) {
   try {
@@ -76,6 +84,9 @@ async function generate(lang) {
   }
   // липсващите остават на български (fallback)
   for (const k of keys) if (flatOut[k] == null) flatOut[k] = FLAT_BG[k];
+  // Ръчни override-и (машинният превод греши на някои термини).
+  const ov = OVERRIDES[lang];
+  if (ov) for (const [k, v] of Object.entries(ov)) flatOut[k] = v;
   return unflatten(flatOut);
 }
 

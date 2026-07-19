@@ -508,3 +508,8 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
 
 /* /about: честен статус вместо голо „—“ за държави без структуриран EUR бюджет */
 .ab-nobudget { font-size: 11.5px; color: var(--faint, #6b7280); }
+
+/* Footer стат-картите са кликаеми връзки (v2.39.0) */
+.sf-stat-link { text-decoration: none; color: inherit; cursor: pointer; }
+.sf-stat-link:hover { border-color: var(--primary, #0b6ea3); }
+.sf-stat-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }

@@ -3,6 +3,25 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.39.0] — 2026-07-19
+
+### Подобрено
+- **Превод на „Изход“**: ръчни override-и (catalog.js + ui-translate.js UI_OVERRIDES)
+  → en „Sign off“, de „Abmelden“ (машинният превод даваше „Exodus“).
+- **„Изтрий акаунта“**: плътно червен (`.prof-delete`) и подравнен вдясно.
+- **Footer стат-карти кликаеми** (`FooterStat` → `<a href>`): държави/бюджет →
+  /about#about-system, източници → /sources, процедури → /about#how-we-use-ai.
+
+## [2.38.0] — 2026-07-19
+
+### Ново
+- **Многоезични социални (OG/Twitter) тагове** (worker/i18n-pages.js): `applyHead`
+  локализира пълния набор (og:title/description/site_name/image:alt/locale, twitter:*)
+  сървърно. Маршрути: `/` и `/en` → английски OG, `/bg` → български, `/de` → немски
+  (`handleRootSocial` за бара /, `handleLocalePage` за префиксите; locale regex вкл. bg).
+  Поправен пропуск: досега само `<title>`/description се превеждаха на /en,/de, а
+  og:title/og:description оставаха на bg. Тестове: `test/i18n-social.test.mjs` (4).
+
 ## [2.37.0] — 2026-07-19
 
 ### Ново
