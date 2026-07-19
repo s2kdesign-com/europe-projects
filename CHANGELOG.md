@@ -3,6 +3,21 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.44.0] — 2026-07-19
+
+### Променено
+- **Ребрандинг „Европроекти“ → „Euro-Funding“** навсякъде (83 замени в 26 файла):
+  layout metadata (title/template/OG/Twitter/JSON-LD/applicationName), всички
+  `*/layout.jsx`, changelog/login/how-ai-works/about страници, `company.js`
+  (serviceName), `project-utils.js` (ICS PRODID), `globals.css`, `site.webmanifest`,
+  `favicon.svg`, worker `i18n-pages.js` (BRAND_BG + ROOT_EN + OG alt) и
+  `procedure-page.js` (13× — brand/footer/og:site_name/титли).
+- Английската марка „Euro Funds“ също → „Euro-Funding“ (унифицирана).
+- `glossary.js` DO_NOT_TRANSLATE: „Европроекти“ → „Euro-Funding“ (остава непреведена).
+- D1 `changelog_entries`: историческите редове с марката са обновени.
+- НЕ са пипани: домейн `euro-funds.eu`, фирма S2K Design, localStorage ключове
+  (`evroproekti_*`), SEO ключова дума „европроекти“.
+
 ## [2.43.1] — 2026-07-19
 
 ### Поправено

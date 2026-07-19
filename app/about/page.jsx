@@ -74,7 +74,7 @@ export default function AboutPage() {
   const share = async () => {
     const url = window.location.origin + "/about";
     try {
-      if (navigator.share) await navigator.share({ title: "Европроекти", url });
+      if (navigator.share) await navigator.share({ title: "Euro-Funding", url });
       else { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); }
     } catch { /* отказ от потребителя */ }
   };

@@ -7,7 +7,7 @@ import DashboardShell from "./components/DashboardShell.jsx";
 export default function Page() {
   return (
     <>
-      <h1 className="sr-only">Европроекти — активни и предстоящи европроцедури за България</h1>
+      <h1 className="sr-only">Euro-Funding — активни и предстоящи европроцедури за България</h1>
       <DashboardShell />
     </>
   );

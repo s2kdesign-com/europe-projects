@@ -12,17 +12,17 @@
 import { translateBatch } from "./translation.js";
 
 const SITE = "https://euro-funds.eu";
-const BRAND_BG = "Европроекти";
-const BRAND_INTL = "Euro Funds";
+const BRAND_BG = "Euro-Funding";
+const BRAND_INTL = "Euro-Funding";
 export const PREFIX_LOCALES = ["bg", "en", "de"];
 const OG_LOCALE = { bg: "bg_BG", en: "en_US", de: "de_DE" };
-const OG_IMAGE_ALT_BG = "Европроекти — Европейско финансиране за 27-те държави от ЕС";
+const OG_IMAGE_ALT_BG = "Euro-Funding — Европейско финансиране за 27-те държави от ЕС";
 
 // Хардкоднати английски OG за бара / (без runtime превод на най-натоварената страница).
 const ROOT_EN = {
-  title: "Euro Funds — European funding for the 27 EU countries",
+  title: "Euro-Funding — European funding for the 27 EU countries",
   desc: "Daily updated overview of open and upcoming European funding calls across the 27 EU countries — deadlines, budgets and eligible applicants. Data from official national sources, structured with AI.",
-  alt: "Euro Funds — European funding for the 27 EU countries",
+  alt: "Euro-Funding — European funding for the 27 EU countries",
 };
 
 const SHELL_PATHS = new Set(["/", "/procedures", "/calendar", "/saved", "/changelog", "/about", "/how-ai-works", "/terms", "/privacy", "/cookies", "/sources"]);

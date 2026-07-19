@@ -408,7 +408,7 @@ export function generateICS(project, now = new Date()) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Европроекти//Дашборд//BG",
+    "PRODID:-//Euro-Funding//Дашборд//BG",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",

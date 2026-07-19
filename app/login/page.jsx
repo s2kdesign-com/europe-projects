@@ -20,7 +20,7 @@ const ERRORS = {
 
 const LABELS = [
   ...Object.values(ERRORS),
-  "Вход в Европроекти",
+  "Вход в Euro-Funding",
   "Влезте, за да синхронизирате запазените процедури, да настроите своя профил и да получавате по-подходящи възможности за финансиране.",
   "Пренасочване…", "Продължи с Google", "Разгледай без вход",
   "Google ни предоставя само основна информация (име, имейл, снимка). Не получаваме вашата парола. Повече в",
@@ -61,7 +61,7 @@ export default function LoginPage() {
       <main id="main" className="auth-wrap">
         <section className="auth-card" aria-labelledby="login-title">
           <span className="auth-mark" aria-hidden="true"><Icon name="euro" size={26} /></span>
-          <h1 id="login-title">{tl("Вход в Европроекти")}</h1>
+          <h1 id="login-title">{tl("Вход в Euro-Funding")}</h1>
           <p className="auth-desc">
             {tl("Влезте, за да синхронизирате запазените процедури, да настроите своя профил и да получавате по-подходящи възможности за финансиране.")}
           </p>

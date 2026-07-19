@@ -68,7 +68,7 @@ export function renderProcedureHTML(p, docs) {
   const slug = canonicalSlug(p);
   const url = `${SITE}/procedures/${slug}`;
   const statusLabel = STATUS_LABEL[p.status] || p.status || "";
-  const title = trunc(`${p.name} — срок, бюджет и документи | Европроекти`, 65);
+  const title = trunc(`${p.name} — срок, бюджет и документи | Euro-Funding`, 65);
   const descParts = [p.name];
   if (p.program) descParts.push("Програма: " + p.program);
   if (p.deadline) descParts.push("Срок: " + p.deadline);
@@ -82,7 +82,7 @@ export function renderProcedureHTML(p, docs) {
     : "";
 
   const body = `
-  <header class="site"><a class="brand" href="${SITE}/">Европроекти</a><a class="app" href="${SITE}/procedures">Всички процедури →</a></header>
+  <header class="site"><a class="brand" href="${SITE}/">Euro-Funding</a><a class="app" href="${SITE}/procedures">Всички процедури →</a></header>
   <nav class="crumbs" aria-label="breadcrumbs"><a href="${SITE}/">Начало</a> › <a href="${SITE}/procedures">Процедури</a> › <span aria-current="page">${esc(trunc(p.name, 60))}</span></nav>
   <main><article>
     <span class="badge ${esc(p.status || "")}">${esc(statusLabel)}</span>
@@ -104,7 +104,7 @@ export function renderProcedureHTML(p, docs) {
     <p class="disclaimer">AI анализът има информационен характер и не заменя официалната документация или професионалната експертна оценка.</p>
     <p><a class="cta" href="${SITE}/procedures">← Към всички процедури</a></p>
   </article></main>
-  <footer class="site-foot">© Европроекти · <a href="${SITE}/terms">Условия</a> · <a href="${SITE}/privacy">Поверителност</a></footer>`;
+  <footer class="site-foot">© Euro-Funding · <a href="${SITE}/terms">Условия</a> · <a href="${SITE}/privacy">Поверителност</a></footer>`;
 
   const css = `:root{--ink:#1e293b;--muted:#64748b;--line:#e2e8f0;--pri:#0b6ea3}
   *{box-sizing:border-box}body{margin:0;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:#f5f7fa}
@@ -129,7 +129,7 @@ export function renderProcedureHTML(p, docs) {
 <link rel="canonical" href="${url}">
 <meta name="robots" content="index,follow">
 <link rel="alternate" hreflang="bg" href="${url}"><link rel="alternate" hreflang="x-default" href="${url}">
-<meta property="og:type" content="article"><meta property="og:site_name" content="Европроекти">
+<meta property="og:type" content="article"><meta property="og:site_name" content="Euro-Funding">
 <meta property="og:title" content="${esc(trunc(p.name, 90))}"><meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${url}"><meta property="og:image" content="${OG_IMAGE}">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:locale" content="bg_BG">
@@ -189,7 +189,7 @@ function renderListHTML({ title, description, canonicalPath, h1, intro, crumbLab
 <title>${esc(title)}</title><meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${url}"><meta name="robots" content="index,follow">
 <link rel="alternate" hreflang="bg" href="${url}"><link rel="alternate" hreflang="x-default" href="${url}">
-<meta property="og:type" content="website"><meta property="og:site_name" content="Европроекти">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Euro-Funding">
 <meta property="og:title" content="${esc(title)}"><meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${url}"><meta property="og:image" content="${OG_IMAGE}"><meta property="og:locale" content="bg_BG">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(description)}"><meta name="twitter:image" content="${OG_IMAGE}">
@@ -197,11 +197,11 @@ function renderListHTML({ title, description, canonicalPath, h1, intro, crumbLab
 <script type="application/ld+json">${JSON.stringify(itemList)}</script>
 <script type="application/ld+json">${JSON.stringify(crumbs)}</script>
 <style>${css}</style>`;
-  const body = `<header class="site"><a class="brand" href="${SITE}/">Европроекти</a><a href="${SITE}/procedures">Всички процедури →</a></header>
+  const body = `<header class="site"><a class="brand" href="${SITE}/">Euro-Funding</a><a href="${SITE}/procedures">Всички процедури →</a></header>
   <nav class="crumbs" aria-label="breadcrumbs"><a href="${SITE}/">Начало</a> › <a href="${SITE}/procedures">Процедури</a> › <span aria-current="page">${esc(crumbLabel)}</span></nav>
   <main><h1>${esc(h1)}</h1><p class="intro">${esc(intro)}</p>${listHtml}
   <p style="font-size:13px;color:#64748b;margin-top:24px">Информацията се структурира и анализира с помощта на изкуствен интелект и не заменя официалната документация.</p></main>
-  <footer class="site-foot">© Европроекти · <a href="${SITE}/terms">Условия</a> · <a href="${SITE}/privacy">Поверителност</a></footer>`;
+  <footer class="site-foot">© Euro-Funding · <a href="${SITE}/terms">Условия</a> · <a href="${SITE}/privacy">Поверителност</a></footer>`;
   return `<!doctype html><html lang="bg" dir="ltr"><head>${head}</head><body>${body}</body></html>`;
 }
 
@@ -216,7 +216,7 @@ export async function handleStatusLanding(request, env, url) {
   ).bind(status).all();
   const label = STATUS_LABEL[status] || status;
   const html = renderProcedureList({
-    title: trunc(`${label} процедури за европейско финансиране | Европроекти`, 65),
+    title: trunc(`${label} процедури за европейско финансиране | Euro-Funding`, 65),
     description: trunc(STATUS_INTRO[status], 165),
     canonicalPath: `/procedures/status/${slug}`,
     h1: `${label} процедури за европейско финансиране`,
@@ -246,7 +246,7 @@ export async function handleProgramsIndex(request, env, url) {
     meta: `${r.n} процедури`,
   }));
   return htmlResponse(renderGenericList({
-    title: "Програми за европейско финансиране | Европроекти",
+    title: "Програми за европейско финансиране | Euro-Funding",
     description: "Оперативни програми и национални източници за финансиране в България — прегледайте активните процедури по програма.",
     canonicalPath: "/procedures/programs", h1: "Програми за финансиране",
     intro: "Изберете програма, за да видите активните и предстоящите процедури по нея.",
@@ -263,7 +263,7 @@ export async function handleProgramLanding(request, env, url) {
   if (!match.length) return htmlResponse(render404(), 404);
   const program = match[0].program;
   return htmlResponse(renderProcedureList({
-    title: trunc(`${program} — активни процедури и финансиране | Европроекти`, 65),
+    title: trunc(`${program} — активни процедури и финансиране | Euro-Funding`, 65),
     description: trunc(`Активни и предстоящи процедури по програма ${program} за България — статус, срокове и допустими кандидати.`, 165),
     canonicalPath: `/procedures/programs/${slug}`,
     h1: `${program} — процедури за финансиране`,
@@ -284,7 +284,7 @@ export async function handleCandidateLanding(request, env, url) {
   if (!c) return htmlResponse(render404(), 404);
   const { results } = await env.DB.prepare(`SELECT id, name, program, status, deadline FROM projects WHERE ${c.where} ORDER BY deadline_date`).all();
   return htmlResponse(renderProcedureList({
-    title: trunc(`${c.h1} | Европроекти`, 65), description: trunc(c.intro, 165),
+    title: trunc(`${c.h1} | Euro-Funding`, 65), description: trunc(c.intro, 165),
     canonicalPath: `/procedures/candidates/${slug}`, h1: c.h1, intro: c.intro, crumbLabel: c.h1, items: results || [],
   }));
 }
@@ -304,7 +304,7 @@ export async function handleDeadlineLanding(request, env, url) {
   const h1 = `Процедури с краен срок до ${days} дни`;
   const intro = `Активни процедури за европейско финансиране, чийто краен срок изтича до ${days} дни. Планирайте кандидатстването навреме.`;
   return htmlResponse(renderProcedureList({
-    title: trunc(`${h1} | Европроекти`, 65), description: trunc(intro, 165),
+    title: trunc(`${h1} | Euro-Funding`, 65), description: trunc(intro, 165),
     canonicalPath: `/procedures/deadlines/${slug}`, h1, intro, crumbLabel: `Срок до ${days} дни`, items: results || [],
   }));
 }
@@ -343,5 +343,5 @@ function render404() {
     <p>Тази процедура не съществува или адресът е сгрешен.</p>
     <p><a href="${SITE}/procedures">← Всички процедури</a> · <a href="${SITE}/">Обзор</a></p>
   </main>`;
-  return `<!doctype html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Процедурата не е намерена | Европроекти</title><meta name="robots" content="noindex,follow"></head><body>${body}</body></html>`;
+  return `<!doctype html><html lang="bg"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Процедурата не е намерена | Euro-Funding</title><meta name="robots" content="noindex,follow"></head><body>${body}</body></html>`;
 }

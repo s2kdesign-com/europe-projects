@@ -46,15 +46,15 @@ gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personali
 gtag('js',new Date());
 gtag('config','${GA_ID}',{anonymize_ip:true});`;
 
-const TITLE = "Европроекти — Европейско финансиране за 27-те държави от ЕС";
+const TITLE = "Euro-Funding — Европейско финансиране за 27-те държави от ЕС";
 const DESCRIPTION =
   "Ежедневно обновяван преглед на активни и предстоящи процедури за европейско финансиране в 27-те държави от ЕС — срокове, бюджети и допустими кандидати. Данни от официални национални източници, структурирани с AI.";
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: TITLE, template: "%s | Европроекти" },
+  title: { default: TITLE, template: "%s | Euro-Funding" },
   description: DESCRIPTION,
-  applicationName: "Европроекти",
+  applicationName: "Euro-Funding",
   generator: "Next.js",
   referrer: "origin-when-cross-origin",
   keywords: ["европроекти", "европейско финансиране", "ЕС фондове", "EU funding", "оперативни програми", "отворени процедури", "безвъзмездна финансова помощ", "грантове", "финансиране за бизнес", "структурни фондове", "срокове за кандидатстване", "България", "Румъния", "Гърция", "Полша", "eufunds"],
@@ -72,8 +72,8 @@ export const metadata = {
   },
   robots: { index: true, follow: true, nocache: false, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
   openGraph: {
-    type: "website", locale: "bg_BG", url: "/", siteName: "Европроекти", title: TITLE, description: DESCRIPTION,
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Европроекти — Европейско финансиране за 27-те държави от ЕС", type: "image/png" }],
+    type: "website", locale: "bg_BG", url: "/", siteName: "Euro-Funding", title: TITLE, description: DESCRIPTION,
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Euro-Funding — Европейско финансиране за 27-те държави от ЕС", type: "image/png" }],
   },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: ["/og-image.png"], creator: "@s2kdesign", site: "@s2kdesign" },
   icons: { icon: [{ url: "/favicon.svg", type: "image/svg+xml" }, { url: "/favicon.ico", sizes: "any" }], shortcut: "/favicon.svg", apple: "/favicon.svg" },
@@ -86,7 +86,7 @@ export const viewport = { themeColor: "#0b6ea3", width: "device-width", initialS
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  name: "Европроекти",
+  name: "Euro-Funding",
   url: SITE_URL,
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",

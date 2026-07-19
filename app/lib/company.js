@@ -11,7 +11,7 @@ export const COMPANY = {
   websiteLabel: "S2K Design",
   email: "office@s2kdesign.com",
   address: "гр. Пловдив, България",
-  serviceName: "Европроекти",
+  serviceName: "Euro-Funding",
   operator: "S2K Design ЕООД",
   legalDocumentVersion: "1.1",
   legalEffectiveDate: "17.07.2026",

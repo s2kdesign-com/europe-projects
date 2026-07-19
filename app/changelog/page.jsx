@@ -20,7 +20,7 @@ const ROUTE_LABEL = { overview: "Обзор", procedures: "Процедури", 
 
 const LABELS = [
   ...FILTERS.map((f) => f.label), ...Object.values(ROUTE_LABEL),
-  "Какво ново в Европроекти", "Всички подобрения, нови функции, корекции и промени в данните на системата.",
+  "Какво ново в Euro-Funding", "Всички подобрения, нови функции, корекции и промени в данните на системата.",
   "Системата се развива активно", "Търсене в промените", "Търсене…", "Няма резултати",
   "Опитайте с друг филтър или дума за търсене.", "Грешка при зареждане", "Опитай пак",
   "История на промените", "Зареждане…", "Достигнахте началото на историята.", "Обратно нагоре", "Виж",
@@ -102,7 +102,7 @@ export default function ChangelogPage() {
       <AccountHeader session={session} />
       <main id="main" className="container page changelog">
         <div className="cl-head">
-          <h1>{tl("Какво ново в Европроекти")}</h1>
+          <h1>{tl("Какво ново в Euro-Funding")}</h1>
           <p>{tl("Всички подобрения, нови функции, корекции и промени в данните на системата.")}</p>
           <div className="cl-meta">
             <span className="badge blue">{APP_VERSION_LABEL}</span>
