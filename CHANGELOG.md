@@ -3,6 +3,17 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.44.1] — 2026-07-19
+
+### Поправено
+- **Хоризонтално преливане на мобилно** (/about и др.): `<main>` е flex item на
+  `body { display:flex }`; без явна ширина flex-ът го оразмеряваше по min/max-content
+  → 472px при 371px viewport (преливане 101px), съдържанието се измества настрани.
+  Диагностирано в Chrome чрез 390px iframe (реален mobile viewport, тъй като
+  resize_window не сви ultrawide дисплея). Fix: `#main { width:100%; min-width:0 }`
+  (клампва към контейнера; `.container max-width` + `box-sizing:border-box` пазят
+  desktop центрирането).
+
 ## [2.44.0] — 2026-07-19
 
 ### Променено

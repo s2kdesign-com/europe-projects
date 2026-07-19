@@ -1,5 +1,5 @@
 // Единен източник за версия и ключове (localStorage) — без дублиране в компонентите.
-export const APP_VERSION = "2.44.0";
+export const APP_VERSION = "2.44.1";
 export const APP_VERSION_LABEL = "Версия " + APP_VERSION;
 
 // Versioned ключове — при съществена промяна вдигни числото, за да се покаже пак.

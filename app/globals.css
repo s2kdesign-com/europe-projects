@@ -73,6 +73,13 @@ html, body {
 
 body { overflow-x: hidden; }
 
+/* #main е flex item на body (display:flex, колона). Без явна ширина flex-ът го
+   оразмерява по съдържанието (min/max-content) и на тесни екрани го прави ПО-ШИРОК
+   от viewport-а → хоризонтално преливане (напр. /about с картата/таблицата, когато
+   се дойде от footer линк). width:100% + min-width:0 го клампва към контейнера;
+   .container max-width пази центрирането на desktop (box-sizing:border-box е глобален). */
+#main { width: 100%; min-width: 0; }
+
 a { color: var(--primary); }
 h1, h2, h3, h4 { color: var(--ink); }
 

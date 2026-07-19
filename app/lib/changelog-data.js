@@ -13,6 +13,15 @@ export const CATEGORIES = [
 
 export const CHANGELOG_ENTRIES = [
   {
+    version: "2.44.1", category: "fix", published_at: "2026-07-19", affected_route: "/about",
+    title: "Поправено хоризонтално преливане на мобилно (/about)",
+    summary: "На тесни екрани страницата „Относно системата“ (и др.) излизаше по-широка от екрана — съдържанието се изместваше настрани. Причината беше, че основната област не се клампваше към ширината на екрана.",
+    content: [
+      "Диагноза в Chrome (мобилен viewport 371px чрез iframe): <main> е flex item на body (display:flex) и без явна ширина flex-ът го оразмеряваше по съдържанието → 472px при 371px екран (преливане 101px).",
+      "Поправка: #main { width:100%; min-width:0 } — клампва към контейнера; .container max-width пази центрирането на desktop.",
+    ],
+  },
+  {
     version: "2.44.0", category: "improvement", published_at: "2026-07-19", affected_route: "/",
     title: "Ново име на марката: Euro-Funding",
     summary: "Платформата вече се казва „Euro-Funding“ навсякъде — заглавия, мета тагове за социални мрежи, лого/manifest, правни и информационни страници, на всички езици.",
