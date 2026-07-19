@@ -115,9 +115,12 @@ export default function AboutPage() {
           <h1>{t("about.heroTitle")}</h1>
           <p className="ab-lead">{t("about.heroLead")}</p>
           {summary && (
-            <p className="ab-statusline">
-              <strong>{nf.format(summary.countries)}</strong> {t("about.statCountries")} · <strong>{nf.format(summary.activeSources)}</strong> {t("about.statSources")} · <strong>{nf.format(summary.totalProcedures)}</strong> {t("about.statProcedures")} · {t("about.statLastUpdate")}: <strong>{stats.generatedAt ? df.format(new Date(stats.generatedAt)) : "—"}</strong>
-            </p>
+            <>
+              <p className="ab-statusline">
+                <strong>{nf.format(summary.countries)}</strong> {t("about.statCountries")} · <strong>{nf.format(summary.activeSources)}</strong> {t("about.statSources")} · <strong>{nf.format(summary.totalProcedures)}</strong> {t("about.statProcedures")} · {t("about.statLastUpdate")}: <strong>{stats.generatedAt ? df.format(new Date(stats.generatedAt)) : "—"}</strong>
+              </p>
+              <p className="ab-count-note">{t("about.countsNote")}</p>
+            </>
           )}
           <div className="ab-cta">
             <a className="btn btn-primary" href="/procedures">{t("about.ctaProcedures")} <Icon name="arrowRight" size={15} /></a>
@@ -208,7 +211,9 @@ export default function AboutPage() {
                               <td><img className="country-flag" src={`/flags/${c.code.toLowerCase()}.svg`} alt="" aria-hidden="true" width={18} height={12} /> {cName(c)}</td>
                               <td>{nf.format(c.activeProcedures)}</td>
                               <td>{nf.format(c.totalProcedures)}</td>
-                              <td>{c.publishedBudgetEur != null ? cfc.format(c.publishedBudgetEur) : <span className="ab-nobudget">{t("about.budgetNoData")}</span>}</td>
+                              <td>{c.publishedBudgetEur != null
+                                ? <span title={`${t("about.exactLabel")}: ${cf.format(c.publishedBudgetEur)}${c.budgetProcedureCount != null ? ` · ${t("about.budgetOfProcs", { v: nf.format(c.budgetProcedureCount), t: nf.format(c.totalProcedures) })}` : ""}`}>{cfc.format(c.publishedBudgetEur)}{c.budgetCoveragePercent != null ? <span className="ab-cov-sub">{nf.format(c.budgetProcedureCount)}/{nf.format(c.totalProcedures)} · {nf.format(c.budgetCoveragePercent)}%</span> : null}</span>
+                                : <span className="ab-nobudget">{t(`about.budgetStatus.${c.budgetStatus}`) || t("about.budgetNoData")}</span>}</td>
                               <td>{nf.format(c.activeSources)}</td>
                               <td>{c.lastSuccessfulSyncAt ? df.format(new Date(c.lastSuccessfulSyncAt)) : "—"}</td>
                             </tr>
@@ -233,12 +238,27 @@ export default function AboutPage() {
                     <div><dt>{t("about.totalProcedures")}</dt><dd>{nf.format(summary.totalProcedures)}</dd></div>
                     <div><dt>{t("about.activeProcedures")}</dt><dd>{nf.format(summary.activeProcedures)}</dd></div>
                     <div><dt>{t("about.summaryDocs")}</dt><dd>{nf.format(summary.proceduresWithDocuments)}</dd></div>
-                    <div><dt>{t("about.publishedBudget")}</dt><dd>{summary.publishedBudgetEur != null ? cf.format(summary.publishedBudgetEur) : t("about.budgetNoData")}</dd></div>
+                    <div><dt>{t("about.knownBudget")}</dt><dd title={t("about.budgetTooltip")}>{summary.publishedBudgetEur != null ? cf.format(summary.publishedBudgetEur) : t("about.budgetNoData")}</dd></div>
                     <div><dt>{t("about.sources")}</dt><dd>{nf.format(summary.activeSources)}</dd></div>
                     <div><dt>{t("about.statLastUpdate")}</dt><dd>{stats.generatedAt ? df.format(new Date(stats.generatedAt)) : "—"}</dd></div>
                   </dl>
-                  {summary.publishedBudgetEur != null && (
-                    <p className="chart-note"><Icon name="info" size={13} /> {t("about.budgetDisclaimer", { count: nf.format(summary.budgetProcedureCount) })}</p>
+                  {/* Бюджетно покритие: честна база + progress лента */}
+                  {summary.budget && (
+                    <div className="ab-budget-cov">
+                      <p className="chart-note" style={{ margin: "6px 0" }}>{t("about.budgetBasedOn", { v: nf.format(summary.budget.validatedBudgetProcedures), t: nf.format(summary.budget.totalProcedures) })}</p>
+                      {summary.budget.budgetCoveragePercent != null && (
+                        <>
+                          <div className="cov-head"><span>{t("about.budgetCoverage")}</span><b>{t("about.budgetCoverageOf", { p: nf.format(summary.budget.budgetCoveragePercent) })}</b></div>
+                          <div className="cov-bar" role="progressbar" aria-valuenow={summary.budget.budgetCoveragePercent} aria-valuemin={0} aria-valuemax={100} aria-label={t("about.budgetCoverage")}>
+                            <span style={{ width: summary.budget.budgetCoveragePercent + "%" }} />
+                          </div>
+                        </>
+                      )}
+                      <p className="chart-note" style={{ marginTop: 6 }}><Icon name="info" size={13} /> {t("about.budgetTooltip")}</p>
+                    </div>
+                  )}
+                  {summary.documentCoveragePercent != null && (
+                    <p className="row-sub" style={{ marginTop: 4 }}>{t("about.docCoverage")}: {nf.format(summary.proceduresWithDocuments)} / {nf.format(summary.totalProcedures)} · {nf.format(summary.documentCoveragePercent)}%</p>
                   )}
 
                   <h4 className="ab-h4">{t("about.topByActive")}</h4>
@@ -259,6 +279,7 @@ export default function AboutPage() {
                       <span className="ab-top-n">{cf.format(c.publishedBudgetEur)}</span>
                     </div>
                   ))}
+                  <p className="ab-big-disclaimer"><Icon name="info" size={13} /> {t("about.bigDisclaimer")}</p>
                 </aside>
               </div>
             </section>

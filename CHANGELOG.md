@@ -3,6 +3,23 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.41.0] — 2026-07-19
+
+### Поправено
+- **Честно бюджетно покритие** (migration 0021): `country_daily_statistics` +
+  `budget_text_procedures`/`foreign_currency_procedures`; `budgetBreakdown` +
+  `countryBudgetStatus` в statistics.js. Публичният summary връща `budget` обект
+  (knownPublishedBudgetEur, validatedBudgetProcedures, budgetCoveragePercent) + per
+  country budgetStatus/budgetCoveragePercent.
+- **/about**: „Total published budget“ → „Известен публикуван бюджет“ + „Изчислен
+  върху 170 от 651“ + coverage лента (26,1%, aria-progressbar). Таблицата показва
+  честен статус вместо „—“ + точна сума в tooltip (LT/SI различни точни суми под
+  еднакъв компактен €172,7M). Count/active бележки + голям disclaimer.
+- **Real-data audit**: 651 процедури, 170 валидирани, €6.95B; LT/SI = съвпадение (не
+  дубликат); AT 0% защото няма бюджетен текст в източниците; кръглите €30M/€60M са
+  различни процедури (не double-count — всяка процедура е в 1 държава).
+- Тестове: `test/budget-coverage.test.mjs` (10). Общо 144 unit теста.
+
 ## [2.40.0] — 2026-07-19
 
 ### Ново

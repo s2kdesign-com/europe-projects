@@ -49,7 +49,45 @@ export function aggregateEurope(countryRows) {
     }
   }
   if (hasBudget) out.publishedBudgetEur = budgetSum;
+  // Бюджетно покритие: колко от процедурите имат ВАЛИДИРАН структуриран бюджет.
+  // „Известен публикуван бюджет" НЕ е бюджетът на всички процедури.
+  out.budget = budgetBreakdown(out.totalProcedures, out.budgetProcedureCount, out.publishedBudgetEur);
+  out.documentCoveragePercent = out.totalProcedures > 0 ? round1(out.proceduresWithDocuments / out.totalProcedures * 100) : null;
   return out;
+}
+
+function round1(n) { return Math.round(n * 10) / 10; }
+
+// Обобщение на бюджетното покритие (за публичния „Известен публикуван бюджет").
+// Честен бюджетен статус за държава от snapshot реда (без подвеждащо „—").
+//   validated          → има валидиран EUR бюджет
+//   foreign_currency   → бюджетите са в национална валута (не се конвертира)
+//   no_budget_text     → официалният източник не публикува общ бюджет
+//   requires_review    → има текст, но стойността е неясна
+//   awaiting_analysis   → има процедури, но липсва информация
+export function countryBudgetStatus(r) {
+  const validated = r.budget_procedure_count || 0;
+  const text = r.budget_text_procedures;
+  const foreign = r.foreign_currency_procedures;
+  const total = r.total_procedures || 0;
+  if (validated > 0) return "validated";
+  if (total === 0) return "awaiting_analysis";
+  if (foreign != null && foreign > 0) return "foreign_currency";
+  if (text != null && text === 0) return "no_budget_text";
+  if (text != null && text > 0) return "requires_review";
+  return "awaiting_analysis";
+}
+
+export function budgetBreakdown(totalProcedures, validatedBudgetProcedures, knownPublishedBudgetEur) {
+  const total = totalProcedures || 0;
+  const validated = validatedBudgetProcedures || 0;
+  return {
+    knownPublishedBudgetEur: knownPublishedBudgetEur ?? null,
+    totalProcedures: total,
+    validatedBudgetProcedures: validated,
+    budgetCoveragePercent: total > 0 ? round1(validated / total * 100) : null,
+    withoutValidatedBudget: Math.max(0, total - validated),
+  };
 }
 
 // Anomaly проверки — при аномалия snapshot-ът НЕ се публикува автоматично

@@ -542,3 +542,14 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
 .mo-model { font-size: 13px; }
 .mo-id { margin-left: auto; font-size: 11.5px; color: var(--muted); }
 @media (max-width: 560px) { .ai-agents-grid { grid-template-columns: 1fr; } .mo-id { margin-left: 0; width: 100%; } }
+
+/* ── /about: честно бюджетно покритие (v2.41.0) ────────────────────────── */
+.ab-budget-cov { margin: 6px 0 4px; }
+.cov-head { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 4px; }
+.cov-bar { height: 8px; background: var(--surface-2, #eef1f5); border-radius: 999px; overflow: hidden; }
+.cov-bar > span { display: block; height: 100%; background: var(--primary, #0b6ea3); }
+.ab-cov-sub { display: block; font-size: 10.5px; color: var(--faint); font-weight: 400; }
+.ab-count-note, .ab-big-disclaimer { font-size: 11.5px; color: var(--faint); line-height: 1.4; }
+.ab-count-note { margin: 4px 0 0; }
+.ab-big-disclaimer { display: flex; gap: 5px; align-items: flex-start; margin: 12px 0 0; padding-top: 8px; border-top: 1px solid var(--line); }
+.ab-big-disclaimer .icon { flex: none; margin-top: 2px; }
