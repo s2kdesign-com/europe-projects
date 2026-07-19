@@ -88,7 +88,7 @@ export default function AiModelsTab() {
       {msg && <div className="ov-since" role="status" style={{ marginBottom: 10 }}><Icon name="info" size={16} /><p>{msg}</p></div>}
       {!data.cryptoConfigured && (
         <div className="auth-error" role="alert" style={{ marginBottom: 12 }}>
-          <Icon name="alert" size={18} /> Cloudflare secret <code>AI_CREDENTIALS_MASTER_KEY</code> не е зададен — добавянето на API ключове е блокирано. Задайте го с <code>wrangler secret put AI_CREDENTIALS_MASTER_KEY</code>.
+          <Icon name="alert" size={18} /> {tl("Cloudflare secret")} <code>AI_CREDENTIALS_MASTER_KEY</code> {tl("не е зададен — добавянето на API ключове е блокирано. Задайте го с")} <code>wrangler secret put AI_CREDENTIALS_MASTER_KEY</code>.
         </div>
       )}
 
@@ -579,7 +579,7 @@ function ActiveModels({ data, onChanged, flash }) {
   return (
     <section className="prof-card">
       <h3 className="prof-section-title">{tl("Активни AI модели")}</h3>
-      <p className="prose">Този модел се използва за ежедневната проверка и анализ на процедурите, когато Scheduled Task архитектурата позволява изборът да се управлява от системата. Дневният преглед носи бадж „Управлява се от Claude Scheduled Tasks“ — изборът тук е desired модел и не се прилага автоматично върху задачата.</p>
+      <p className="prose">{tl("Този модел се използва за ежедневната проверка и анализ на процедурите, когато Scheduled Task архитектурата позволява изборът да се управлява от системата. Дневният преглед носи бадж „Управлява се от Claude Scheduled Tasks“ — изборът тук е desired модел и не се прилага автоматично върху задачата.")}</p>
       <div className="table-scroll">
         <table className="admin-table">
           <thead><tr><th>{tl("Предназначение")}</th><th>{tl("Доставчик")}</th><th>{tl("Модел (display)")}</th><th>Model ID</th><th>{tl("Цена (~1M)")}</th><th>{tl("Статус")}</th><th>{tl("Валидация")}</th><th>{tl("Разход 30 дни")}</th><th>{tl("Разход 1 година")}</th><th>{tl("Използван")}</th></tr></thead>
@@ -635,8 +635,8 @@ function ActiveModels({ data, onChanged, flash }) {
             })}
           </select>
         </label>
-        <label className="field"><span className="field-label">Display name (не се превежда)</span>
-          <input className="inp" value={displayName} placeholder="напр. GPT-5.6" onChange={(e) => setDisplayName(e.target.value)} />
+        <label className="field"><span className="field-label">{tl("Display name (не се превежда)")}</span>
+          <input className="inp" value={displayName} placeholder={tl("напр. GPT-5.6")} onChange={(e) => setDisplayName(e.target.value)} />
         </label>
       </div>
       {modelId && (priceLabel(modelId) || useForLabel(modelId)) && (
@@ -644,7 +644,7 @@ function ActiveModels({ data, onChanged, flash }) {
           <Icon name="info" size={16} />
           <p>
             <strong>{modelId}</strong>
-            {priceLabel(modelId) ? <> · ~{priceLabel(modelId)} (вход/изход)</> : null}
+            {priceLabel(modelId) ? <> · ~{priceLabel(modelId)} ({tl("вход/изход")})</> : null}
             {useForLabel(modelId) ? <><br />{tl(useForLabel(modelId))}</> : null}
           </p>
         </div>
@@ -654,7 +654,7 @@ function ActiveModels({ data, onChanged, flash }) {
         <button className="btn" disabled={busy || !modelId} onClick={() => apply(false)}>{tl("Запази (неактивен)")}</button>
         <button className="btn btn-primary" disabled={busy || !modelId} onClick={() => apply(true)}><Icon name="check" size={15} /> {tl("Активирай модела")}</button>
       </div>
-      <p className="chart-note"><Icon name="info" size={13} /> Активирането валидира точния model ID срещу доставчика. GPT-5.6 има нива (Sol/Terra/Luna) — изберете реално достъпния ID от списъка, не предполагаем. Цените са приблизителна стойност за ориентир (вход/изход за 1M токена, към {AI_PRICING_DATE}) — не са фактура.</p>
+      <p className="chart-note"><Icon name="info" size={13} /> {tl("Активирането валидира точния model ID срещу доставчика. GPT-5.6 има нива (Sol/Terra/Luna) — изберете реално достъпния ID от списъка, не предполагаем. Цените са приблизителна стойност за ориентир (вход/изход за 1M токена, към")} {AI_PRICING_DATE}) — {tl("не са фактура.")}</p>
     </section>
   );
 }
@@ -707,11 +707,11 @@ function RunsLog() {
         <h3 className="prof-section-title" style={{ margin: 0 }}>{tl("AI логове")}</h3>
         <span className="count-dot">{total}</span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          <select className="inp inp-sm" value={fSource} onChange={(e) => { setFSource(e.target.value); setPage(1); }} aria-label="Източник на изпълнение">
+          <select className="inp inp-sm" value={fSource} onChange={(e) => { setFSource(e.target.value); setPage(1); }} aria-label={tl("Източник на изпълнение")}>
             <option value="">{tl("Всички източници")}</option>
             {["claude_scheduled_task", "worker_api", "admin_manual", "ingestion_pipeline", "future_chat"].map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
-          <select className="inp inp-sm" value={fStatus} onChange={(e) => { setFStatus(e.target.value); setPage(1); }} aria-label="Статус">
+          <select className="inp inp-sm" value={fStatus} onChange={(e) => { setFStatus(e.target.value); setPage(1); }} aria-label={tl("Статус")}>
             <option value="">{tl("Всички статуси")}</option>
             {["success", "partial", "error", "blocked"].map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
