@@ -583,7 +583,10 @@ function ActiveModels({ data, onChanged, flash }) {
               const rows = data.configurations.filter((c) => c.purpose === k);
               if (!rows.length) return <tr key={k}><td>{tl(PURPOSE_LABELS[k])}</td><td colSpan={9} className="row-sub">{tl("Няма конфигурация (наследява системния модел)")}</td></tr>;
               return rows.map((c) => {
-                const u = (data.usage || []).find((x) => x.model_id === c.model_id);
+                // Свързваме по purpose + model_id (не само по модел), за да не споделят
+                // два агента на един и същ модел (procedure_analysis/future_chat → gpt-5.6-terra)
+                // едни и същи заявки/разход. Агент без собствени изпълнения показва „—“.
+                const u = (data.usage || []).find((x) => x.purpose === c.purpose && x.model_id === c.model_id);
                 return (
                   <tr key={c.id}>
                     <td>{tl(PURPOSE_LABELS[k])}{AGENT_DESC[k] ? <div className="agent-desc">{tl(AGENT_DESC[k])}</div> : null}{k === "daily_review" ? <div className="row-sub"><span className="badge amber">Claude Scheduled Tasks</span></div> : null}</td>

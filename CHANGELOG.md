@@ -3,6 +3,16 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.42.1] — 2026-07-19
+
+### Поправено
+- **Разход/заявки по агент, не по модел**: usage заявката в `worker/ai/handlers.js`
+  групираше само по `model_id`, затова два агента на един модел (procedure_analysis
+  и future_chat → `gpt-5.6-terra`) показваха идентични заявки/токени/разход. Сега
+  `GROUP BY purpose, model_id` + join по `purpose + model_id` в `AiModelsTab.jsx`.
+- future_chat няма собствени `ai_execution_runs` → показва „—“ (потвърдено в D1: само
+  procedure_analysis 513, recommendation 421, budget_analysis 152, daily_review 51).
+
 ## [2.42.0] — 2026-07-19
 
 ### Подобрено

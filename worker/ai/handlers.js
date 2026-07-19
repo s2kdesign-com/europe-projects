@@ -76,8 +76,12 @@ export async function handleAdminAI(request, env, url, userId, method, readJson)
     // Използване + токени по прозорци (30 дни / 1 година) за изчисляване на разхода.
     const d30 = new Date(Date.now() - 30 * 86400000).toISOString();
     const d365 = new Date(Date.now() - 365 * 86400000).toISOString();
+    // ВАЖНО: групираме по purpose + model_id, а НЕ само по model_id. Иначе два агента
+    // на един и същ модел (напр. procedure_analysis и future_chat са на gpt-5.6-terra)
+    // споделят едни и същи заявки/токени/разход. future_chat няма собствени изпълнения
+    // → няма ред → показва „—“ (правилно), вместо чуждите числа.
     const usage = await env.DB.prepare(
-      `SELECT model_id,
+      `SELECT purpose, model_id,
          COUNT(*) AS runs,
          SUM(COALESCE(input_tokens,0)+COALESCE(output_tokens,0)) AS tokens,
          MAX(started_at) AS last_used_at,
@@ -85,7 +89,7 @@ export async function handleAdminAI(request, env, url, userId, method, readJson)
          SUM(CASE WHEN started_at >= ?1 THEN COALESCE(output_tokens,0) ELSE 0 END) AS out_30d,
          SUM(CASE WHEN started_at >= ?2 THEN COALESCE(input_tokens,0) ELSE 0 END) AS in_365d,
          SUM(CASE WHEN started_at >= ?2 THEN COALESCE(output_tokens,0) ELSE 0 END) AS out_365d
-       FROM ai_execution_runs WHERE model_id IS NOT NULL GROUP BY model_id`
+       FROM ai_execution_runs WHERE model_id IS NOT NULL GROUP BY purpose, model_id`
     ).bind(d30, d365).all();
     const credMap = Object.fromEntries((creds.results || []).map((c) => [c.provider_key, c]));
     const providers = (provs.results || []).map((p) => ({
