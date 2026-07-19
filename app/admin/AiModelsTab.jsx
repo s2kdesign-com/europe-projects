@@ -132,6 +132,9 @@ export default function AiModelsTab() {
       {/* Вечерен AI pipeline: контроли, live статус, автоматизация */}
       <PipelinePanel data={data} flash={flash} />
 
+      {/* Задачи (jobs) */}
+      <JobsPanel flash={flash} />
+
       {/* Дневна процедура + логове */}
       <DailyRuns summary={summary} />
       <RunsLog />
@@ -149,34 +152,72 @@ const SCOPES = [
   { key: "full_reanalysis", label: "Повторен анализ (независимо от промени)" },
 ];
 
+// Локализирано обяснение на текущия етап.
+const STAGE_DESC = {
+  procedure_analysis: "Анализира новите и променени процедури, извлича срокове, кандидати, дейности и структурирана информация.",
+  document_analysis: "Класифицира документите, извлича условия, приложения и промени между версиите.",
+  budget_analysis: "Структурира публикуваните бюджети, разграничава общ бюджет от помощ на проект и извлича валута и съфинансиране.",
+  recommendation: "Сравнява процедурите със структурирания профил и обяснява защо са подходящи.",
+};
+const RUN_STATUS_LABEL = {
+  running: "Pipeline-ът работи", stopping: "Pipeline-ът спира", completed: "Pipeline-ът е завършен",
+  partial: "Pipeline-ът е частично завършен", stopped: "Pipeline-ът е спрян", failed: "Pipeline-ът е неуспешен",
+};
+
 function PipelinePanel({ data, flash }) {
   const tl = useUiTr();
   const [pipe, setPipe] = useState(null);
   const [schedules, setSchedules] = useState([]);
-  const [modal, setModal] = useState(null); // { purpose | 'all' | 'pipeline' }
+  const [jobSum, setJobSum] = useState(null);
+  const [modal, setModal] = useState(null); // { kind: purpose|all|pipeline|stop|stopPurpose|stats }
+  const [stuck, setStuck] = useState(0);
   const load = useCallback(() => {
     api("/api/admin/ai/pipelines").then((d) => setPipe(d)).catch(() => setPipe({ pipelines: [], active: null }));
     api("/api/admin/ai/schedules").then((d) => setSchedules(d.schedules || [])).catch(() => setSchedules([]));
+    api("/api/admin/ai/pipelines/active").then((d) => setStuck(d.stuck || 0)).catch(() => {});
+  }, []);
+  const loadJobSum = useCallback((runId) => {
+    api("/api/admin/ai/jobs/summary" + (runId ? "?run=" + runId : "")).then(setJobSum).catch(() => setJobSum(null));
   }, []);
   useEffect(() => { load(); }, [load]);
-  // Авто-refresh на live статуса докато има активен run.
-  useEffect(() => {
-    if (!pipe?.active) return;
-    const t = setInterval(() => api("/api/admin/ai/pipelines").then(setPipe).catch(() => {}), 5000);
-    return () => clearInterval(t);
-  }, [pipe?.active]);
-
   const active = pipe?.active;
+  useEffect(() => { if (active) loadJobSum(active.id); }, [active?.id, loadJobSum]); // eslint-disable-line
+  // Авто-refresh докато има активен run (спира при terminal статус).
+  useEffect(() => {
+    if (!active) return;
+    const iv = setInterval(() => {
+      api("/api/admin/ai/pipelines").then(setPipe).catch(() => {});
+      if (active.id) loadJobSum(active.id);
+    }, 6000);
+    return () => clearInterval(iv);
+  }, [active?.id, loadJobSum]); // eslint-disable-line
+
   const activeCfgs = (data.configurations || []).filter((c) => RUNNABLE_PURPOSES.includes(c.purpose) && c.active);
+  const running = active && (active.status === "running" || active.status === "stopping");
+  const stopping = active && active.status === "stopping";
+  // Брой jobs per purpose+status (за stage indicators и действия).
+  const bp = jobSum?.byPurpose || [];
+  const countP = (purpose, statuses) => bp.filter((r) => r.purpose === purpose && statuses.includes(r.status)).reduce((s, r) => s + r.n, 0);
+  const purposeActive = (purpose) => countP(purpose, ["queued", "waiting_dependency", "running", "retry_scheduled"]) > 0;
+
+  const progressPct = active && active.total_jobs
+    ? Math.round((active.completed_jobs + active.failed_jobs + active.skipped_jobs + active.cancelled_jobs) / active.total_jobs * 100) : 0;
 
   return (
     <section className="prof-card">
       <div className="ov-section-head" style={{ flexWrap: "wrap", gap: 8 }}>
         <h3 className="prof-section-title" style={{ margin: 0 }}>{tl("Вечерен AI pipeline")}</h3>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="btn btn-ghost" onClick={() => api("/api/admin/ai/recompute-aggregates", { method: "POST" }).then((d) => flash(tl("Агрегатите са преизчислени за") + " " + d.recomputed + " " + tl("държави"))).catch(() => flash(tl("Неуспешно преизчисляване")))}>{tl("Преизчисли агрегатите")}</button>
-          <button className="btn btn-ghost" disabled={!!active} onClick={() => setModal({ kind: "all" })}>{tl("Стартирай всички активни AI задачи")}</button>
-          <button className="btn btn-primary" disabled={!!active} onClick={() => setModal({ kind: "pipeline" })}><Icon name="sparkle" size={15} /> {tl("Стартирай вечерния AI pipeline")}</button>
+          <button className="btn btn-ghost" onClick={() => setModal({ kind: "stats" })}><Icon name="info" size={14} /> {tl("Преизчисли статистиките")}</button>
+          {stuck > 0 && <button className="btn btn-ghost" onClick={() => api("/api/admin/ai/jobs/recover-stuck", { method: "POST" }).then((d) => { flash(tl("Възстановени задачи") + ": " + (d.requeued + d.orphaned)); load(); })}><Icon name="alert" size={14} /> {tl("Възстанови блокираните задачи")} ({stuck})</button>}
+          {!running && <button className="btn btn-ghost" onClick={() => setModal({ kind: "all" })}>{tl("Стартирай всички активни AI задачи")}</button>}
+          {running ? (
+            <button className="btn btn-stop" disabled={stopping} onClick={() => setModal({ kind: "stop" })}>
+              <Icon name={stopping ? "clock" : "close"} size={15} /> {stopping ? tl("Спиране…") : tl("Спри вечерния AI pipeline")}
+            </button>
+          ) : (
+            <button className="btn btn-primary" onClick={() => setModal({ kind: "pipeline" })}><Icon name="sparkle" size={15} /> {tl("Стартирай вечерния AI pipeline")}</button>
+          )}
         </div>
       </div>
 
@@ -184,11 +225,15 @@ function PipelinePanel({ data, flash }) {
       {active ? (
         <div className="ai-pipe-live">
           <div className="apl-head">
-            <span className="badge blue">{tl("Изпълнява се")}</span>
+            <span className={"badge " + (stopping ? "amber" : "blue")}>{tl(RUN_STATUS_LABEL[active.status] || active.status)}</span>
             <span className="apl-stage">{tl("Етап")}: {tl(PURPOSE_LABELS[active.current_stage] || active.current_stage || "—")}</span>
+            {active.test_run ? <span className="badge neutral">{tl("Тестово изпълнение")}</span> : null}
             <span className="apl-el">{fmtTs(active.started_at)}</span>
           </div>
-          <div className="apl-bar"><span style={{ width: `${active.total_jobs ? Math.round((active.completed_jobs + active.failed_jobs + active.skipped_jobs) / active.total_jobs * 100) : 0}%` }} /></div>
+          {active.current_stage && STAGE_DESC[active.current_stage] && (
+            <p className="apl-stage-desc">{tl(STAGE_DESC[active.current_stage])}</p>
+          )}
+          <div className="apl-bar"><span style={{ width: `${progressPct}%` }} /></div>
           <div className="apl-nums">
             <span>{tl("Общо")}: {active.total_jobs}</span>
             <span>{tl("Готови")}: {active.completed_jobs}</span>
@@ -196,24 +241,46 @@ function PipelinePanel({ data, flash }) {
             <span>{tl("В ход")}: {active.running_jobs}</span>
             <span>{tl("Неуспешни")}: {active.failed_jobs}</span>
             <span>{tl("Пропуснати")}: {active.skipped_jobs}</span>
+            <span>{progressPct}%</span>
           </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-            <button className="btn btn-ghost btn-sm" onClick={load}><Icon name="refresh" size={14} /> {tl("Обнови")}</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => api(`/api/admin/ai/pipelines/${active.id}/retry-failed`, { method: "POST" }).then(load)}>{tl("Повтори неуспешните")}</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => api(`/api/admin/ai/pipelines/${active.id}/cancel-pending`, { method: "POST" }).then(load)}>{tl("Отмени чакащите задачи")}</button>
+
+          {/* Stage indicators по агент */}
+          <div className="apl-stages">
+            {RUNNABLE_PURPOSES.map((pp) => {
+              const done = countP(pp, ["completed", "skipped_unchanged"]);
+              const run = countP(pp, ["running"]);
+              const wait = countP(pp, ["queued", "waiting_dependency", "retry_scheduled"]);
+              const fail = countP(pp, ["failed"]);
+              const total = done + run + wait + fail + countP(pp, ["cancelled", "requires_review"]);
+              const st = run > 0 ? "работи" : wait > 0 ? "чака" : total > 0 && fail > 0 ? "частично" : total > 0 ? "завършен" : "няма задачи";
+              return (
+                <div key={pp} className="apl-stage-card">
+                  <div className="apl-sc-top"><b>{tl(PURPOSE_LABELS[pp])}</b> <span className={"apl-sc-st " + (run ? "on" : "")}>{tl(st)}</span></div>
+                  <div className="apl-sc-nums">{done} / {total || 0} {tl("готови")} · {run} {tl("работи")} · {wait} {tl("чакат")}{fail ? ` · ${fail} ${tl("неуспешни")}` : ""}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => { load(); loadJobSum(active.id); }}><Icon name="refresh" size={14} /> {tl("Обнови")}</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => api(`/api/admin/ai/pipelines/${active.id}/retry-failed`, { method: "POST" }).then(() => { load(); loadJobSum(active.id); })}>{tl("Повтори неуспешните")}</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => api(`/api/admin/ai/pipelines/${active.id}/cancel-pending`, { method: "POST" }).then(() => { load(); loadJobSum(active.id); })}>{tl("Отмени чакащите задачи")}</button>
           </div>
         </div>
       ) : (
         <p className="prose" style={{ color: "var(--faint)" }}>{tl("В момента няма активен pipeline.")}</p>
       )}
 
-      {/* Действия по модел */}
+      {/* Действия по агент */}
       <div className="table-scroll" style={{ marginTop: 12 }}>
         <table className="admin-table">
           <thead><tr><th>{tl("Предназначение")}</th><th>{tl("Модел")}</th><th>{tl("Автоматично")}</th><th>{tl("Час")}</th><th>{tl("Действия")}</th></tr></thead>
           <tbody>
             {activeCfgs.map((c) => {
               const sch = schedules.find((s) => s.purpose === c.purpose);
+              const isActive = purposeActive(c.purpose);
+              const waitDep = countP(c.purpose, ["waiting_dependency"]) > 0 && countP(c.purpose, ["running", "queued"]) === 0;
               return (
                 <tr key={c.purpose}>
                   <td>{tl(PURPOSE_LABELS[c.purpose] || c.purpose)}</td>
@@ -225,11 +292,14 @@ function PipelinePanel({ data, flash }) {
                     </label>
                   </td>
                   <td>{sch?.preferred_time || "—"} <span className="row-sub">{sch?.timezone || "Europe/Sofia"}</span></td>
-                  <td><button className="btn btn-ghost btn-sm" disabled={!!active} onClick={() => setModal({ kind: "purpose", purpose: c.purpose })}>{tl("Стартирай сега")}</button></td>
+                  <td>
+                    {waitDep ? <span className="row-sub">{tl("Изчаква зависимост")}</span>
+                      : isActive ? <button className="btn btn-stop btn-sm" onClick={() => setModal({ kind: "stopPurpose", purpose: c.purpose, runId: active.id })}>{tl("Спри")}</button>
+                      : <button className="btn btn-ghost btn-sm" disabled={running} onClick={() => setModal({ kind: "purpose", purpose: c.purpose })}>{tl("Стартирай сега")}</button>}
+                  </td>
                 </tr>
               );
             })}
-            {/* Бъдещ чат — показва се като изключен, БЕЗ бутон за старт */}
             <tr style={{ opacity: 0.55 }}>
               <td>{tl(PURPOSE_LABELS.future_chat)}</td><td className="mono">—</td>
               <td><span className="badge neutral">{tl("Изключено")}</span></td><td>—</td>
@@ -239,8 +309,91 @@ function PipelinePanel({ data, flash }) {
         </table>
       </div>
 
-      {modal && <ScopeModal modal={modal} data={data} onClose={() => setModal(null)} onStarted={() => { setModal(null); load(); flash(tl("Задачата е стартирана.")); }} flash={flash} />}
+      {modal?.kind === "stats" && <StatsModal onClose={() => setModal(null)} onDone={() => { setModal(null); flash(tl("Статистиките са преизчислени.")); }} flash={flash} tl={tl} />}
+      {modal?.kind === "stop" && <StopModal active={active} jobSum={jobSum} onClose={() => setModal(null)} onDone={() => { setModal(null); load(); }} tl={tl} flash={flash} />}
+      {modal?.kind === "stopPurpose" && <StopPurposeModal modal={modal} onClose={() => setModal(null)} onDone={() => { setModal(null); load(); loadJobSum(active?.id); }} tl={tl} flash={flash} />}
+      {(modal?.kind === "purpose" || modal?.kind === "all" || modal?.kind === "pipeline") && <ScopeModal modal={modal} data={data} onClose={() => setModal(null)} onStarted={() => { setModal(null); load(); flash(tl("Задачата е стартирана.")); }} flash={flash} />}
     </section>
+  );
+}
+
+// Обяснение „Какво се преизчислява?“ + безопасно преизчисляване без AI разход.
+function StatsModal({ onClose, onDone, flash, tl }) {
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try { const d = await api("/api/admin/ai/recompute-aggregates", { method: "POST" }); onDone(); flash(tl("Преизчислени за") + " " + d.recomputed + " " + tl("държави")); }
+    catch { flash(tl("Неуспешно преизчисляване")); setBusy(false); }
+  };
+  return (
+    <div className="overlay" style={{ zIndex: 80 }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-card" role="dialog" aria-modal="true" style={{ maxWidth: 520 }}>
+        <h3 style={{ marginTop: 0 }}>{tl("Какво се преизчислява?")}</h3>
+        <p className="prose">{tl("Агрегатите (статистиките) са обобщени стойности, изчислени от вече записаните процедури, документи, бюджети, източници и AI анализи. Използват се за по-бързо зареждане на Обзор, картата на Европа, „Относно системата“, броячите и диаграмите.")}</p>
+        <ul className="stats-cats">
+          <li><b>{tl("Процедури")}</b>: {tl("общ брой, активни, предстоящи, приключени, нови, променени")}</li>
+          <li><b>{tl("Документи")}</b>: {tl("процедури с документи, общ брой, за проверка")}</li>
+          <li><b>{tl("Бюджети")}</b>: {tl("общ публикуван бюджет, по държави, валидни структурирани записи")}</li>
+          <li><b>{tl("Източници")}</b>: {tl("официални, активни, здрави, неуспешни")}</li>
+          <li><b>{tl("Публични статистики")}</b>: {tl("Обзор, снапшоти по държави и Европа, /about, /sources, footer")}</li>
+        </ul>
+        <p className="scope-warn" style={{ color: "var(--green, #12764f)" }}><Icon name="check" size={14} /> {tl("Преизчисляването НЕ изпраща нови заявки към AI моделите и не води до разход за tokens.")}</p>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
+          <button className="btn btn-ghost" onClick={onClose}>{tl("Отказ")}</button>
+          <button className="btn btn-primary" disabled={busy} onClick={run}>{busy ? tl("Преизчисляване…") : tl("Преизчисли статистиките")}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StopModal({ active, jobSum, onClose, onDone, tl, flash }) {
+  const [busy, setBusy] = useState(false);
+  const s = jobSum?.byStatus || {};
+  const pending = (s.queued || 0) + (s.waiting_dependency || 0) + (s.retry_scheduled || 0);
+  const stop = async (cancelPending) => {
+    setBusy(true);
+    try { await api(`/api/admin/ai/pipelines/${active.id}/stop`, { method: "POST", body: JSON.stringify({ cancelPending }) }); onDone(); flash(tl("Pipeline-ът се спира.")); }
+    catch { flash(tl("Неуспешно спиране")); setBusy(false); }
+  };
+  return (
+    <div className="overlay" style={{ zIndex: 80 }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-card" role="dialog" aria-modal="true" style={{ maxWidth: 480 }}>
+        <h3 style={{ marginTop: 0 }}>{tl("Спиране на вечерния AI pipeline")}</h3>
+        <p className="prose">{tl("Новите и чакащите задачи ще бъдат отменени. Заявките, които вече са изпратени към AI доставчик, не могат винаги да бъдат прекъснати незабавно и ще приключат безопасно.")}</p>
+        <div className="scope-est">
+          <div>{tl("Изпълняващи се")}: <b>{s.running || 0}</b></div>
+          <div>{tl("Чакащи")}: <b>{pending}</b></div>
+          <div>{tl("Завършени")}: <b>{s.completed || 0}</b></div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
+          <button className="btn btn-primary" disabled={busy} onClick={() => stop(false)}>{tl("Спри след текущата задача")}</button>
+          <button className="btn btn-stop" disabled={busy} onClick={() => stop(true)}>{tl("Отмени всички чакащи задачи")}</button>
+          <button className="btn btn-ghost" onClick={onClose}>{tl("Продължи pipeline-а")}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StopPurposeModal({ modal, onClose, onDone, tl, flash }) {
+  const [busy, setBusy] = useState(false);
+  const stop = async () => {
+    setBusy(true);
+    try { await api(`/api/admin/ai/pipelines/${modal.runId}/stop-purpose`, { method: "POST", body: JSON.stringify({ purpose: modal.purpose }) }); onDone(); flash(tl("Агентът е спрян.")); }
+    catch { flash(tl("Неуспешно спиране")); setBusy(false); }
+  };
+  return (
+    <div className="overlay" style={{ zIndex: 80 }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-card" role="dialog" aria-modal="true" style={{ maxWidth: 440 }}>
+        <h3 style={{ marginTop: 0 }}>{tl("Спиране на агент")}: {tl(PURPOSE_LABELS[modal.purpose] || modal.purpose)}</h3>
+        <p className="prose">{tl("Чакащите задачи на този агент ще бъдат отменени. Зависимите следващи агенти няма да продължат за незавършените записи.")}</p>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
+          <button className="btn btn-ghost" onClick={onClose}>{tl("Отказ")}</button>
+          <button className="btn btn-stop" disabled={busy} onClick={stop}>{busy ? tl("Спиране…") : tl("Спри агента")}</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -674,5 +827,115 @@ function LogDetail({ id, tl }) {
         </div>
       )}
     </div>
+  );
+}
+
+// ---------- Задачи (jobs) ----------
+const JOB_STATUS = {
+  queued: { label: "Готова", tone: "blue" },
+  waiting_dependency: { label: "Изчаква зависимост", tone: "neutral" },
+  running: { label: "Изпълнява се", tone: "blue" },
+  completed: { label: "Завършена", tone: "green" },
+  skipped_unchanged: { label: "Пропусната — без промяна", tone: "neutral" },
+  retry_scheduled: { label: "Ще бъде повторена", tone: "amber" },
+  failed: { label: "Неуспешна", tone: "red" },
+  cancelled: { label: "Отменена", tone: "neutral" },
+  requires_review: { label: "Изисква проверка", tone: "amber" },
+  blocked_configuration: { label: "Липсва конфигурация", tone: "red" },
+  blocked_dependency: { label: "Блокирана от предишна задача", tone: "neutral" },
+};
+const JOB_PAGE = 15;
+
+function JobsPanel({ flash }) {
+  const tl = useUiTr();
+  const [rows, setRows] = useState(null);
+  const [total, setTotal] = useState(0);
+  const [sum, setSum] = useState(null);
+  const [page, setPage] = useState(1);
+  const [fPurpose, setFPurpose] = useState("");
+  const [fStatus, setFStatus] = useState("");
+  const [fCountry, setFCountry] = useState("");
+  const load = useCallback(() => {
+    const qs = new URLSearchParams({ limit: String(JOB_PAGE), offset: String((page - 1) * JOB_PAGE) });
+    if (fPurpose) qs.set("purpose", fPurpose);
+    if (fStatus) qs.set("status", fStatus);
+    if (fCountry) qs.set("country", fCountry);
+    api("/api/admin/ai/jobs?" + qs).then((d) => { setRows(d.jobs || []); setTotal(d.total || 0); }).catch(() => { setRows([]); setTotal(0); });
+    api("/api/admin/ai/jobs/summary").then(setSum).catch(() => setSum(null));
+  }, [page, fPurpose, fStatus, fCountry]);
+  useEffect(() => { load(); }, [load]);
+  const pages = Math.max(1, Math.ceil(total / JOB_PAGE));
+  const s = sum?.byStatus || {};
+
+  return (
+    <section className="prof-card">
+      <div className="ov-section-head" style={{ flexWrap: "wrap", gap: 8 }}>
+        <h3 className="prof-section-title" style={{ margin: 0 }}>{tl("Задачи")}</h3>
+        <span className="count-dot">{sum?.total ?? 0}</span>
+        <button className="btn btn-ghost" style={{ marginLeft: "auto" }} onClick={load}><Icon name="refresh" size={14} /> {tl("Обнови")}</button>
+      </div>
+
+      {/* Summary карти */}
+      <div className="jobs-sum">
+        {[["queued", "Готови"], ["waiting_dependency", "Изчакват"], ["running", "Изпълняват се"], ["completed", "Завършени"], ["skipped_unchanged", "Пропуснати"], ["failed", "Неуспешни"], ["cancelled", "Отменени"], ["requires_review", "За проверка"]].map(([k, lbl]) => (
+          <div key={k} className="jobs-sum-card"><span className="jsc-n">{s[k] || 0}</span><span className="jsc-l">{tl(lbl)}</span></div>
+        ))}
+      </div>
+      {sum && <p className="row-sub" style={{ margin: "4px 0 10px" }}>{sum.terminal} / {sum.total} {tl("приключени")} · {sum.percent}%</p>}
+
+      {/* Филтри */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+        <select className="inp inp-sm" value={fPurpose} onChange={(e) => { setFPurpose(e.target.value); setPage(1); }} aria-label={tl("Предназначение")}>
+          <option value="">{tl("Всички предназначения")}</option>
+          {RUNNABLE_PURPOSES.map((p) => <option key={p} value={p}>{tl(PURPOSE_LABELS[p])}</option>)}
+        </select>
+        <select className="inp inp-sm" value={fStatus} onChange={(e) => { setFStatus(e.target.value); setPage(1); }} aria-label={tl("Статус")}>
+          <option value="">{tl("Всички статуси")}</option>
+          {Object.keys(JOB_STATUS).map((st) => <option key={st} value={st}>{tl(JOB_STATUS[st].label)}</option>)}
+        </select>
+        <select className="inp inp-sm" value={fCountry} onChange={(e) => { setFCountry(e.target.value); setPage(1); }} aria-label={tl("Държава")}>
+          <option value="">{tl("Всички държави")}</option>
+          {["BG", "RO", "GR", "PL", "HR", "CZ", "PT", "SK", "HU", "SI", "IT", "ES", "DE", "FR", "LT", "LV", "EE", "NL", "BE", "SE", "FI", "AT", "IE", "DK", "CY", "MT", "LU"].map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+
+      {rows == null ? <p className="prose">{tl("Зареждане…")}</p> : rows.length === 0 ? (
+        <div className="state ov-empty"><Icon name="sparkle" size={24} /><h3>{tl("Няма задачи")}</h3><p>{tl("Тук се появяват задачите на вечерния AI pipeline.")}</p></div>
+      ) : (
+        <>
+          <div className="table-scroll">
+            <table className="admin-table">
+              <thead><tr><th>{tl("Създадена")}</th><th>{tl("Предназначение")}</th><th>{tl("Държава")}</th><th>{tl("Обект")}</th><th>{tl("Модел")}</th><th>{tl("Приоритет")}</th><th>{tl("Статус")}</th><th>{tl("Опит")}</th><th>{tl("Резултат")}</th></tr></thead>
+              <tbody>
+                {rows.map((j) => {
+                  const st = JOB_STATUS[j.status] || { label: j.status, tone: "neutral" };
+                  return (
+                    <tr key={j.id}>
+                      <td className="nowrap">{fmtTs(j.created_at)}</td>
+                      <td>{tl(PURPOSE_LABELS[j.purpose] || j.purpose)}</td>
+                      <td>{j.country_code || "—"}</td>
+                      <td className="mono" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }} title={j.entity_id}>{j.entity_type}</td>
+                      <td className="mono">{j.model_id}</td>
+                      <td>{j.priority}</td>
+                      <td><span className={"badge " + st.tone}>{tl(st.label)}</span></td>
+                      <td>{j.attempt_count}</td>
+                      <td style={{ maxWidth: 220, fontSize: 12.5 }}>{j.safe_error_summary || (j.duration_ms != null ? j.duration_ms + " ms" : "—")}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {total > JOB_PAGE && (
+            <div className="admin-pager">
+              <span className="pg-info">{(page - 1) * JOB_PAGE + 1}–{Math.min(page * JOB_PAGE, total)} {tl("от")} {total}</span>
+              <button className="btn btn-ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>{tl("Предишна")}</button>
+              <span className="pg-info" style={{ margin: 0 }}>{tl("стр.")} {page} / {pages}</span>
+              <button className="btn btn-ghost" disabled={page >= pages} onClick={() => setPage(page + 1)}>{tl("Следваща")}</button>
+            </div>
+          )}
+        </>
+      )}
+    </section>
   );
 }

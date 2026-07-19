@@ -5,6 +5,7 @@ import SystemWelcomeModal from "./SystemWelcomeModal.jsx";
 import CookieConsentBanner from "./CookieConsentBanner.jsx";
 import FeedbackModal from "./FeedbackModal.jsx";
 import AppUpdateNotification from "./AppUpdateNotification.jsx";
+import RouteSwipe from "./RouteSwipe.jsx";
 import { useSession } from "../hooks/useSession.js";
 import { useAppUpdate } from "../hooks/useAppUpdate.js";
 import { trackUpdate } from "../services/versionService.js";
@@ -102,6 +103,7 @@ export default function AppChrome() {
 
   return (
     <>
+      <RouteSwipe />
       {showWelcome && (
         <SystemWelcomeModal initialSection={welcomeSection} onClose={closeWelcome} onLogin={() => { closeWelcome(); session.login(); }} />
       )}

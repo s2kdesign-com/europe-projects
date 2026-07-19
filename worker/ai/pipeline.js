@@ -287,10 +287,16 @@ async function failJob(env, job, code, summary) {
 }
 
 async function maybeFinishRun(env, runId) {
-  const r = await env.DB.prepare("SELECT total_jobs, completed_jobs, failed_jobs, skipped_jobs, cancelled_jobs, queued_jobs, running_jobs FROM ai_pipeline_runs WHERE id=?1").bind(runId).first();
+  const r = await env.DB.prepare("SELECT status, total_jobs, completed_jobs, failed_jobs, skipped_jobs, cancelled_jobs, queued_jobs, running_jobs FROM ai_pipeline_runs WHERE id=?1").bind(runId).first();
   if (!r) return;
   const remaining = (r.queued_jobs || 0) + (r.running_jobs || 0);
   if (remaining > 0) return;
+  // Спиране: последната изпълняваща се задача приключи → stopped/partial.
+  if (r.status === "stopping") {
+    const st = (r.completed_jobs || 0) > 0 ? "partial" : "stopped";
+    await env.DB.prepare("UPDATE ai_pipeline_runs SET status=?1, completed_at=?2, current_stage='stopped', updated_at=?2 WHERE id=?3 AND status='stopping'").bind(st, nowISO(), runId).run();
+    return;
+  }
   const status = (r.failed_jobs || 0) > 0 && (r.completed_jobs || 0) > 0 ? "partial" : (r.failed_jobs > 0 && r.completed_jobs === 0 ? "failed" : "completed");
   await env.DB.prepare("UPDATE ai_pipeline_runs SET status=?1, completed_at=?2, current_stage='done', updated_at=?2 WHERE id=?3 AND status='running'").bind(status, nowISO(), runId).run();
 }
@@ -411,4 +417,79 @@ export async function budgetDiagnostics(env) {
      FROM projects GROUP BY country_code ORDER BY procedures DESC`
   ).all();
   return rows.results || [];
+}
+
+// --- STOP / RECOVER / JOBS SUMMARY (admin управление) ---
+const PURPOSE_TIMEOUT_MS = { procedure_analysis: 120000, document_analysis: 120000, budget_analysis: 90000, recommendation: 90000 };
+
+// Безопасно спиране на целия pipeline: маркира 'stopping', отменя чакащите (queued/
+// waiting_dependency/retry_scheduled), НЕ прекъсва изпратени provider заявки, не трие
+// приложени резултати. Ако няма running jobs → веднага 'stopped'/'partial'.
+export async function stopPipeline(env, runId, { userId = null, cancelPending = true } = {}) {
+  await env.DB.prepare("UPDATE ai_pipeline_runs SET status='stopping', updated_at=?1 WHERE id=?2 AND status IN ('running')").bind(nowISO(), runId).run();
+  let cancelled = 0;
+  if (cancelPending) {
+    const r = await env.DB.prepare("UPDATE ai_jobs SET status='cancelled', updated_at=?1 WHERE run_id=?2 AND status IN ('queued','waiting_dependency','retry_scheduled')").bind(nowISO(), runId).run();
+    cancelled = r.meta ? r.meta.changes : 0;
+  }
+  await bumpRunCounts(env, runId);
+  // Ако вече няма изпълняващи се jobs → финализирай веднага.
+  const running = await env.DB.prepare("SELECT COUNT(*) n FROM ai_jobs WHERE run_id=?1 AND status='running'").bind(runId).first();
+  if (!running || running.n === 0) await finalizeStopped(env, runId);
+  return { cancelled, stillRunning: running ? running.n : 0 };
+}
+async function finalizeStopped(env, runId) {
+  const r = await env.DB.prepare("SELECT completed_jobs, failed_jobs FROM ai_pipeline_runs WHERE id=?1").bind(runId).first();
+  const status = r && r.completed_jobs > 0 ? "partial" : "stopped";
+  await env.DB.prepare("UPDATE ai_pipeline_runs SET status=?1, completed_at=?2, current_stage='stopped', updated_at=?2 WHERE id=?3 AND status IN ('stopping','running')").bind(status, nowISO(), runId).run();
+}
+
+// Спиране на отделен purpose: отменя неговите чакащи jobs + зависимите надолу.
+export async function stopPurpose(env, runId, purpose) {
+  const r1 = await env.DB.prepare("UPDATE ai_jobs SET status='cancelled', updated_at=?1 WHERE run_id=?2 AND purpose=?3 AND status IN ('queued','waiting_dependency','retry_scheduled')").bind(nowISO(), runId, purpose).run();
+  // Зависими purposes надолу по графа → блокирани, ако този е предпоставка.
+  const dependents = Object.entries(PURPOSE_DEPS).filter(([, deps]) => deps.includes(purpose)).map(([p]) => p);
+  let blocked = 0;
+  for (const dep of dependents) {
+    const r2 = await env.DB.prepare("UPDATE ai_jobs SET status='cancelled', safe_error_summary='Блокирана — спрян е предходен агент', updated_at=?1 WHERE run_id=?2 AND purpose=?3 AND status IN ('queued','waiting_dependency','retry_scheduled')").bind(nowISO(), runId, dep).run();
+    blocked += r2.meta ? r2.meta.changes : 0;
+  }
+  await bumpRunCounts(env, runId);
+  return { cancelled: (r1.meta ? r1.meta.changes : 0), blockedDependents: blocked, affectedPurposes: dependents };
+}
+
+// Открива и възстановява „заседнали" jobs: running с изтекъл lock, или running при
+// terminal pipeline. Връща ги в queue (idempotency пази срещу дублиране на резултат).
+export async function recoverStuckJobs(env) {
+  const now = nowISO();
+  const expired = await env.DB.prepare("UPDATE ai_jobs SET status='queued', locked_by=NULL, lock_expires_at=NULL, updated_at=?1 WHERE status='running' AND lock_expires_at IS NOT NULL AND lock_expires_at < ?1").bind(now).run();
+  const orphan = await env.DB.prepare("UPDATE ai_jobs SET status='failed', error_code='orphaned', safe_error_summary='Задачата остана изпълняваща се след приключил pipeline', updated_at=?1 WHERE status='running' AND run_id IN (SELECT id FROM ai_pipeline_runs WHERE status IN ('completed','partial','stopped','failed','cancelled'))").bind(now).run();
+  return { requeued: expired.meta ? expired.meta.changes : 0, orphaned: orphan.meta ? orphan.meta.changes : 0 };
+}
+
+// Обобщение на jobs (по статус) за run или глобално.
+export async function jobsSummary(env, runId = null) {
+  const where = runId ? " WHERE run_id=?1" : "";
+  const binds = runId ? [runId] : [];
+  const rows = await env.DB.prepare(`SELECT status, COUNT(*) n FROM ai_jobs${where} GROUP BY status`).bind(...binds).all();
+  const byStatus = {};
+  for (const r of (rows.results || [])) byStatus[r.status] = r.n;
+  const byPurpose = await env.DB.prepare(`SELECT purpose, status, COUNT(*) n FROM ai_jobs${where} GROUP BY purpose, status`).bind(...binds).all();
+  const total = Object.values(byStatus).reduce((s, x) => s + x, 0);
+  const terminal = (byStatus.completed || 0) + (byStatus.failed || 0) + (byStatus.skipped_unchanged || 0) + (byStatus.cancelled || 0) + (byStatus.requires_review || 0);
+  return { byStatus, byPurpose: byPurpose.results || [], total, terminal, percent: total ? Math.round(terminal / total * 100) : 0 };
+}
+
+// Детектор за заседнали (за validation summary): running над timeout или изтекъл lock.
+export async function stuckJobCount(env) {
+  const now = Date.now();
+  const rows = await env.DB.prepare("SELECT purpose, started_at, lock_expires_at FROM ai_jobs WHERE status='running'").all();
+  let stuck = 0;
+  for (const j of (rows.results || [])) {
+    const to = PURPOSE_TIMEOUT_MS[j.purpose] || 120000;
+    const overtime = j.started_at && (now - new Date(j.started_at).getTime()) > to;
+    const lockExpired = j.lock_expires_at && new Date(j.lock_expires_at).getTime() < now;
+    if (overtime || lockExpired) stuck++;
+  }
+  return stuck;
 }

@@ -4,7 +4,8 @@
 import {
   createPipelineRun, enqueueProcedureJobs, processJobsBatch, reclaimExpiredLocks,
   cancelPendingJobs, retryFailedJobs, nightlyAlreadyRan, isExcludedPurpose, isPipelinePurpose,
-  recomputeAllAggregates, budgetDiagnostics,
+  recomputeAllAggregates, budgetDiagnostics, stopPipeline, stopPurpose, recoverStuckJobs,
+  jobsSummary, stuckJobCount,
 } from "./pipeline.js";
 
 const NO_STORE = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
@@ -51,6 +52,41 @@ export async function handleAIPipeline(request, env, url, userId, method, readJs
     // Обработи първия batch синхронно (малък), останалото — през continuation.
     await processJobsBatch(env, { runId, limit: 3 });
     return ok({ runId, ...res });
+  }
+
+  // Активен pipeline (за Start/Stop състоянието — backend е source of truth).
+  if (p === "/api/admin/ai/pipelines/active" && method === "GET") {
+    const active = await env.DB.prepare("SELECT * FROM ai_pipeline_runs WHERE status IN ('running','stopping') ORDER BY created_at DESC LIMIT 1").first();
+    const stuck = await stuckJobCount(env);
+    return ok({ active: active || null, stuck });
+  }
+
+  // Безопасно спиране на целия pipeline.
+  const stop = /^\/api\/admin\/ai\/pipelines\/([\w-]+)\/stop$/.exec(p);
+  if (stop && method === "POST") {
+    const body = (await readJson()) || {};
+    const res = await stopPipeline(env, stop[1], { userId, cancelPending: body.cancelPending !== false });
+    await audit(env, { actor: userId, action: "pipeline_stop", next: JSON.stringify({ runId: stop[1], ...res }) });
+    return ok(res);
+  }
+  // Спиране на отделен agent (purpose).
+  const stopP = /^\/api\/admin\/ai\/pipelines\/([\w-]+)\/stop-purpose$/.exec(p);
+  if (stopP && method === "POST") {
+    const body = (await readJson()) || {};
+    if (!isPipelinePurpose(body.purpose)) return err("unknown_purpose", 400);
+    const res = await stopPurpose(env, stopP[1], body.purpose);
+    await audit(env, { actor: userId, action: "pipeline_stop_purpose", purpose: body.purpose, next: JSON.stringify({ runId: stopP[1], ...res }) });
+    return ok(res);
+  }
+  // Възстановяване на заседнали задачи.
+  if (p === "/api/admin/ai/jobs/recover-stuck" && method === "POST") {
+    const res = await recoverStuckJobs(env);
+    await audit(env, { actor: userId, action: "recover_stuck", next: JSON.stringify(res) });
+    return ok(res);
+  }
+  // Обобщение на задачите (по статус) за run или глобално.
+  if (p === "/api/admin/ai/jobs/summary" && method === "GET") {
+    return ok(await jobsSummary(env, url.searchParams.get("run") || null));
   }
 
   const retry = /^\/api\/admin\/ai\/pipelines\/([\w-]+)\/retry-failed$/.exec(p);

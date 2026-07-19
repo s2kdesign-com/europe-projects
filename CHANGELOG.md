@@ -3,6 +3,38 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.35.0] — 2026-07-18
+
+### Ново
+- **Управляем вечерен AI pipeline**: главен бутон Start↔Stop от реалния backend
+  статус (`/api/admin/ai/pipelines/active`); safe stop (`/stop` — cancel pending,
+  running приключва, приложените резултати остават) → stopped/partial; per-agent
+  `/stop-purpose` (блокира зависимите). maybeFinishRun финализира и `stopping`.
+- **Stage indicators** по агент (готови/работят/чакат/неуспешни) + прогрес по
+  (completed+failed+skipped+cancelled)/total.
+- **Нов раздел „Задачи“** (`JobsPanel`): jobs summary (`/jobs/summary`), филтри
+  (purpose/status/country), таблица с преведени статуси, страниране.
+- **„Преизчисли статистиките“** (преименувано) + обяснителен modal (какво се
+  обновява, без AI разход); **recover-stuck** (`/jobs/recover-stuck`, stuckJobCount)
+  — изтекли locks → queue, orphaned running при terminal run → failed.
+- Тестове: `test/ai-stop.test.mjs` (5). Общо 116 unit теста.
+
+## [2.34.0] — 2026-07-18
+
+### Подобрено
+- **Footer статистика**: `FooterStat`×4 (държави/източници/процедури/общ бюджет) от
+  `/api/public/platform-statistics` (същия като /sources) — без hardcode; skeleton +
+  „Статистиката временно не е налична“; компактен locale-aware EUR формат.
+- **FooterLink** (reusable) с водеща стрелка (aria-hidden, hover shift) за ВСИЧКИ
+  навигационни връзки; текст/имейл/copyright без стрелка.
+- **Mobile**: „Полезни връзки“ в 2 колони (1 под 340px); стат-картите 2×2.
+- **RouteSwipe** (глобален, монтиран в AppChrome): единствен source of truth е
+  pathname (`getMainRouteIndex`/`MAIN_ROUTES` в routes.js). От вътрешна страница
+  първият swipe → „/“ (scroll reset); детайл-маршрутите (/procedures/:slug) не са в
+  carousel-а; exclusions за select/link/footer/scrollable/[data-disable-route-swipe].
+  Премахнат дублиращият swipe от DashboardShell. `tabFromPath` връща null за вътрешни
+  страници (без фалшив активен таб). Тестове: `test/route-swipe.test.mjs` (9).
+
 ## [2.33.0] — 2026-07-18
 
 ### Поправено

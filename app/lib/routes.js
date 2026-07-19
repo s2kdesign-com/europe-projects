@@ -30,10 +30,27 @@ export function splitLocale(pathname) {
 }
 
 // Табът от pathname (пренебрегва locale префикса и trailing slash).
+// ВАЖНО: за вътрешни страници (/sources, /about, /profile…) връща null, а НЕ
+// "overview" — иначе header-ът/swipe-ът маркира грешен активен таб.
 export function tabFromPath(pathname) {
   const { rest } = splitLocale(pathname);
   const seg = rest.replace(/^\/+|\/+$/g, "").split("/")[0] || "";
-  return PATH_TABS[seg] || "overview";
+  return PATH_TABS[seg] || null;
+}
+
+// Основните swipe маршрути (само тези участват в carousel-а). Вътрешните страници
+// НЕ са част от последователността.
+export const MAIN_ROUTES = ["/", "/procedures", "/calendar", "/saved"];
+
+// Индекс на основния маршрут по pathname (единствен source of truth). Вътрешна
+// страница → null. Пренебрегва locale префикс и trailing slash.
+export function getMainRouteIndex(pathname) {
+  const { rest } = splitLocale(pathname || "/");
+  // ЦЯЛ път (без trailing slash) — за да НЕ третираме /procedures/:slug (детайл)
+  // като списъка /procedures. Само точните основни маршрути участват в swipe-а.
+  const norm = "/" + rest.replace(/^\/+|\/+$/g, "");
+  const i = MAIN_ROUTES.indexOf(norm === "/" ? "/" : norm);
+  return i >= 0 ? i : null;
 }
 
 // Локализиран път за таб: bg → "/procedures", en → "/en/procedures".

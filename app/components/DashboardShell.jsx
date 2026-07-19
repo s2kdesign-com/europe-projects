@@ -57,7 +57,7 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
   const router = useRouter();
   // Активният таб идва от реалния маршрут (pathname), не от ?tab. initialTab е
   // резервен за SSR/тест, когато pathname още не е наличен.
-  const activeTab = pathname ? tabFromPath(pathname) : initialTab;
+  const activeTab = (pathname ? tabFromPath(pathname) : null) || initialTab || "overview";
   // Навигация между табовете = реална смяна на маршрут (SPA client navigation).
   // Не пренасяме query параметри на друг маршрут (чист URL).
   const navigateTab = useCallback((key) => router.push(pathForTab(key)), [router]);
@@ -136,24 +136,8 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
   }, [storedView, filters.view, fx]);
   useEffect(() => { if (filters.view) setStoredView(filters.view); }, [filters.view, setStoredView]);
 
-  useEffect(() => {
-    const el = document.getElementById("main");
-    if (!el) return;
-    let x0 = null, y0 = null, t0 = 0;
-    const blocked = (t) => t && t.closest && t.closest("input,textarea,select,.segmented,.um-menu,.overlay,.cal-year,.chart-grid,.compare-scroll,.barchart,.colchart,.timeline");
-    const start = (e) => { if (blocked(e.target)) { x0 = null; return; } const t = e.changedTouches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); };
-    const end = (e) => {
-      if (x0 == null) return;
-      const t = e.changedTouches[0]; const dx = t.clientX - x0, dy = t.clientY - y0, dt = Date.now() - t0; x0 = null;
-      if (dt > 700 || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
-      const order = TABS.map((x) => x.key); const i = order.indexOf(activeTab);
-      if (dx < 0 && i < order.length - 1) navigateTab(order[i + 1]);
-      else if (dx > 0 && i > 0) navigateTab(order[i - 1]);
-    };
-    el.addEventListener("touchstart", start, { passive: true });
-    el.addEventListener("touchend", end, { passive: true });
-    return () => { el.removeEventListener("touchstart", start); el.removeEventListener("touchend", end); };
-  }, [activeTab, fx]);
+  // Swipe навигацията е централизирана в RouteSwipe (глобално, route-базирано —
+  // единствен source of truth е pathname). Тук вече няма локален touch handler.
 
   const projects = data.projects;
 

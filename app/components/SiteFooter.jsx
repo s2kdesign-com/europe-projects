@@ -6,6 +6,7 @@ import Icon from "./Icon.jsx";
 import { GoogleG } from "./UserMenu.jsx";
 import LanguageSelector from "./LanguageSelector.jsx";
 import CountrySelector from "./country/CountrySelector.jsx";
+import FooterLink from "./FooterLink.jsx";
 import { useSession } from "../hooks/useSession.js";
 import { APP_VERSION, CHANGELOG_SEEN_KEY } from "../lib/version.js";
 
@@ -13,18 +14,35 @@ const emit = (name) => window.dispatchEvent(new CustomEvent(name));
 // „Как работи AI" — отваря посрещащия модал директно на AI секцията (без втори модал).
 const openAiInfo = () => window.dispatchEvent(new CustomEvent("open-welcome", { detail: { section: "ai" } }));
 
+// Компактна footer стат-карта с достъпно име (числото е акцентът).
+function FooterStat({ n, label, desc }) {
+  return (
+    <div className="sf-stat" title={desc || undefined}>
+      <span className="sf-stat-n">{n}</span>
+      <span className="sf-stat-l">{label}</span>
+      {desc ? <span className="sr-only">{desc}</span> : null}
+    </div>
+  );
+}
+
 export default function SiteFooter({ session: sessionProp }) {
   const own = useSession();
   const session = sessionProp || own;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === "bg" ? "bg-BG" : "en-US";
+  const nf = (x) => new Intl.NumberFormat(locale).format(x || 0);
+  const cf = (x) => new Intl.NumberFormat(locale, { style: "currency", currency: "EUR", notation: "compact", maximumFractionDigits: 1 }).format(x);
   const [hasNew, setHasNew] = useState(false);
   // Публична безопасна AI конфигурация (без ключове/вътрешни параметри).
   // Безопасен статичен fallback при недостъпна конфигурация.
   const [aiCfg, setAiCfg] = useState({ dailyReview: { provider: "Anthropic", model: "Claude Opus 4.8" }, systemAI: null });
+  // Платформена статистика — СЪЩИЯТ публичен endpoint като /sources (без hardcode).
+  const [pstats, setPstats] = useState(undefined); // undefined=loading, null=error
 
   useEffect(() => {
     try { setHasNew(window.localStorage.getItem(CHANGELOG_SEEN_KEY) !== APP_VERSION); } catch { /* ignore */ }
     fetch("/api/ai/public-configuration").then((r) => (r.ok ? r.json() : null)).then((d) => { if (d && d.ok) setAiCfg(d); }).catch(() => {});
+    fetch("/api/public/platform-statistics").then((r) => (r.ok ? r.json() : Promise.reject(new Error()))).then((d) => setPstats(d.summary || null)).catch(() => setPstats(null));
   }, []);
 
   const year = new Date().getFullYear();
@@ -70,11 +88,11 @@ export default function SiteFooter({ session: sessionProp }) {
                 </>
               );
             })()}
-            <a className="sf-link" href="/about#how-we-use-ai">{t("ai.howWeUse")}</a>
+            <FooterLink href="/about#how-we-use-ai">{t("ai.howWeUse")}</FooterLink>
           </div>
           <div className="sf-links">
-            <a className="sf-link" href="/about#about-system">{t("footer.aboutSystem")}</a>
-            <a className="sf-link" href="/sources">{t("footer.dataSources")}</a>
+            <FooterLink href="/about#about-system">{t("footer.aboutSystem")}</FooterLink>
+            <FooterLink href="/sources">{t("footer.dataSources")}</FooterLink>
           </div>
         </div>
 
@@ -88,9 +106,9 @@ export default function SiteFooter({ session: sessionProp }) {
                 <div style={{ minWidth: 0 }}><div className="sf-user-name">{session.user?.display_name}</div><div className="sf-user-email">{session.user?.email}</div></div>
               </div>
               <div className="sf-links">
-                <a className="sf-link" href="/profile">{t("footer.profileView")}</a>
-                <a className="sf-link" href={session.isAdmin ? "/admin" : "/profile?section=preferences"}>{t("footer.settings")}</a>
-                <button className="sf-link" onClick={() => session.logout()}>{t("footer.logout")}</button>
+                <FooterLink href="/profile">{t("footer.profileView")}</FooterLink>
+                <FooterLink href={session.isAdmin ? "/admin" : "/profile?section=preferences"}>{t("footer.settings")}</FooterLink>
+                <FooterLink onClick={() => session.logout()}>{t("footer.logout")}</FooterLink>
               </div>
             </>
           ) : (
@@ -99,7 +117,7 @@ export default function SiteFooter({ session: sessionProp }) {
               <p className="sf-desc">{t("footer.guestDesc")}</p>
               <button className="btn btn-google" onClick={() => session.login()}><GoogleG /> <span>{t("footer.googleLogin")}</span></button>
               <div className="sf-links" style={{ marginTop: 10 }}>
-                <button className="sf-link" onClick={() => emit("open-welcome")}>{t("footer.whyProfile")}</button>
+                <FooterLink onClick={() => emit("open-welcome")}>{t("footer.whyProfile")}</FooterLink>
               </div>
             </>
           )}
@@ -123,20 +141,45 @@ export default function SiteFooter({ session: sessionProp }) {
         {/* Колона 3 — връзки */}
         <div className="sf-col">
           <h4 className="sf-title">{t("footer.usefulLinks")}</h4>
+          {/* DOM редът е логичен за screen reader; на mobile CSS grid прави 2 колони. */}
           <div className="sf-links sf-links-grid">
-            <a className="sf-link" href="/">{t("navigation.overview")}</a>
-            <a className="sf-link" href="/procedures">{t("navigation.procedures")}</a>
-            <a className="sf-link" href="/calendar">{t("navigation.calendar")}</a>
-            <a className="sf-link" href="/saved">{t("navigation.saved")}</a>
-            <a className="sf-link" href="/changelog">{t("navigation.changelog")}{hasNew && <span className="new-dot" aria-label="нова версия" />}</a>
-            <a className="sf-link" href="/about#about-system">{t("footer.aboutSystem")}</a>
-            <a className="sf-link" href="/sources">{t("country.sourcesTitle")}</a>
-            <a className="sf-link" href="/about#how-ai-works">{t("footer.howAiWorks")}</a>
-            <a className="sf-link" href="/terms">{t("footer.terms")}</a>
-            <a className="sf-link" href="/privacy">{t("footer.privacy")}</a>
-            <a className="sf-link" href="/cookies">{t("footer.cookies")}</a>
-            <button className="sf-link" onClick={() => emit("open-cookie-settings")}>{t("footer.cookieSettings")}</button>
-            <button className="sf-link" onClick={() => emit("open-feedback")}>{t("footer.reportProblem")}</button>
+            <FooterLink href="/">{t("navigation.overview")}</FooterLink>
+            <FooterLink href="/procedures">{t("navigation.procedures")}</FooterLink>
+            <FooterLink href="/calendar">{t("navigation.calendar")}</FooterLink>
+            <FooterLink href="/saved">{t("navigation.saved")}</FooterLink>
+            <FooterLink href="/changelog">{t("navigation.changelog")}{hasNew && <span className="new-dot" aria-label={t("footer.newVersion")} />}</FooterLink>
+            <FooterLink href="/about#about-system">{t("footer.aboutSystem")}</FooterLink>
+            <FooterLink href="/sources">{t("country.sourcesTitle")}</FooterLink>
+            <FooterLink href="/about#how-ai-works">{t("footer.howAiWorks")}</FooterLink>
+            <FooterLink href="/terms">{t("footer.terms")}</FooterLink>
+            <FooterLink href="/privacy">{t("footer.privacy")}</FooterLink>
+            <FooterLink href="/cookies">{t("footer.cookies")}</FooterLink>
+            <FooterLink onClick={() => emit("open-cookie-settings")}>{t("footer.cookieSettings")}</FooterLink>
+            <FooterLink onClick={() => emit("open-feedback")}>{t("footer.reportProblem")}</FooterLink>
+          </div>
+        </div>
+      </div>
+
+      {/* Платформена статистика — full-width ред под трите колони (реален endpoint). */}
+      <div className="sf-stats-wrap">
+        <div className="container">
+          <div className="sf-stats" role="group" aria-label={t("about.summaryTitle")} aria-busy={pstats === undefined}>
+            {pstats === null ? (
+              <p className="sf-stats-err">{t("footer.statsUnavailable")}</p>
+            ) : pstats === undefined ? (
+              [0, 1, 2, 3].map((i) => <div key={i} className="sf-stat sf-stat-sk" aria-hidden="true"><span className="sk-n" /><span className="sk-l" /></div>)
+            ) : (
+              <>
+                <FooterStat n={nf(pstats.countries)} label={t("country.sourcesStatCountries")} />
+                <FooterStat n={nf(pstats.activeSources)} label={t("country.sourcesStatSources")} />
+                <FooterStat n={nf(pstats.totalProcedures)} label={t("country.sourcesStatProcedures")} />
+                <FooterStat
+                  n={pstats.publishedBudgetEur != null ? cf(pstats.publishedBudgetEur) : t("footer.noConfirmedData")}
+                  label={t("country.sourcesStatBudget")}
+                  desc={t("about.budgetDisclaimerShort")}
+                />
+              </>
+            )}
           </div>
         </div>
       </div>
