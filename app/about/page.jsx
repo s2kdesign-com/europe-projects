@@ -98,6 +98,7 @@ export default function AboutPage() {
   const cfc = useMemo(() => new Intl.NumberFormat(intlLocale(), { style: "currency", currency: "EUR", notation: "compact", maximumFractionDigits: 1 }), [uiLang]);
   const daily = aiCfg?.dailyReview;
   const sysAI = aiCfg?.systemAI;
+  const agents = aiCfg?.agents || null;
 
   const pickCountry = (code) => {
     setCountry(code);
@@ -287,6 +288,14 @@ export default function AboutPage() {
               </div>
               <button className="btn btn-ghost" onClick={() => setShowAllChart((v) => !v)}>{showAllChart ? t("about.top10") : t("about.allCountries")}</button>
 
+              {/* AI агенти в системата — реална конфигурация от D1 */}
+              <h3 className="ab-h3" style={{ marginTop: 24 }}>{t("about.agentsTitle")}</h3>
+              <p className="ab-sub">{t("about.agentsSub")}</p>
+              <AgentsGrid agents={agents} t={t} df={df} nf={nf} />
+
+              <p className="ab-ai-note"><Icon name="info" size={14} /> {t("about.aiSequenceNote")}</p>
+              <p className="ab-ai-note"><Icon name="sparkle" size={14} /> {t("about.aiPipelineNote")}</p>
+
               <h3 className="ab-h3" style={{ marginTop: 22 }}>{t("about.pipelineTitle")}</h3>
               <ol className="ab-pipeline">
                 {[1, 2, 3, 4, 5, 6, 7].map((n) => (
@@ -305,25 +314,9 @@ export default function AboutPage() {
               <h2>{t("about.navHowWorks")}</h2>
               <p className="ab-sub">{t("about.howWorksSub")}</p>
 
-              <div className="ab-model-cards">
-                <div className="prof-card ab-model-card">
-                  <h3 className="prof-section-title">{t("about.dailyCardTitle")}</h3>
-                  <p className="ab-model-name">{daily ? `${daily.actualModel || daily.model}` : "Claude Opus 4.8"} <span className="role-chip">{daily?.provider || "Anthropic"}</span></p>
-                  <p className="prose">{t("about.dailyCardDesc")}</p>
-                  <dl className="sys-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
-                    <div><dt>{t("about.lastRun")}</dt><dd>{daily?.lastSuccessfulRunAt ? df.format(new Date(daily.lastSuccessfulRunAt)) : "—"}</dd></div>
-                    <div><dt>{t("about.countriesInRun")}</dt><dd>{daily?.countriesReviewed != null ? nf.format(daily.countriesReviewed) : "—"}</dd></div>
-                  </dl>
-                </div>
-                <div className="prof-card ab-model-card">
-                  <h3 className="prof-section-title">{t("about.systemCardTitle")}</h3>
-                  <p className="ab-model-name">{sysAI?.model || "GPT-5.6"} <span className="role-chip">{sysAI?.provider || "OpenAI"}</span></p>
-                  <p className="prose">{t("about.systemCardDesc")}</p>
-                  <dl className="sys-grid" style={{ gridTemplateColumns: "1fr" }}>
-                    <div><dt>{t("about.status")}</dt><dd>{sysAI?.status === "active" ? <span className="badge green">OK</span> : <span className="badge neutral">{t("country.comingSoon")}</span>}</dd></div>
-                  </dl>
-                </div>
-              </div>
+              {/* Компактно обобщение на моделите (реална конфигурация) */}
+              <ModelOverview agents={agents} t={t} />
+              <p className="ab-ai-note" style={{ marginTop: 8 }}><Icon name="info" size={14} /> {t("about.recDisclaimer")}</p>
 
               <h3 className="ab-h3">{t("about.archTitle")}</h3>
               <ol className="ab-arch">
@@ -342,5 +335,111 @@ export default function AboutPage() {
         )}
       </main>
     </>
+  );
+}
+
+// ---------- Публични AI агент карти (реална конфигурация от D1) ----------
+const AGENT_ICON = { daily_review: "sparkle", procedure_analysis: "document", document_analysis: "document", budget_analysis: "euro", recommendation: "users", future_chat: "sparkle" };
+const STATUS_TONE = { active: "green", upcoming: "neutral", temporarily_unavailable: "amber", needs_configuration: "amber", last_run_failed: "red" };
+
+// Публична безопасна дейност от metrics (per purpose етикети).
+function metricsLine(purpose, m, t, nf) {
+  if (!m) return null;
+  const parts = [];
+  const num = (v) => nf.format(v);
+  const proc = m.processed != null ? m.processed : m.entities;
+  if (purpose === "daily_review") {
+    if (m.countries != null) parts.push(`${num(m.countries)} ${t("about.mCountries")}`);
+    if (m.entities != null) parts.push(`${num(m.entities)} ${t("about.mProcedures")}`);
+    if (m.changes) parts.push(`${num(m.changes)} ${t("about.mChanges")}`);
+  } else if (purpose === "procedure_analysis") {
+    if (proc != null) parts.push(`${num(proc)} ${t("about.mProcedures")}`);
+    if (m.changes) parts.push(`${num(m.changes)} ${t("about.mChanges")}`);
+    if (m.requiresReview) parts.push(`${num(m.requiresReview)} ${t("about.mReview")}`);
+  } else if (purpose === "document_analysis") {
+    if (proc != null) parts.push(`${num(proc)} ${t("about.mDocuments")}`);
+    if (m.changes) parts.push(`${num(m.changes)} ${t("about.mChanges")}`);
+  } else if (purpose === "budget_analysis") {
+    if (proc != null) parts.push(`${num(proc)} ${t("about.mBudgets")}`);
+    if (m.changes) parts.push(`${num(m.changes)} ${t("about.mChanges")}`);
+  } else if (purpose === "recommendation") {
+    if (proc != null) parts.push(`${num(proc)} ${t("about.mRecommendations")}`);
+  }
+  return parts.length ? parts.join(" · ") : null;
+}
+
+function PublicAIAgentCard({ a, t, df, nf }) {
+  const meta = t(`about.agents.${a.purpose}`, { returnObjects: true }) || {};
+  const resp = Array.isArray(meta.resp) ? meta.resp : [];
+  const statusLabel = t(`about.agentStatus.${a.status}`) || a.status;
+  const activity = metricsLine(a.purpose, a.metrics, t, nf);
+  return (
+    <article className="ai-agent-card">
+      <div className="aac-head">
+        <span className="aac-ico" aria-hidden="true"><Icon name={AGENT_ICON[a.purpose] || "sparkle"} size={18} /></span>
+        <h4 className="aac-name">{meta.name || a.purpose}</h4>
+      </div>
+      <div className="aac-badges">
+        <span className="badge neutral">{a.provider}</span>
+        <span className={"badge " + (STATUS_TONE[a.status] || "neutral")}>{statusLabel}</span>
+        {a.purpose === "daily_review" && <span className="badge amber">{t("about.agentManaged")}</span>}
+      </div>
+      <div className="aac-model">
+        <span className="aac-model-name">{a.modelDisplayName}</span>
+        <span className="aac-model-id mono">{a.modelId}</span>
+      </div>
+      {meta.desc && <p className="aac-desc">{meta.desc}</p>}
+      {resp.length > 0 && (
+        <ul className="aac-resp">{resp.slice(0, 6).map((r, i) => <li key={i}><Icon name="check" size={12} aria-hidden="true" /> {r}</li>)}</ul>
+      )}
+      {a.purpose === "future_chat" ? (
+        <p className="aac-upcoming">{t("about.agentUpcomingNote")}</p>
+      ) : (
+        <div className="aac-exec">
+          <span>{t("about.agentAutomatic")}: {a.automatic ? "✓" : "—"}</span>
+          <span>{a.purpose === "daily_review" ? t("about.agentScheduleDaily") : t("about.agentScheduleNightly")}</span>
+          <span>{t("about.lastRun")}: {a.lastSuccessfulRunAt ? df.format(new Date(a.lastSuccessfulRunAt)) : "—"}</span>
+        </div>
+      )}
+      {a.purpose !== "future_chat" && (
+        <p className="aac-activity">{activity || t("about.agentNoRun")}</p>
+      )}
+      {a.purpose === "recommendation" && <p className="aac-disclaimer">{t("about.recDisclaimer")}</p>}
+    </article>
+  );
+}
+
+function AgentsGrid({ agents, t, df, nf }) {
+  if (agents == null) return <div className="ai-agents-grid">{[0, 1, 2, 3].map((i) => <div key={i} className="ai-agent-card skel" aria-hidden="true" />)}</div>;
+  if (agents.length === 0) return <p className="prose" style={{ color: "var(--faint)" }}>{t("about.agentsUnavailable")}</p>;
+  return (
+    <div className="ai-agents-grid">
+      {agents.map((a) => <PublicAIAgentCard key={a.purpose} a={a} t={t} df={df} nf={nf} />)}
+    </div>
+  );
+}
+
+// Компактно обобщение на моделите (collapsible технически детайли).
+function ModelOverview({ agents, t }) {
+  const [open, setOpen] = useState(false);
+  if (!agents || agents.length === 0) return null;
+  return (
+    <div className="ab-model-overview">
+      <h3 className="ab-h3">{t("about.modelOverviewTitle")}</h3>
+      <div className="mo-rows">
+        {agents.map((a) => {
+          const meta = t(`about.agents.${a.purpose}`, { returnObjects: true }) || {};
+          return (
+            <div className="mo-row" key={a.purpose}>
+              <span className="mo-agent">{meta.name || a.purpose}</span>
+              <span className="mo-model">{a.modelDisplayName} <span className="role-chip">{a.provider}</span></span>
+              <span className={"badge " + (STATUS_TONE[a.status] || "neutral")}>{t(`about.agentStatus.${a.status}`)}</span>
+              {open && <span className="mo-id mono">{a.modelId}</span>}
+            </div>
+          );
+        })}
+      </div>
+      <button className="btn btn-ghost btn-sm" aria-expanded={open} onClick={() => setOpen((v) => !v)}>{t("about.modelOverviewToggle")}</button>
+    </div>
   );
 }

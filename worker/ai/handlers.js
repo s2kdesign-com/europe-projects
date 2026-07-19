@@ -280,9 +280,81 @@ export async function handlePublicAIConfig(env) {
     }
   } catch { /* no-op */ }
   if (daily) { daily.lastSuccessfulRunAt = lastRunAt; daily.countriesReviewed = countriesReviewed; daily.actualModel = actualModel; }
-  return new Response(JSON.stringify({ dailyReview: daily, systemAI: system, lastUpdatedAt: updatedAt, ok: true }), {
-    status: 200, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=300" },
-  });
+
+  // Всички AI агенти (safe публична проекция от D1 + реален last run).
+  const agents = await buildPublicAgents(env);
+
+  const body = JSON.stringify({ dailyReview: daily, systemAI: system, agents, generatedAt: new Date().toISOString(), lastUpdatedAt: updatedAt, ok: true });
+  // ETag от съдържанието (за conditional GET / cache invalidation при промяна).
+  let etag = null;
+  try { const h = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(body)); etag = '"' + [...new Uint8Array(h)].slice(0, 10).map((b) => b.toString(16).padStart(2, "0")).join("") + '"'; } catch { /* no-op */ }
+  const headers = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=300, stale-while-revalidate=600" };
+  if (etag) headers.etag = etag;
+  return new Response(body, { status: 200, headers });
+}
+
+// Кои purposes са публични агенти (в правилен pipeline ред). future_chat е последен.
+const PUBLIC_AGENT_ORDER = ["daily_review", "procedure_analysis", "document_analysis", "budget_analysis", "recommendation", "future_chat"];
+
+// Публичен, безопасен статус на агент. НЕ издаваме вътрешни статуси/грешки.
+function publicAgentStatus(cfg, hasKey, featureEnabled) {
+  if (cfg.purpose === "future_chat") return featureEnabled ? "active" : "upcoming";
+  if (!cfg.active) return "needs_configuration";
+  if (cfg.validation_status === "failed" || cfg.validation_status === "invalid") return "last_run_failed";
+  if (cfg.provider_key === "openai" && !hasKey) return "temporarily_unavailable";
+  if (cfg.validation_status === "validated" || cfg.validation_status === "vendor_documented") return "active";
+  return "needs_configuration";
+}
+
+async function buildPublicAgents(env) {
+  try {
+    const cfgs = await env.DB.prepare("SELECT purpose, provider_key, display_name, model_id, active, validation_status, updated_at FROM ai_model_configurations").all();
+    const byPurpose = {};
+    for (const c of (cfgs.results || [])) { if (!byPurpose[c.purpose] || c.active) byPurpose[c.purpose] = c; }
+    // Кои provider-и имат конфигуриран ключ (само boolean, без стойности).
+    const creds = await env.DB.prepare("SELECT provider_key FROM ai_provider_credentials").all();
+    const hasKey = new Set((creds.results || []).map((r) => r.provider_key));
+    const featureChat = (env.AI_CHAT_ENABLED === "true" || env.AI_CHAT_ENABLED === "1");
+
+    const agents = [];
+    for (const purpose of PUBLIC_AGENT_ORDER) {
+      const c = byPurpose[purpose];
+      if (!c) continue; // изтрита/липсваща конфигурация → не се показва
+      const status = publicAgentStatus(c, hasKey.has(c.provider_key), featureChat);
+      // Последен успешно ПРИЛОЖЕН run за този purpose (не само provider success).
+      let lastRunAt = null, lastRunStatus = null, metrics = null;
+      if (purpose !== "future_chat") {
+        try {
+          const r = await env.DB.prepare("SELECT completed_at, status, result_entity_count, result_change_count, result_requires_review_count, procedures_reviewed, changes_detected, metadata_json FROM ai_execution_runs WHERE purpose=?1 AND status IN ('success','partial','completed') ORDER BY started_at DESC LIMIT 1").bind(purpose).first();
+          if (r) {
+            lastRunAt = r.completed_at || null;
+            lastRunStatus = r.status;
+            const m = { entities: r.result_entity_count ?? r.procedures_reviewed ?? null, changes: r.result_change_count ?? r.changes_detected ?? null, requiresReview: r.result_requires_review_count ?? null };
+            try { const md = JSON.parse(r.metadata_json || "{}"); if (Array.isArray(md.countries)) m.countries = md.countries.length; } catch { /* no-op */ }
+            if (m.entities != null || m.changes != null || m.countries != null) metrics = m;
+          }
+        } catch { /* no-op */ }
+        // Агрегирани counts от jobs (по-надеждни за pipeline агентите).
+        try {
+          const j = await env.DB.prepare("SELECT SUM(status='completed') done, SUM(status='requires_review') review FROM ai_jobs WHERE purpose=?1").bind(purpose).first();
+          if (j && (j.done || j.review)) metrics = { ...(metrics || {}), processed: j.done || 0, requiresReview: (metrics && metrics.requiresReview) || j.review || 0 };
+        } catch { /* no-op */ }
+      }
+      agents.push({
+        purpose,
+        provider: c.provider_key === "anthropic" ? "Anthropic" : "OpenAI",
+        modelDisplayName: c.display_name,
+        modelId: c.model_id,
+        status,
+        automatic: purpose !== "future_chat",
+        executionSource: purpose === "daily_review" ? "claude_scheduled_task" : "nightly_pipeline",
+        lastSuccessfulRunAt: lastRunAt,
+        lastRunStatus,
+        metrics,
+      });
+    }
+    return agents;
+  } catch { return []; }
 }
 
 // ---------- INTERNAL: Scheduled Task report (HMAC + timestamp + idempotency) ----------

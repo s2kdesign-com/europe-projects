@@ -3,6 +3,20 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.40.0] — 2026-07-19
+
+### Ново
+- **Всички AI агенти на /about** (`#how-we-use-ai`, `#how-ai-works`): `PublicAIAgentCard`
+  grid за 6-те агента + `ModelOverview` (collapsible). Данните от разширения
+  `/api/ai/public-configuration` (нов `agents[]` масив: purpose/provider/modelId/
+  status/lastRun/metrics от D1 + ai_execution_runs + ai_jobs; ETag + swr кеш).
+- Safe статус mapping (`publicAgentStatus`): active/upcoming/temporarily_unavailable/
+  needs_configuration/last_run_failed — без вътрешни статуси/ключове/грешки.
+  future_chat = „Предстоящо“ докато feature flag-ът е изключен.
+- i18n: about.agents.* (имена/описания/отговорности), статуси, метрики, бележки.
+  Model names/provider не се превеждат. Тестове: `test/public-agents.test.mjs` (8).
+- Премахнати старите 2 дублиращи model cards; заменени с обобщение.
+
 ## [2.39.0] — 2026-07-19
 
 ### Подобрено

@@ -513,3 +513,32 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
 .sf-stat-link { text-decoration: none; color: inherit; cursor: pointer; }
 .sf-stat-link:hover { border-color: var(--primary, #0b6ea3); }
 .sf-stat-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* ── /about: публични AI агент карти + model overview (v2.40.0) ─────────── */
+.ai-agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin: 10px 0 14px; }
+.ai-agent-card { background: var(--surface, #fff); border: 1px solid var(--line, #e3e8ef); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.ai-agent-card.skel { min-height: 220px; background: var(--surface-2, #f4f7fb); animation: skpulse 1.4s ease-in-out infinite; }
+.aac-head { display: flex; align-items: center; gap: 10px; }
+.aac-ico { width: 34px; height: 34px; border-radius: 9px; background: var(--primary-weak, #e7f1f8); color: var(--primary, #0b6ea3); display: grid; place-items: center; flex: none; }
+.aac-name { margin: 0; font-size: 15.5px; font-weight: 800; }
+.aac-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.aac-model { display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; background: var(--surface-2, #f4f7fb); border-radius: 8px; }
+.aac-model-name { font-weight: 800; font-size: 14px; }
+.aac-model-id { font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+.aac-desc { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
+.aac-resp { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.aac-resp li { display: flex; align-items: flex-start; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+.aac-resp li .icon { color: var(--green, #12764f); margin-top: 2px; flex: none; }
+.aac-exec { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--faint); margin-top: auto; padding-top: 4px; border-top: 1px solid var(--line); }
+.aac-activity { margin: 4px 0 0; font-size: 12.5px; font-weight: 700; color: var(--primary-strong, #075a86); }
+.aac-upcoming { margin: 4px 0 0; font-size: 12.5px; color: var(--faint); font-style: italic; }
+.aac-disclaimer { margin: 2px 0 0; font-size: 11.5px; color: var(--faint); }
+.ab-ai-note { display: flex; align-items: flex-start; gap: 6px; font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+.ab-ai-note .icon { color: var(--primary); flex: none; margin-top: 2px; }
+.ab-model-overview { margin-top: 12px; }
+.mo-rows { display: grid; gap: 6px; }
+.mo-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; background: var(--surface, #fff); border: 1px solid var(--line); border-radius: 8px; }
+.mo-agent { font-weight: 700; font-size: 13.5px; min-width: 160px; }
+.mo-model { font-size: 13px; }
+.mo-id { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+@media (max-width: 560px) { .ai-agents-grid { grid-template-columns: 1fr; } .mo-id { margin-left: 0; width: 100%; } }
