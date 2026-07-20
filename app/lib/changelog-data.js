@@ -13,6 +13,17 @@ export const CATEGORIES = [
 
 export const CHANGELOG_ENTRIES = [
   {
+    version: "2.45.0", category: "feature", published_at: "2026-07-19", affected_route: "/",
+    title: "Четим sitemap изглед (XSL) + по-здрави headers",
+    summary: "sitemap.xml вече има XSL stylesheet, който го показва като четлива таблица в браузъра (вместо дълъг текст), без да променя XML данните за търсачките. Добавени nosniff + edge-cache headers и автоматичен тест.",
+    content: [
+      "Нов /sitemap.xsl route: брандиран Euro-Funding изглед с брой URL-и и колони Тип/URL/Last modified/Change freq./Priority; визуално разграничени начало/процедури/листинги/инфо/правни; responsive, без JavaScript.",
+      "sitemap.xml вече започва с XML декларация + <?xml-stylesheet …?> и се връща с Content-Type application/xml; charset=utf-8, X-Content-Type-Options: nosniff и Cache-Control s-maxage=3600 (1ч edge).",
+      "Динамичното генериране от D1, D1 заявките и реалните lastmod са запазени непроменени.",
+      "Нов автоматизиран тест (npm run test:sitemap, 15 проверки): XML декларация на поз. 0, stylesheet PI, namespace, headers, абсолютни https URL-и, без дубликати, без admin/profile URL-и, валиден W3C lastmod, escaping, D1 fallback, XSL валидност.",
+    ],
+  },
+  {
     version: "2.44.3", category: "improvement", published_at: "2026-07-19", affected_route: "/",
     title: "Sitemap: свежест на листинг-страниците при нови процедури",
     summary: "Sitemap-ът вече е (и си беше) динамичен от D1 с всяка процедура; сега листинг-страниците (/, /procedures, календар, landing-ите) получават lastmod = датата на най-скорошната процедура, за да сигнализират свежест на търсачките.",

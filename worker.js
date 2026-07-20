@@ -4,7 +4,7 @@
 import { handleAuth } from "./worker/handlers.js";
 import { logError } from "./worker/db.js";
 import { handleProcedurePage, handleStatusLanding, handleProgramsIndex, handleProgramLanding, handleCandidateLanding, handleDeadlineLanding } from "./worker/procedure-page.js";
-import { generateSitemap } from "./worker/sitemap.js";
+import { generateSitemap, sitemapStylesheet } from "./worker/sitemap.js";
 import { handleLocalePage, handleRootSocial } from "./worker/i18n-pages.js";
 import { handlePublicAIConfig, handleAIRunReport } from "./worker/ai/handlers.js";
 import { handleAIInternal } from "./worker/ai/pipeline-handlers.js";
@@ -134,6 +134,10 @@ export default {
     // Динамичен sitemap от D1.
     if (request.method === "GET" && pathname === "/sitemap.xml") {
       try { return await generateSitemap(env); } catch { /* пада към статичния файл */ }
+    }
+    // Четим browser изглед на sitemap-а (XSLT). Не минава през SPA fallback/HTML renderer.
+    if (request.method === "GET" && pathname === "/sitemap.xsl") {
+      return sitemapStylesheet();
     }
 
     // Landing (програми/кандидати/срокове/статус) + procedure detail.

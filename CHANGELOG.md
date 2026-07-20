@@ -3,6 +3,22 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.45.0] — 2026-07-19
+
+### Добавено
+- **XSL изглед за sitemap** (`/sitemap.xsl`, `sitemapStylesheet()` в worker/sitemap.js
+  + route в worker.js): брандиран Euro-Funding изглед — брой URL-и, колони Тип/URL/
+  Last modified/Change freq./Priority, визуално разграничени начало/процедури/листинги/
+  инфо/правни; responsive, без JS/външни либи. XSLT 1.0 с `xmlns:sm` prefix.
+- `sitemap.xml` вече започва с `<?xml …?>` + `<?xml-stylesheet type="text/xsl"
+  href="/sitemap.xsl"?>`; headers: `Content-Type: application/xml; charset=utf-8`,
+  `X-Content-Type-Options: nosniff`, `Cache-Control: public, max-age=0, s-maxage=3600,
+  stale-while-revalidate=300`.
+- `test/sitemap.test.mjs` (+`npm run test:sitemap`), 15 проверки: декларация на поз. 0
+  (без BOM), stylesheet PI, namespace, headers, абсолютни https, без дубликати, без
+  admin/profile/login/saved/api, W3C lastmod, escaping, first_seen fallback, D1 error
+  fallback, XSL валидност. Динамичното D1 генериране е непроменено.
+
 ## [2.44.3] — 2026-07-19
 
 ### Подобрено
