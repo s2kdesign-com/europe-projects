@@ -13,6 +13,16 @@ export const CATEGORIES = [
 
 export const CHANGELOG_ENTRIES = [
   {
+    version: "2.44.3", category: "improvement", published_at: "2026-07-19", affected_route: "/",
+    title: "Sitemap: свежест на листинг-страниците при нови процедури",
+    summary: "Sitemap-ът вече е (и си беше) динамичен от D1 с всяка процедура; сега листинг-страниците (/, /procedures, календар, landing-ите) получават lastmod = датата на най-скорошната процедура, за да сигнализират свежест на търсачките.",
+    content: [
+      "Валидирано на живо: sitemap.xml се генерира динамично от D1 (1051 URL-а, ~715 процедури с lastmod; новите RO/HU процедури вече вътре). robots.txt сочи към него.",
+      "SEO проверка: процедурните страници са сървърно рендирани (200, уникален title/description, self-canonical, og:type=article, JSON-LD, index,follow).",
+      "Добавено: freshest lastmod за /, /procedures, /calendar и landing-ите по статус/срокове/програми — при нова процедура тези страници се маркират като обновени.",
+    ],
+  },
+  {
     version: "2.44.2", category: "improvement", published_at: "2026-07-19", affected_route: "/sources",
     title: "Вътрешните страници вече са широки като „Относно системата“",
     summary: "Официални източници, Условия, Поверителност, Бисквитки, Какво ново и Как работи AI вече ползват пълната ширина на съдържанието (както /about), вместо да са по-тесни.",

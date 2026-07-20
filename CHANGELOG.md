@@ -3,6 +3,17 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.44.3] — 2026-07-19
+
+### Подобрено
+- **Sitemap freshness**: `worker/sitemap.js` вече чете процедурите ПЪРВО и подава
+  `lastmod` = най-скорошната `last_updated` на листинг-страниците (/, /procedures,
+  /calendar) и landing-ите (status/deadlines/candidates/programs). Всяка процедура пази
+  собствения си `lastmod`. `urlEntryLang` приема lastmod.
+- Валидация на живо (SEO): sitemap.xml е динамичен от D1 (1051 URL-а, 715 процедури с
+  lastmod, новите RO/HU вътре); robots.txt → sitemap; процедурните страници са SSR
+  (200, уникален title/description, self-canonical, og:article, JSON-LD, index,follow).
+
 ## [2.44.2] — 2026-07-19
 
 ### Подобрено

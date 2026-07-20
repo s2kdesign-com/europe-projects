@@ -47,8 +47,11 @@ function langAlternates(path) {
   x += `    <xhtml:link rel="alternate" hreflang="x-default" href="${loc("bg")}"/>\n`;
   return x;
 }
-function urlEntryLang(path, changefreq, priority) {
-  return `  <url>\n    <loc>${SITE}${path}</loc>\n${langAlternates(path)}    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>\n`;
+function urlEntryLang(path, changefreq, priority, lastmod) {
+  let x = `  <url>\n    <loc>${SITE}${path}</loc>\n${langAlternates(path)}`;
+  if (lastmod) x += `    <lastmod>${lastmod}</lastmod>\n`;
+  x += `    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>\n`;
+  return x;
 }
 
 export async function generateSitemap(env) {
@@ -57,39 +60,51 @@ export async function generateSitemap(env) {
   // еднакъв (или празен) slug след codeSlug → dedupe + филтър на празните.
   const seen = new Set();
   const emit = (chunk, loc) => { if (seen.has(loc)) return ""; seen.add(loc); return chunk; };
-  for (const s of STATIC) {
-    if (LANG_VARIANT_PATHS.has(s.path)) body += urlEntryLang(s.path, s.changefreq, s.priority);
-    else body += urlEntry(`${SITE}${s.path}`, null, s.changefreq, s.priority);
-  }
-  // Curated landing страници.
-  body += urlEntry(`${SITE}/procedures/programs`, null, "weekly", "0.6");
-  for (const slug of STATUS_SLUGS) body += urlEntry(`${SITE}/procedures/status/${slug}`, null, "daily", "0.6");
-  for (const slug of ["business", "youth"]) body += urlEntry(`${SITE}/procedures/candidates/${slug}`, null, "weekly", "0.6");
-  for (const slug of ["next-7-days", "next-30-days", "next-90-days"]) body += urlEntry(`${SITE}/procedures/deadlines/${slug}`, null, "daily", "0.6");
 
+  // Прочитаме процедурите ПЪРВО, за да знаем най-свежата дата на промяна. Тя се ползва
+  // за lastmod на ЛИСТИНГ-страниците (/, /procedures, календар, landing-ите по статус/
+  // срокове/програми) — така при добавяне на нова процедура crawler-ите виждат тези
+  // страници като обновени и ги преобхождат. При грешка → празен списък (само статични).
+  let rows = [];
   try {
     const projects = await env.DB.prepare("SELECT id, program, last_updated, first_seen FROM projects ORDER BY last_updated DESC").all();
-    // Landing по програма (уникални програми).
-    const programs = new Set();
-    for (const p of projects.results || []) {
-      if (p.program && !programs.has(p.program)) {
-        programs.add(p.program);
-        const pslug = codeSlug(p.program);
-        if (pslug) {
-          const loc = `${SITE}/procedures/programs/${pslug}`;
-          body += emit(urlEntry(loc, null, "weekly", "0.6"), loc);
-        }
+    rows = projects.results || [];
+  } catch { /* fallback: само статичните URL-и */ }
+  const freshest = rows.length ? (isoDate(rows[0].last_updated) || isoDate(rows[0].first_seen)) : null;
+
+  // Кои статични пътища са листинги (отразяват новите процедури) → freshest lastmod.
+  const LISTING = new Set(["/", "/procedures", "/calendar"]);
+  for (const s of STATIC) {
+    const lm = LISTING.has(s.path) ? freshest : null;
+    if (LANG_VARIANT_PATHS.has(s.path)) body += urlEntryLang(s.path, s.changefreq, s.priority, lm);
+    else body += urlEntry(`${SITE}${s.path}`, lm, s.changefreq, s.priority);
+  }
+  // Curated landing страници (динамични листинги) → freshest lastmod.
+  body += urlEntry(`${SITE}/procedures/programs`, freshest, "weekly", "0.6");
+  for (const slug of STATUS_SLUGS) body += urlEntry(`${SITE}/procedures/status/${slug}`, freshest, "daily", "0.6");
+  for (const slug of ["business", "youth"]) body += urlEntry(`${SITE}/procedures/candidates/${slug}`, freshest, "weekly", "0.6");
+  for (const slug of ["next-7-days", "next-30-days", "next-90-days"]) body += urlEntry(`${SITE}/procedures/deadlines/${slug}`, freshest, "daily", "0.6");
+
+  // Landing по програма (уникални програми) — с freshest lastmod.
+  const programs = new Set();
+  for (const p of rows) {
+    if (p.program && !programs.has(p.program)) {
+      programs.add(p.program);
+      const pslug = codeSlug(p.program);
+      if (pslug) {
+        const loc = `${SITE}/procedures/programs/${pslug}`;
+        body += emit(urlEntry(loc, freshest, "weekly", "0.6"), loc);
       }
     }
-    // Всяка процедура.
-    for (const p of projects.results || []) {
-      const slug = codeSlug(p.id);
-      if (!slug) continue;
-      const lastmod = isoDate(p.last_updated) || isoDate(p.first_seen);
-      const loc = `${SITE}/procedures/${slug}`;
-      body += emit(urlEntry(loc, lastmod, "weekly", "0.7"), loc);
-    }
-  } catch { /* при грешка връщаме поне статичните URL-и */ }
+  }
+  // Всяка процедура — реален lastmod от нейната дата на промяна.
+  for (const p of rows) {
+    const slug = codeSlug(p.id);
+    if (!slug) continue;
+    const lastmod = isoDate(p.last_updated) || isoDate(p.first_seen);
+    const loc = `${SITE}/procedures/${slug}`;
+    body += emit(urlEntry(loc, lastmod, "weekly", "0.7"), loc);
+  }
 
   body += `</urlset>\n`;
   return new Response(body, {
