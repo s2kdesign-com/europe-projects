@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Icon from "./Icon.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import Markdown from "./Markdown.jsx";
@@ -38,6 +38,19 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
   const [loading, setLoading] = useState(true);
   const [openDoc, setOpenDoc] = useState(null);
   const trapRef = useFocusTrap(true, onClose);
+
+  // Превод на самите ДАННИ на процедурата (име, програма, бюджет, кандидати, срок,
+  // бележки) + ДОКУМЕНТИТЕ (заглавие, тип, съдържание) към избрания език. Данните се
+  // пазят на оригиналния език (напр. латвийски) + резюмета на български, затова при
+  // en/de ги превеждаме runtime през същия кеширан pipeline. При bg → идентичност.
+  const dataStrings = useMemo(() => {
+    const pp = detail?.project || base;
+    const out = [];
+    for (const v of [pp.name, pp.program, pp.priority, pp.notes, pp.eligible, pp.budget, pp.deadline]) if (v) out.push(String(v));
+    for (const d of (detail?.documents || [])) for (const v of [d.title, d.doc_type, d.content]) if (v) out.push(String(v));
+    return out;
+  }, [detail, base]);
+  const td = useUiTranslate(dataStrings);
 
   useEffect(() => {
     let alive = true;
@@ -78,8 +91,8 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
               {isNovel(p) && <span className="badge new"><Icon name="sparkle" size={14} /> {tl("Ново")}</span>}
               {targetGroup(p) === "youth" && <span className="badge youth"><Icon name="users" size={14} /> {tl("Младежи")}</span>}
             </div>
-            <h2 id="drawer-title">{p.name}</h2>
-            {p.program && <div className="card-prog" style={{ marginTop: 4 }}>{p.program}</div>}
+            <h2 id="drawer-title">{td(p.name)}</h2>
+            {p.program && <div className="card-prog" style={{ marginTop: 4 }}>{td(p.program)}</div>}
           </div>
           <button className="drawer-close" onClick={onClose} aria-label={tl("Затвори")}>
             <Icon name="close" size={20} />
@@ -119,10 +132,10 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
                 <dd>{statusLabelWithCountdown(p, dl, tl)}</dd>
               </dl>
               {p.priority && (
-                <dl className="def"><dt>{tl("Приоритет")}</dt><dd>{p.priority}</dd></dl>
+                <dl className="def"><dt>{tl("Приоритет")}</dt><dd>{td(p.priority)}</dd></dl>
               )}
               {p.notes && (
-                <dl className="def"><dt>{tl("Бележки")}</dt><dd><Markdown text={p.notes} /></dd></dl>
+                <dl className="def"><dt>{tl("Бележки")}</dt><dd><Markdown text={td(p.notes)} /></dd></dl>
               )}
               <dl className="def">
                 <dt>{tl("Проследяване")}</dt>
@@ -137,14 +150,14 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
           {tab === "eligible" && (
             <dl className="def">
               <dt>{tl("Допустими кандидати")}</dt>
-              <dd>{p.eligible || tl("Няма конкретна информация в проследяваните данни.")}</dd>
+              <dd>{p.eligible ? td(p.eligible) : tl("Няма конкретна информация в проследяваните данни.")}</dd>
             </dl>
           )}
 
           {tab === "funding" && (
             <dl className="def">
               <dt>{tl("Бюджет / финансиране")}</dt>
-              <dd>{p.budget || tl("Няма конкретна информация в проследяваните данни.")}</dd>
+              <dd>{p.budget ? td(p.budget) : tl("Няма конкретна информация в проследяваните данни.")}</dd>
             </dl>
           )}
 
@@ -156,7 +169,7 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
                   {p.deadline_date ? (
                     <time dateTime={p.deadline_date}>{formatDate(p.deadline_date)}</time>
                   ) : (
-                    p.deadline || tl("Няма обявен срок")
+                    (p.deadline ? td(p.deadline) : tl("Няма обявен срок"))
                   )}
                   {dl != null && (p.status === "open" || p.status === "closing_soon") && (
                     <> — <strong>{countdownLabel(dl)}</strong></>
@@ -164,7 +177,7 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
                 </dd>
               </dl>
               {p.deadline && p.deadline_date && (
-                <dl className="def"><dt>{tl("Както е обявено")}</dt><dd>{p.deadline}</dd></dl>
+                <dl className="def"><dt>{tl("Както е обявено")}</dt><dd>{td(p.deadline)}</dd></dl>
               )}
             </>
           )}
@@ -179,13 +192,13 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
                   <div className="doc-item" key={d.id}>
                     <button className="doc-toggle" aria-expanded={open} onClick={() => setOpenDoc(open ? null : d.id)}>
                       <Icon name="document" size={16} />
-                      {d.title || d.doc_type || tl("Документ")}
-                      {d.doc_type && <span className="doc-type-tag">{d.doc_type}</span>}
+                      {td(d.title) || td(d.doc_type) || tl("Документ")}
+                      {d.doc_type && <span className="doc-type-tag">{td(d.doc_type)}</span>}
                       <Icon name="chevronRight" size={16} className="caret" />
                     </button>
                     {open && (
                       <div className="doc-content">
-                        <Markdown text={d.content} />
+                        <Markdown text={td(d.content)} />
                         {d.source_url && (
                           <a className="link" href={d.source_url} target="_blank" rel="noreferrer">
                             <Icon name="external" size={14} /> {tl("Източник")}
@@ -212,7 +225,7 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
                 .filter((d) => d.source_url)
                 .map((d) => (
                   <a key={d.id} href={d.source_url} target="_blank" rel="noreferrer">
-                    <Icon name="external" size={16} /> {d.title || tl("Източник")}
+                    <Icon name="external" size={16} /> {td(d.title) || tl("Източник")}
                   </a>
                 ))}
             </div>
