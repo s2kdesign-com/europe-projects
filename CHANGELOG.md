@@ -3,6 +3,24 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.46.0] — 2026-07-19
+
+### Променено
+- **ProjectDrawer без табове → единичен вертикален скрол**: премахнати `drawer-tabs`
+  + tab state; всички секции (Обзор/Кандидати/Финансиране/Срокове/Документи/Източници)
+  се рендират последователно в `.drawer-scroll`. Layout: `.drawer` е grid
+  `auto minmax(0,1fr) auto` (sticky head + scroll + sticky actions), `overflow-x:hidden`.
+- Нов `app/lib/procedure-sections.js` (`PROCEDURE_SECTIONS` + `sectionIdForTab`) — единен
+  ред + anchor id-та (`#procedure-overview`…`#procedure-sources`); backward compat за
+  initialTab/„Документи“ бутон (scroll до секцията при отваряне).
+- Компактна навигация „Към секция“ (select, не табове) със smooth scroll
+  (`prefers-reduced-motion`). Секции = `<section aria-labelledby>` + H3.
+- Per-section empty states вместо „—“; документи: първите 5 + „Покажи още“.
+- `.drawer-actions` responsive: `flex:1`, `nowrap`, 44px, телефон 2×2 grid.
+- Нови CSS класове: `.drawer-scroll/.drawer-section/.drawer-section-head/.drawer-quicknav/
+  .drawer-prose/.drawer-empty/.drawer-disclaimer`. Тест `test/procedure-sections.test.mjs`
+  (5, ред/id/mapping). ProjectDrawer данни+документи си остават преведени (v2.45.1).
+
 ## [2.45.1] — 2026-07-19
 
 ### Поправено
