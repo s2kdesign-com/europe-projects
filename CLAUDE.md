@@ -4,6 +4,18 @@ AI платформа за откриване/анализ на европейс
 (27 ЕС държави), България = reference. Next.js 15 `output: "export"` (статичен, БЕЗ SSR)
 + ръчен Cloudflare Worker (`worker.js` + `worker/*.js`) + Cloudflare D1.
 
+> **Мрежа от памет:** централен хъб = `C:\claude\daily-dashboard\CLAUDE.md` + `memory/projects/evroproekti.md` там; главен индекс `C:\claude\CLAUDE.md`. Персистентната
+> междусесийна памет е в Claude memory (`evroproekti-*` файлове). Прогрес по държави:
+> `docs/multi-country-progress.md`. Последна синхронизация на паметта: 2026-07-24.
+
+## Състояние (2026-07-24)
+- Worker `evroproekti-dashboard` е деплойнат и се обновява (last modified 24.07) — старият
+  open item „redeploy за admin console" изглежда решен; при съмнение провери `/admin` онлайн.
+- Multi-country: 26 държави active/partial (BG 42 процедури към 18.07; BE connector_ready,
+  под прага ≥3). Цикли 4–6 приключени; `daily-eu-country-sync` върти round-robin.
+- D1: account Office@s2kdesign.com (`9c3fcd4952bcf0c295532e9884377d37`),
+  DB `evroproekti-dashboard` (`d5f1bb40-3729-4c11-ae06-efbd4b5c9760`).
+
 ## Желязно правило при ВСЯКА промяна
 1. Вдигни `APP_VERSION` в `app/lib/version.js` (единствен източник на версията).
 2. Prepend запис в `CHANGELOG_ENTRIES` (`app/lib/changelog-data.js`).
@@ -36,9 +48,13 @@ AI платформа за откриване/анализ на европейс
 - Дневната синхронизация е Claude Scheduled Task `evroproekti-bulgaria-dneven-monitoring`
   (cron 0 8 * * *) — променя се през scheduled-tasks API, не през файлове. Динамични
   държави от D1, cursor round-robin, locks, отчети в `scheduled_sync_runs` +
-  `ai_execution_runs` + snapshot в `country_daily_statistics`.
+  `ai_execution_runs` + snapshot в `country_daily_statistics`. Multi-country задачата е
+  `daily-eu-country-sync` (виж docs/claude-scheduled-task-all-countries.md).
 - AI: `worker/ai/*`; активен системен модел gpt-5.6-terra; daily review модел се
   управлява от Scheduled Tasks (desired ≠ actual). Цени: `app/lib/ai-pricing.js`.
+- JS-blocked портали (playbook от docs/multi-country-progress.md): meta tags на detail
+  страници → прес/новинарски секции → съседни официални домейни → WebSearch с потвърден
+  official_url.
 
 ## Билд/валидация (Cowork sandbox)
 - Mount презапис чупи файлове в bash-изгледа → при нужда `rm` + Write наново.

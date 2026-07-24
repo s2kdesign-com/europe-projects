@@ -6,20 +6,22 @@ import StatusBadge from "./StatusBadge.jsx";
 import Markdown from "./Markdown.jsx";
 import { useFocusTrap } from "../hooks/useFocusTrap.js";
 import { useUiTranslate } from "../lib/i18n/ui-translate.js";
-import { PROCEDURE_SECTIONS, sectionIdForTab } from "../lib/procedure-sections.js";
+import { PROCEDURE_SECTIONS, sectionIdForTab, sortDocuments } from "../lib/procedure-sections.js";
 import { daysLeft, countdownLabel, formatDate, isNovel, targetGroup } from "../lib/project-utils.js";
 
-const DOCS_PAGE = 5; // първоначално показани документи (после „Покажи още").
+const DOCS_PAGE = 5; // при много документи: показани първоначално (после „Покажи още").
 
 // Статични етикети (превод при en/de; при bg → оригинал).
 const LABELS = [
   ...PROCEDURE_SECTIONS.map((s) => s.label),
-  "Ново", "Младежи", "Затвори", "Към секция",
+  "Ново", "Младежи", "Затвори",
   "Данните не се заредиха", "Пълните детайли за тази процедура не можаха да бъдат изтеглени.",
   "Статус", "Приоритет", "Бележки", "Проследяване", "Първо видяно", "Обновено",
   "Не са открити достатъчно структурирани данни. Проверете официалната документация.",
   "Няма открит структуриран общ бюджет.", "Краен срок", "Няма обявен срок", "Както е обявено",
-  "Зареждане на документите…", "Няма публикувани документи.", "Документ", "Източник", "Покажи още документи",
+  "Зареждане на документите…", "Няма публикувани документи към тази процедура.",
+  "Документ", "Източник", "Покажи още документи", "Отвори документа", "Оригинален файл",
+  "Документът е наличен, но подробният анализ временно не може да бъде зареден.",
   "Официална страница на процедурата", "Няма официална връзка в проследяваните данни.",
   "Информацията е структурирана с помощта на AI. При кандидатстване винаги проверявайте официалната страница и документацията.",
   "Запазена", "Запази", "Копирай връзка", "Календар (.ics)", "Официална страница", "отворена",
@@ -38,12 +40,34 @@ function Section({ id, icon, title, count, children }) {
   );
 }
 
+// Тялото на един документ (резюме + действия). Ползва се и в разгънатия единичен
+// документ, и в отворен елемент от списъка — без дублиране на реализацията.
+function DocumentBody({ d, td, tl }) {
+  const hasContent = !!(d.content && String(d.content).trim());
+  return (
+    <div className="doc-content">
+      {hasContent ? <Markdown text={td(d.content)} />
+        : <p className="drawer-empty">{tl("Документът е наличен, но подробният анализ временно не може да бъде зареден.")}</p>}
+      {d.source_url && (
+        <div className="doc-actions">
+          <a className="btn btn-ghost btn-sm" href={d.source_url} target="_blank" rel="noreferrer">
+            <Icon name="external" size={14} /> {tl("Отвори документа")}
+          </a>
+          <a className="doc-origin" href={d.source_url} target="_blank" rel="noreferrer">
+            {tl("Оригинален файл")}
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProjectDrawer({ base, initialTab = "overview", loadDetail, onClose, isSaved, onToggleSave, onCopyLink, onCalendar }) {
   const tl = useUiTranslate(LABELS);
   const [detail, setDetail] = useState(null); // { project, documents }
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [openDoc, setOpenDoc] = useState(null);
+  const [openDocs, setOpenDocs] = useState(() => new Set());
   const [showAllDocs, setShowAllDocs] = useState(false);
   const trapRef = useFocusTrap(true, onClose);
   const scrollRef = useRef(null);
@@ -65,39 +89,50 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
     setLoading(true);
     setError(false);
     setShowAllDocs(false);
+    setOpenDocs(new Set());
     didInitScroll.current = false;
+    // Едно зареждане на детайла (вкл. документите) — без дублиращи заявки при секции.
     loadDetail(base.id, controller.signal)
       .then((d) => { if (alive) { setDetail(d); setLoading(false); } })
       .catch((e) => { if (alive && e.name !== "AbortError") { setError(true); setLoading(false); } });
     return () => { alive = false; controller.abort(); };
   }, [base.id, loadDetail]);
 
-  // При отваряне: ако е поискана конкретна секция (стар initialTab / „Документи" бутон) —
-  // скрол до нея (backward compat). Иначе оставаме отгоре. Изпълнява се веднъж.
+  const docs = useMemo(() => sortDocuments(detail?.documents || []), [detail]);
+
+  // При повече от 1 документ първият (най-важният) е разгънат по подразбиране.
+  useEffect(() => {
+    if (docs.length > 1) setOpenDocs(new Set([docs[0].id]));
+  }, [docs]);
+
+  // Backward compat: стар initialTab / ?tab= / #hash → scroll до секцията. Иначе — отгоре.
   useEffect(() => {
     if (didInitScroll.current) return;
-    const id = sectionIdForTab(initialTab);
-    if (!id || initialTab === "overview") { didInitScroll.current = true; if (scrollRef.current) scrollRef.current.scrollTop = 0; return; }
+    const hash = typeof window !== "undefined" ? (window.location.hash || "").replace("#", "") : "";
+    const id = (hash && PROCEDURE_SECTIONS.some((s) => s.id === hash) ? hash : null) || sectionIdForTab(initialTab);
+    if (!id || id === "procedure-overview") { didInitScroll.current = true; if (scrollRef.current) scrollRef.current.scrollTop = 0; return; }
     const el = scrollRef.current?.querySelector("#" + id);
     if (el) { el.scrollIntoView({ block: "start" }); didInitScroll.current = true; }
   }, [detail, initialTab]);
 
-  const goTo = (id) => {
-    const el = scrollRef.current?.querySelector("#" + id);
-    if (!el) return;
-    const reduce = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-  };
+  const toggleDoc = (id) => setOpenDocs((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   const p = detail?.project || base;
-  const docs = detail?.documents || [];
   const dl = daysLeft(p.deadline_date);
+  const single = docs.length === 1 ? docs[0] : null;
   const shownDocs = showAllDocs ? docs : docs.slice(0, DOCS_PAGE);
+  // В „Официални източници" показваме само уникални източници — документите вече са
+  // показани в своята секция (с „Отвори документа"), затова не ги дублираме тук.
+  const extraSources = docs.filter((d) => d.source_url && d.source_url !== p.link && docs.length > 1);
 
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" ref={trapRef}>
-        {/* Sticky header */}
+        {/* Компактен sticky header: статус, заглавие, програма, затваряне. */}
         <div className="drawer-head">
           <div className="drawer-head-main">
             <div className="drawer-badges">
@@ -107,23 +142,11 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
             </div>
             <h2 id="drawer-title">{td(p.name)}</h2>
             {p.program && <div className="card-prog">{td(p.program)}</div>}
-            <label className="drawer-quicknav">
-              <span className="sr-only">{tl("Към секция")}</span>
-              <select
-                className="select"
-                value=""
-                onChange={(e) => { if (e.target.value) goTo(e.target.value); }}
-                aria-label={tl("Към секция")}
-              >
-                <option value="">{tl("Към секция")}…</option>
-                {PROCEDURE_SECTIONS.map((s) => <option key={s.id} value={s.id}>{tl(s.label)}</option>)}
-              </select>
-            </label>
           </div>
           <button className="drawer-close" onClick={onClose} aria-label={tl("Затвори")}><Icon name="close" size={20} /></button>
         </div>
 
-        {/* Vertical scroll — всички секции една след друга */}
+        {/* Единичен вертикален скрол — всички секции една след друга. */}
         <div className="drawer-scroll" ref={scrollRef}>
           {error && (
             <div className="state error">
@@ -164,31 +187,36 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
 
           <Section id="procedure-documents" icon="document" title={tl("Документи")} count={docs.length || null}>
             {loading && <p className="drawer-prose">{tl("Зареждане на документите…")}</p>}
-            {!loading && docs.length === 0 && <p className="drawer-empty">{tl("Няма публикувани документи.")}</p>}
-            {shownDocs.map((d) => {
-              const open = openDoc === d.id;
+            {!loading && docs.length === 0 && <p className="drawer-empty">{tl("Няма публикувани документи към тази процедура.")}</p>}
+
+            {/* Точно 1 документ → винаги разгънат, без accordion бутон. */}
+            {single && (
+              <div className="doc-item doc-single">
+                <div className="doc-single-head">
+                  <Icon name="document" size={16} />
+                  <h4 className="doc-single-title">{td(single.title) || td(single.doc_type) || tl("Документ")}</h4>
+                  {single.doc_type && <span className="doc-type-tag">{td(single.doc_type)}</span>}
+                </div>
+                <DocumentBody d={single} td={td} tl={tl} />
+              </div>
+            )}
+
+            {/* 2+ документа → списък с разгъване (първият отворен). */}
+            {docs.length > 1 && shownDocs.map((d) => {
+              const open = openDocs.has(d.id);
               return (
                 <div className="doc-item" key={d.id}>
-                  <button className="doc-toggle" aria-expanded={open} onClick={() => setOpenDoc(open ? null : d.id)}>
+                  <button className="doc-toggle" aria-expanded={open} aria-controls={"doc-" + d.id} onClick={() => toggleDoc(d.id)}>
                     <Icon name="document" size={16} />
                     {td(d.title) || td(d.doc_type) || tl("Документ")}
                     {d.doc_type && <span className="doc-type-tag">{td(d.doc_type)}</span>}
                     <Icon name="chevronRight" size={16} className="caret" />
                   </button>
-                  {open && (
-                    <div className="doc-content">
-                      <Markdown text={td(d.content)} />
-                      {d.source_url && (
-                        <a className="link" href={d.source_url} target="_blank" rel="noreferrer">
-                          <Icon name="external" size={14} /> {tl("Източник")}
-                        </a>
-                      )}
-                    </div>
-                  )}
+                  {open && <div id={"doc-" + d.id}><DocumentBody d={d} td={td} tl={tl} /></div>}
                 </div>
               );
             })}
-            {!showAllDocs && docs.length > DOCS_PAGE && (
+            {docs.length > 1 && !showAllDocs && docs.length > DOCS_PAGE && (
               <button className="btn btn-ghost drawer-morebtn" onClick={() => setShowAllDocs(true)}>
                 <Icon name="chevronDown" size={15} /> {tl("Покажи още документи")} ({docs.length - DOCS_PAGE})
               </button>
@@ -202,7 +230,7 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
               ) : (
                 <p className="drawer-empty">{tl("Няма официална връзка в проследяваните данни.")}</p>
               )}
-              {docs.filter((d) => d.source_url).map((d) => (
+              {extraSources.map((d) => (
                 <a key={d.id} href={d.source_url} target="_blank" rel="noreferrer"><Icon name="external" size={16} /> {td(d.title) || tl("Източник")}</a>
               ))}
             </div>
@@ -212,7 +240,7 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
           </Section>
         </div>
 
-        {/* Sticky footer actions */}
+        {/* Sticky footer действия */}
         <div className="drawer-actions">
           <button className={"btn" + (isSaved ? " btn-primary" : "")} onClick={() => onToggleSave(p.id)} aria-pressed={isSaved}>
             <Icon name={isSaved ? "bookmarkFilled" : "bookmark"} size={16} /> {isSaved ? tl("Запазена") : tl("Запази")}
