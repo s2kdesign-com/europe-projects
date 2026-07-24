@@ -4,7 +4,7 @@ export const metadata = {
   alternates: { canonical: "/cookies" },
   robots: { index: true, follow: true },
   openGraph: { images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Euro-Funding", type: "image/png" }],
-    title: "Политика за бисквитките | Euro-Funding",
+    title: "Политика за бисквитките",
     description: "Какви бисквитки използва платформата Euro-Funding и как да управлявате съгласието си.",
     url: "/cookies",
   },

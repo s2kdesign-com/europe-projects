@@ -106,13 +106,21 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
   }, [docs]);
 
   // Backward compat: стар initialTab / ?tab= / #hash → scroll до секцията. Иначе — отгоре.
+  // Скролваме ДВА пъти: веднага + корекция след ~700ms, защото async преводът и
+  // авторазгънатият документ променят височината на съдържанието НАД целевата секция.
   useEffect(() => {
     if (didInitScroll.current) return;
     const hash = typeof window !== "undefined" ? (window.location.hash || "").replace("#", "") : "";
     const id = (hash && PROCEDURE_SECTIONS.some((s) => s.id === hash) ? hash : null) || sectionIdForTab(initialTab);
     if (!id || id === "procedure-overview") { didInitScroll.current = true; if (scrollRef.current) scrollRef.current.scrollTop = 0; return; }
+    const scrollToId = () => { const el = scrollRef.current?.querySelector("#" + id); if (el) el.scrollIntoView({ block: "start" }); };
     const el = scrollRef.current?.querySelector("#" + id);
-    if (el) { el.scrollIntoView({ block: "start" }); didInitScroll.current = true; }
+    if (el) {
+      scrollToId();
+      didInitScroll.current = true;
+      const t = window.setTimeout(scrollToId, 700); // корекция след превода/разгъването
+      return () => window.clearTimeout(t);
+    }
   }, [detail, initialTab]);
 
   const toggleDoc = (id) => setOpenDocs((prev) => {

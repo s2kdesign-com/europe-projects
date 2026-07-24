@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Официални източници на данни | Euro-Funding",
+  title: "Официални източници на данни",
   description: "Официалните национални портали и управляващи органи, от които Euro-Funding събира процедурите за финансиране — според избраната държава.",
   alternates: { canonical: "/sources", languages: { "bg-BG": "/sources", "en": "/en/sources", "de": "/de/sources", "x-default": "/sources" } },
   robots: { index: true, follow: true },

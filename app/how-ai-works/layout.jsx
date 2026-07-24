@@ -4,7 +4,7 @@ export const metadata = {
   alternates: { canonical: "/how-ai-works", languages: { "bg-BG": "/how-ai-works", "en": "/en/how-ai-works", "de": "/de/how-ai-works", "x-default": "/how-ai-works" } },
   robots: { index: true, follow: true },
   openGraph: { images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Euro-Funding", type: "image/png" }],
-    title: "AI анализ на европроекти, документи и бюджети | Euro-Funding",
+    title: "AI анализ на европроекти, документи и бюджети",
     description: "Как изкуственият интелект структурира и анализира публичната информация за процедурите.",
     url: "/how-ai-works",
   },

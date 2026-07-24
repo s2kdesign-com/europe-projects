@@ -3,6 +3,21 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.46.2] — 2026-07-19
+
+### Поправено (след пълен E2E тест на живо, prod = 2.46.1)
+- **Дублиран title суфикс** „… | Euro-Funding | Euro-Funding“: под-layout `title` вече
+  съдържаше суфикса, а root `title.template` го добавя пак → махнат от plain title в
+  8 layout-а (calendar/changelog/cookies/how-ai-works/privacy/procedures/sources/terms);
+  og:title остава пълен. (/about беше коректен.)
+- **Скрол до „Документи“ изоставаше** (scrollTop 210 при цел ~645): async преводът +
+  авторазгънатият документ растат НАД секцията след първия скрол → добавена корекция
+  (повторен scrollIntoView след 700ms) в ProjectDrawer.
+- E2E резултати (Chrome, живо): Обзор/Процедури/за /about/sources/changelog ✓; drawer
+  без табове ✓, 6 секции EN ✓, авторазгънат единичен документ ✓, без quick nav ✓;
+  bg⇄en превключване ✓; мобилен /about (390px iframe) 0px преливане ✓; 0 конзолни
+  грешки; version.json 2.46.1 (билд 20260724).
+
 ## [2.46.1] — 2026-07-19
 
 ### Променено
