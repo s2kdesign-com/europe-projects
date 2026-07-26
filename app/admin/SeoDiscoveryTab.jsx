@@ -47,7 +47,12 @@ export default function SeoDiscoveryTab() {
       .then((r) => r.json()).then((d) => setProcData(d.ok ? d : null)).catch(() => setProcData(null));
   }, []);
 
-  const checks = (progress && progress.checks) || (data && data.checks) || [];
+  // Новият масив при всяко рендиране обезсмисляше useMemo-то отдолу — затова
+  // и самият списък е мемоизиран (react-hooks/exhaustive-deps).
+  const checks = useMemo(
+    () => (progress && progress.checks) || (data && data.checks) || [],
+    [progress, data]
+  );
   const idx = useMemo(() => indexChecks(checks), [checks]);
   const cfg = data && data.config;
   const lastRun = data && data.lastRun;

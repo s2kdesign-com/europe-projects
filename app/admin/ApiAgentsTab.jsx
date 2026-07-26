@@ -41,7 +41,12 @@ export default function ApiAgentsTab() {
   const [confirm, setConfirm] = useState(false);
   const [drawer, setDrawer] = useState(null);
 
-  const checks = (progress && progress.checks) || (data && data.checks) || [];
+  // Новият масив при всяко рендиране обезсмисляше useMemo-то отдолу — затова
+  // и самият списък е мемоизиран (react-hooks/exhaustive-deps).
+  const checks = useMemo(
+    () => (progress && progress.checks) || (data && data.checks) || [],
+    [progress, data]
+  );
   const idx = useMemo(() => indexChecks(checks), [checks]);
   const cfg = data && data.config;
   const lastRun = data && data.lastRun;
