@@ -128,17 +128,28 @@ export default {
 
   // Външната обвивка добавя Link заглавките за агенти към HTML отговорите.
   async fetch(request, env) {
-    const url = new URL(request.url);
-
-    // HEAD трябва да е идентичен на GET, само без тяло (RFC 9110 §9.3.2).
-    // Досега машинно четимите маршрути бяха зад `method === "GET"`, затова
-    // HEAD /.well-known/api-catalog връщаше 404, докато GET връщаше 200 —
-    // агент, който проверява наличност с HEAD, получаваше грешен отговор.
-    const isHead = request.method === "HEAD";
-    const response = await handleRequest(asGetRequest(request, url), env, url);
-    return stripBodyForHead(withAgentHeaders(response, url), isHead);
+    // Валидациите в администрацията трябва да могат да „извикат" сайта. Worker,
+    // който fetch-ва СОБСТВЕНИЯ си домейн, обаче получава 522 (заявката излиза
+    // до edge-а и се връща в същия Worker → loop detection). Затова подаваме
+    // вътрешен self-fetch, който минава през същия рутер БЕЗ мрежа.
+    if (!env.SELF_FETCH) {
+      env.SELF_FETCH = (input, init) => pipeline(new Request(input, init), env);
+    }
+    return pipeline(request, env);
   },
 };
+
+/**
+ * Пълният конвейер за една заявка: HEAD нормализация → рутер → Link заглавки.
+ * Изнесен, за да може администрацията да валидира сайта в процеса, без мрежа.
+ */
+async function pipeline(request, env) {
+  const url = new URL(request.url);
+  // HEAD трябва да е идентичен на GET, само без тяло (RFC 9110 §9.3.2).
+  const isHead = request.method === "HEAD";
+  const response = await handleRequest(asGetRequest(request, url), env, url);
+  return stripBodyForHead(withAgentHeaders(response, url), isHead);
+}
 
 async function handleRequest(request, env, url) {
   const { pathname } = url;

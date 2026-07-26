@@ -156,6 +156,14 @@
 a.btn, a.btn:hover { text-decoration: none; }
 .disc-actions a.btn { color: var(--ink); }
 .disc-actions a.btn.btn-primary { color: #fff; }
+/* Компактен бутон за вътрешността на плътни таблици. Етикетът е една дума и
+   никога не се пречупва; при сензорен екран пак става 44px. */
+.btn-xs {
+  min-height: 32px; padding: 4px var(--s2); font-size: 12.5px;
+  white-space: nowrap; flex-shrink: 0;
+}
+a.btn-xs { color: var(--ink); }
+@media (pointer: coarse) { .btn-xs { min-height: 44px; padding: 8px var(--s3); } }
 .disc-sub { font-size: 14px; font-weight: 700; margin: var(--s4) 0 var(--s2); color: var(--ink); }
 
 /* --- Статусни бейджове: същата палитра като останалата система ------------ */
@@ -297,7 +305,22 @@ a.btn, a.btn:hover { text-decoration: none; }
 
 /* Таблиците скролват в собствения си контейнер — никога цялата страница. */
 .table-scroll { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.admin-table td, .admin-table th { overflow-wrap: anywhere; }
+
+/* `anywhere` смъква min-content ширината на клетката до един знак. При таблица
+   с много колони браузърът се възползва и свива колоната докрай: заглавието
+   „Държава" се начупваше на „ДЪР/ЖА/ВА", а бутонът „Отвори" — на буква на ред
+   (102px висок бутон вместо 44px). `break-word` разрешава същото пренасяне, но
+   пази min-content = най-дългата дума, така че колоната не може да колабира.
+   Излишната ширина отива в хоризонталния скрол на .table-scroll. */
+.admin-table td, .admin-table th { overflow-wrap: break-word; }
+/* Дългите машинни низове (адреси) обаче трябва да се чупят и вътре в думата —
+   те са в .disc-code с ограничена max-width, така че не свиват колоната. */
+.admin-table .disc-code { overflow-wrap: anywhere; }
+/* Домейнът на официалния източник се показва на един ред с многоточие. */
+.disc-host {
+  display: inline-block; max-width: 170px; vertical-align: bottom;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .disc-copy, .disc-chip { transition: none; }

@@ -16,6 +16,7 @@ import {
   publicRoutes, protectedRoutes,
 } from "../worker/discovery/inventory.js";
 import { GROUPS, STATUS, buildPlan, executeCheck } from "../worker/discovery/validation.js";
+import { makeFetchImpl } from "../worker/discovery/handlers.js";
 
 let passed = 0;
 const tests = [];
@@ -870,6 +871,107 @@ t("HTML на процедурата обявява езика последова
   // Българска процедура остава на български.
   const bg = renderProcedureHTML({ id: "bg-x", name: "Подкрепа", status: "open", original_language: "bg" }, []);
   assert.match(bg, /<html lang="bg"/);
+});
+
+// ===========================================================================
+// Self-fetch (HTTP 522 в производството)
+// ===========================================================================
+
+const ORIGIN = "https://euro-funds.eu";
+
+// fetch, който би върнал 522 — точно каквото прави Cloudflare, ако Worker
+// излезе по мрежата към собствения си hostname.
+function edge522() {
+  return async () => new Response("error code: 522", { status: 522 });
+}
+
+t("собственият origin минава през вътрешния рутер, а не по мрежата", async () => {
+  const calls = [];
+  const env = {
+    SELF_FETCH: async (url) => { calls.push(String(url)); return new Response("sitemap", { status: 200 }); },
+  };
+  const g = globalThis.fetch;
+  globalThis.fetch = edge522();
+  try {
+    const f = makeFetchImpl(env, ORIGIN);
+    const r = await f(`${ORIGIN}/sitemap.xml`);
+    assert.equal(r.status, 200, "не бива да се получава 522");
+    assert.deepEqual(calls, [`${ORIGIN}/sitemap.xml`]);
+  } finally { globalThis.fetch = g; }
+});
+
+t("външните адреси НЕ минават през вътрешния рутер", async () => {
+  const calls = [];
+  const env = { SELF_FETCH: async (u) => { calls.push(String(u)); return new Response("x"); } };
+  const g = globalThis.fetch;
+  let outbound = 0;
+  globalThis.fetch = async () => { outbound++; return new Response("ok", { status: 200 }); };
+  try {
+    const f = makeFetchImpl(env, ORIGIN);
+    const r = await f("https://example.org/og.png");
+    assert.equal(r.status, 200);
+    assert.equal(outbound, 1, "външният адрес трябва да мине по мрежата");
+    assert.deepEqual(calls, [], "SELF_FETCH не бива да се вика за чужд хост");
+  } finally { globalThis.fetch = g; }
+});
+
+t("одитът не може да рекурсира в собствените си админ адреси", async () => {
+  let selfCalls = 0;
+  const env = { SELF_FETCH: async () => { selfCalls++; return new Response("boom"); } };
+  const f = makeFetchImpl(env, ORIGIN);
+  for (const p of ["/api/admin/discovery/overview", "/api/admin/discovery/runs/1/drive"]) {
+    const r = await f(`${ORIGIN}${p}`);
+    assert.equal(r.status, 403, p);
+    const body = await r.json();
+    assert.equal(body.error, "recursion_blocked");
+  }
+  assert.equal(selfCalls, 0, "не бива да се стига до вътрешния рутер");
+});
+
+t("Request обект (не само низ) също се разпознава като собствен origin", async () => {
+  const env = { SELF_FETCH: async () => new Response("ok", { status: 200 }) };
+  const g = globalThis.fetch;
+  globalThis.fetch = edge522();
+  try {
+    const f = makeFetchImpl(env, ORIGIN);
+    const r = await f(new Request(`${ORIGIN}/robots.txt`));
+    assert.equal(r.status, 200);
+  } finally { globalThis.fetch = g; }
+});
+
+t("без SELF_FETCH се пада обратно към мрежата (локални изпълнения)", async () => {
+  const g = globalThis.fetch;
+  let outbound = 0;
+  globalThis.fetch = async () => { outbound++; return new Response("ok", { status: 200 }); };
+  try {
+    const f = makeFetchImpl({}, ORIGIN);
+    const r = await f(`${ORIGIN}/robots.txt`);
+    assert.equal(r.status, 200);
+    assert.equal(outbound, 1);
+  } finally { globalThis.fetch = g; }
+});
+
+t("проверка през вътрешния рутер дава passed там, където мрежата дава 522", async () => {
+  const routed = async (url) => {
+    if (String(url).endsWith("/robots.txt")) {
+      return new Response("User-agent: *\nAllow: /\nContent-Signal: search=yes, ai-input=yes, ai-train=yes\nSitemap: https://euro-funds.eu/sitemap.xml\n",
+        { status: 200, headers: { "content-type": "text/plain" } });
+    }
+    return new Response("not found", { status: 404 });
+  };
+  const plan = buildPlan(["robots"], { origin: ORIGIN });
+  const robotsCheck = plan.find((c) => c.code === "seo.robots");
+  assert.ok(robotsCheck, "планът трябва да съдържа seo.robots");
+
+  // 1) Както беше в производството: мрежов fetch → 522.
+  const broken = await executeCheck(robotsCheck, { origin: ORIGIN, fetchImpl: edge522() });
+  assert.equal(broken.status, STATUS.FAILED);
+  assert.equal(broken.responseStatus, 522);
+
+  // 2) Със SELF_FETCH: същата проверка минава.
+  const fixed = await executeCheck(robotsCheck, { origin: ORIGIN, fetchImpl: makeFetchImpl({ SELF_FETCH: routed }, ORIGIN) });
+  assert.equal(fixed.responseStatus, 200);
+  assert.notEqual(fixed.status, STATUS.FAILED, `очаквах не-провал, получих ${fixed.summaryKey}`);
 });
 
 // ===========================================================================

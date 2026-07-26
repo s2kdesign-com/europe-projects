@@ -439,21 +439,22 @@ function ProcedureSeo({ data, coverage, tl, origin }) {
       <div className="table-scroll">
         <table className="admin-table">
           <thead><tr>
-            <th>{tl("Процедура")}</th><th>{tl("Държава")}</th><th>{tl("Идентификатор")}</th><th>{tl("Каноничен")}</th>
-            <th>{tl("Статус")}</th><th className="nowrap">{tl("Краен срок")}</th><th>{tl("Документи")}</th>
-            <th>{tl("Официален източник")}</th><th className="nowrap">{tl("Обновена")}</th><th>{tl("Действия")}</th>
+            <th>{tl("Процедура")}</th><th className="nowrap">{tl("Държава")}</th><th>{tl("Идентификатор")}</th>
+            <th>{tl("Статус")}</th><th className="nowrap">{tl("Краен срок")}</th><th className="nowrap">{tl("Документи")}</th>
+            <th>{tl("Официален източник")}</th><th className="nowrap">{tl("Обновена")}</th><th className="nowrap">{tl("Действия")}</th>
           </tr></thead>
           <tbody>
             {rows.slice(0, 60).map((p) => (
               <tr key={p.id}>
                 <td>{p.name}</td>
                 <td className="mono">{p.country}</td>
-                <td className="mono">{p.id}</td>
-                <td><UrlValue href={p.canonical} /></td>
+                {/* Идентификаторът Е каноничният адрес (/procedures/<id>) — една колона,
+                    а не две с едно и също съдържание. */}
+                <td><UrlValue href={p.canonical} label={p.id} /></td>
                 <td>{p.expiredButOpen ? <span className="disc-chip st-warn">{tl("изтекъл срок")}</span> : <span className="disc-chip st-pass">{p.status}</span>}</td>
                 <td className="nowrap">{p.deadlineDate || "—"}</td>
                 <td>{p.documents}</td>
-                <td>{p.officialUrl ? <UrlValue href={p.officialUrl} label={hostOf(p.officialUrl)} /> : <span className="disc-chip st-warn">{tl("липсва")}</span>}</td>
+                <td className="nowrap">{p.officialUrl ? <UrlValue href={p.officialUrl} label={hostOf(p.officialUrl)} className="disc-host" /> : <span className="disc-chip st-warn">{tl("липсва")}</span>}</td>
                 <td className="nowrap">{p.lastUpdated || "—"}</td>
                 <td><a className="btn btn-ghost btn-xs" href={p.canonical} target="_blank" rel="noopener noreferrer">{tl("Отвори")}</a></td>
               </tr>

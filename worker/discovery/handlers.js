@@ -27,6 +27,29 @@ const MIN_RUN_INTERVAL_MS = 30_000;
 // Достъп до D1 за валидатора
 // ---------------------------------------------------------------------------
 
+/**
+ * fetch за валидатора. Заявките към собствения домейн минават през вътрешния
+ * рутер (`env.SELF_FETCH`) — Cloudflare връща 522, ако Worker fetch-ва сам себе
+ * си по мрежата. Външните адреси (напр. og:image на друг хост) минават нормално.
+ */
+export function makeFetchImpl(env, origin) {
+  return async (input, init) => {
+    const target = typeof input === "string" ? input : (input && input.url);
+    if (env.SELF_FETCH && target && target.startsWith(origin)) {
+      let path = "";
+      try { path = new URL(target).pathname; } catch { path = ""; }
+      // Никога не рекурсираме обратно в самата администрация.
+      if (path.startsWith("/api/admin/discovery")) {
+        return new Response(JSON.stringify({ ok: false, error: "recursion_blocked" }), {
+          status: 403, headers: { "content-type": "application/json" },
+        });
+      }
+      return env.SELF_FETCH(target, init);
+    }
+    return fetch(input, init);
+  };
+}
+
 function makeDbAdapter(env) {
   return {
     async procedureSlugs() {
@@ -177,10 +200,11 @@ async function driveRun(env, url, runId, { budgetMs = DRIVE_BUDGET_MS, fetchImpl
   if (!run) return { error: "not_found" };
   if (run.status !== "running") return { done: true, run };
 
+  const origin = run.origin || url.origin;
   const ctx = {
-    origin: run.origin || url.origin,
+    origin,
     env,
-    fetchImpl: fetchImpl || fetch,
+    fetchImpl: fetchImpl || makeFetchImpl(env, origin),
     db: makeDbAdapter(env),
     sampleProcedurePaths: await sampleProcedurePaths(env),
   };
@@ -343,7 +367,7 @@ async function testEndpoint(env, url, body) {
   if (route.kind !== "public" || route.method !== "GET" || !route.probe) return fail("route_not_testable", 400);
 
   const target = `${url.origin}${route.probe}`;
-  const p = await probe(target, { maxBytes: 60_000 });
+  const p = await probe(target, { maxBytes: 60_000, fetchImpl: makeFetchImpl(env, url.origin) });
   const links = p.headers.link || null;
   return ok({
     request: { url: target, method: "GET", headers: { accept: "*/*", "user-agent": "EuroFundingAdminValidator/1.0" } },

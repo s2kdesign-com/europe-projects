@@ -73,7 +73,7 @@ export function InfoGrid({ rows, tl }) {
 }
 
 /** Дълъг URL: скъсен изглед + копиране, за да не пречупва мобилния изглед. */
-export function UrlValue({ href, label }) {
+export function UrlValue({ href, label, className }) {
   const [copied, setCopied] = useState(false);
   const copy = useCallback(() => {
     try {
@@ -86,7 +86,7 @@ export function UrlValue({ href, label }) {
   const short = label || String(href).replace(/^https?:\/\/[^/]+/, "") || "/";
   return (
     <span className="disc-url">
-      <a href={href} target="_blank" rel="noopener noreferrer" className="mono">{short}</a>
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className ? `mono ${className}` : "mono"}>{short}</a>
       <button type="button" className="disc-copy" onClick={copy} aria-label="Копирай адреса" title={href}>
         <Icon name={copied ? "check" : "document"} size={12} />
       </button>
