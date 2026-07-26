@@ -3,6 +3,52 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.47.0] — 2026-07-26
+
+### Добавено — готовност за AI агенти
+- **Markdown content negotiation**: `Accept: text/markdown` на всяка публична страница
+  връща markdown (`text/markdown; charset=utf-8`, `Vary: Accept`, `x-markdown-tokens`).
+  Генерира се от D1 в `worker/agent/markdown.js` — НЕ се конвертира от HTML, защото
+  сайтът е статичен SPA shell и конвертор би върнал празен документ. Покрити: `/`,
+  `/procedures`, `/procedures/:slug`, program/candidate/deadline/status landing-и,
+  `/sources`, `/about`, `/changelog`, `/docs/api` (+ `/bg|/en|/de` префикси).
+- **`/llms.txt`** — карта на съдържанието по llmstxt.org.
+- **Link заглавки (RFC 8288)** на HTML страниците: `api-catalog`, `service-desc`,
+  `service-doc`, `status`, `describedby`, `sitemap` + `alternate` към markdown версията.
+  Добавят се централно в `withAgentHeaders()` (`worker/agent/discovery.js`).
+- **API каталог (RFC 9727)**: `/.well-known/api-catalog` (`application/linkset+json`),
+  `/openapi.json` (OpenAPI 3.1), `/docs/api` (човешка документация, също с markdown
+  вариант) и `/api/health` (статус на база, версия, обхват).
+- **OAuth 2.1 authorization server (само за четене)** — `worker/agent/oauth-server.js`:
+  `/oauth/authorize` (страница за съгласие, PKCE S256 задължително), `/oauth/token`
+  (authorization_code + refresh с ротация и откриване на преизползване), `/oauth/revoke`,
+  `/oauth/userinfo`, `/.well-known/jwks.json`, `/.well-known/openid-configuration`,
+  `/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource`.
+  Обхвати: `openid`, `profile:read`, `saved:read`. Подпис ES256; частният ключ се пази
+  криптиран (AES-256-GCM) в D1. Миграция `0022_oauth_server.sql`.
+- **Content Signals** в robots.txt: `search=yes, ai-input=yes, ai-train=yes`
+  (contentsignals.org). robots.txt вече се сервира динамично от Worker-а.
+
+### Сигурност
+- Bearer токените НИКОГА не дават писане и никога не стигат до `/api/admin/*` — при
+  не-GET заявка или админ път се връща `403 insufficient_scope`. Сесията в браузъра
+  остава единственият път за писане; Google OAuth потокът не е променян.
+- Authorization кодовете са еднократни; повторна употреба гаси всички refresh токени
+  за двойката (потребител, клиент). Съгласието е защитено с HMAC токен, обвързан със
+  сесията И с точните параметри на заявката (CSRF).
+- Непознат `client_id` или несъвпадащ `redirect_uri` НЕ водят до пренасочване.
+
+### Поправено
+- `WWW-Authenticate` заглавката се чисти до ASCII — кирилско `error_description` би
+  хвърлило `TypeError` и би превърнало 401 в 500 (открито от новите тестове).
+- Кешът на подписващия ключ е `WeakMap` по `env`, а не глобален — за да не се смесват
+  ключове между binding-и.
+
+### Тестове
+- `test/agent-readiness.test.mjs` — 50 теста: negotiation (вкл. че браузърски `Accept`
+  НЕ дава markdown), Link заглавки, каталог/OpenAPI, Content Signals, пълен OAuth поток
+  срещу мок на D1, `alg=none`/`HS256` отказ, audience, ротация на refresh токени.
+
 ## [2.46.2] — 2026-07-19
 
 ### Поправено (след пълен E2E тест на живо, prod = 2.46.1)

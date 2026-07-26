@@ -2,6 +2,7 @@
 
 import { err, isSecure, nowISO, ok, parseCookies, safeReturnTo, serializeCookie, uuid, isoPlusSeconds } from "./util.js";
 import { buildAuthUrl, callbackUrl, createPkce, exchangeCode, verifyIdToken } from "./oauth.js";
+import { authenticateBearer, requiredScope, wwwAuthenticate } from "./agent/oauth-server.js";
 import { createSession, destroySessionByToken, getSession, sessionClearCookie, sessionSetCookie } from "./session.js";
 import { listChangelog, addFeedback, listFeedback } from "./changelog.js";
 import * as data from "./db.js";
@@ -99,7 +100,12 @@ async function googleCallback(request, env, url) {
 }
 
 async function me(request, env) {
-  const s = await getSession(env, request);
+  // Сесия в браузъра или OAuth 2.1 токен с обхват openid (агент).
+  let s = await getSession(env, request);
+  if (!s) {
+    const bearer = await authenticateBearer(env, request).catch(() => null);
+    if (bearer && !bearer.error && bearer.scopes.includes("openid")) s = { user: bearer.user, session: null };
+  }
   if (!s) return ok({ authenticated: false, user: null });
   const profile = await data.getProfile(env, s.user.id);
   return ok({
@@ -174,10 +180,32 @@ export async function handleAuth(request, env, url) {
     pathname === "/api/account" || pathname.startsWith("/api/admin/");
   if (!isPrivate) return null;
 
-  const s = await getSession(env, request);
-  if (!s) return err("unauthorized", 401);
+  // Достъпът е или през сесия в браузъра, или през OAuth 2.1 токен. Токенът дава
+  // права САМО за четене и никога не стига до /api/admin/.
+  let s = await getSession(env, request);
+  let bearer = null;
+  if (!s) {
+    bearer = await authenticateBearer(env, request).catch(() => null);
+    if (bearer && bearer.error) {
+      return err(bearer.error, 401, { "www-authenticate": wwwAuthenticate(bearer.error, bearer.description) });
+    }
+    if (bearer) s = { user: bearer.user, session: null };
+  }
+  if (!s) return err("unauthorized", 401, { "www-authenticate": wwwAuthenticate() });
   const userId = s.user.id;
-  if (method !== "GET" && !sameOrigin(request, env, url)) return err("csrf", 403);
+
+  if (bearer) {
+    if (method !== "GET") {
+      return err("insufficient_scope", 403, { "www-authenticate": wwwAuthenticate("insufficient_scope", "Издаваните токени са само за четене.") });
+    }
+    if (pathname.startsWith("/api/admin/")) return err("forbidden", 403);
+    const need = requiredScope(pathname);
+    if (!need || !bearer.scopes.includes(need)) {
+      return err("insufficient_scope", 403, { "www-authenticate": wwwAuthenticate("insufficient_scope", need ? `scope=${need}` : "Този endpoint не е достъпен с токен.") });
+    }
+  } else if (method !== "GET" && !sameOrigin(request, env, url)) {
+    return err("csrf", 403);
+  }
 
   if (pathname.startsWith("/api/admin/")) {
     if (s.user.role !== "admin") return err("forbidden", 403);

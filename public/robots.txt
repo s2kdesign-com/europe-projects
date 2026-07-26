@@ -1,9 +1,29 @@
+# robots.txt — https://euro-funds.eu
+#
+# Content Signals (https://contentsignals.org/) декларират как може да се ползва
+# съдържанието на този сайт. Значение на сигналите:
+#   search    = индексиране и показване в резултати от търсене с връзки/откъси
+#   ai-input  = ползване като вход за AI модел при заявка (retrieval, grounding, RAG)
+#   ai-train  = обучение или дообучение на AI модели
+# „yes“ означава разрешено. Сигналите изразяват предпочитанията на собственика;
+# те не отменят приложимото право, нито условията на /terms.
+
 User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Allow: /
 Disallow: /admin
 Disallow: /profile
 Disallow: /login
 Disallow: /saved
+Disallow: /oauth/
 Disallow: /api/
+Allow: /api/health
+Allow: /.well-known/
+
+# Машинно четими ресурси за агенти
+# /llms.txt                    — карта на съдържанието (llmstxt.org)
+# /openapi.json                — OpenAPI 3.1 описание на публичното API
+# /.well-known/api-catalog     — API каталог (RFC 9727)
+# Accept: text/markdown        — markdown версия на всяка публична страница
 
 Sitemap: https://euro-funds.eu/sitemap.xml

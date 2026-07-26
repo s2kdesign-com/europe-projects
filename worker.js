@@ -11,6 +11,12 @@ import { handleAIInternal } from "./worker/ai/pipeline-handlers.js";
 import { reclaimExpiredLocks, processJobsBatch, driveJobs, createPipelineRun, enqueueProcedureJobs, nightlyAlreadyRan } from "./worker/ai/pipeline.js";
 import { handlePlatformStatistics } from "./worker/statistics.js";
 import { COUNTRY_CODES, DEFAULT_COUNTRY, normalizeCountry } from "./app/lib/country/countries.js";
+import { APP_VERSION } from "./app/lib/version.js";
+// Слой „готовност за агенти": markdown negotiation, Link заглавки, API каталог,
+// OpenAPI, Content Signals и OAuth 2.1 authorization server.
+import { handleMarkdown, wantsMarkdown, markdownResponse, llmsTxt } from "./worker/agent/markdown.js";
+import { apiCatalog, apiDocsHtml, apiDocsMarkdown, handleHealth, openApiResponse, robotsTxt, withAgentHeaders } from "./worker/agent/discovery.js";
+import { handleOAuthServer } from "./worker/agent/oauth-server.js";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" };
 function json(body, status = 200) {
@@ -119,9 +125,17 @@ export default {
       } catch { /* cron не бива да хвърля */ }
     })());
   },
+
+  // Външната обвивка добавя Link заглавките за агенти към HTML отговорите.
   async fetch(request, env) {
     const url = new URL(request.url);
-    const { pathname } = url;
+    const response = await handleRequest(request, env, url);
+    return withAgentHeaders(response, url);
+  },
+};
+
+async function handleRequest(request, env, url) {
+  const { pathname } = url;
 
     // Пренасочване на стария домейн към каноничния (euro-funds.eu).
     const redirect = canonicalRedirect(url, env);
@@ -130,6 +144,50 @@ export default {
     // Legacy ?tab= / ?page= → чисти маршрути (301).
     const legacy = legacyRedirect(url);
     if (legacy) return legacy;
+
+    // ---- Слой за агенти -----------------------------------------------------
+    // OAuth 2.1 / OpenID Connect (метаданни, authorize, token, jwks, userinfo).
+    try {
+      const oauthResp = await handleOAuthServer(request, env, url);
+      if (oauthResp) return oauthResp;
+    } catch (e) {
+      await logError(env, { source: "server", method: request.method, path: pathname, status: 500, message: String((e && e.message) || e), detail: String((e && e.stack) || "") }).catch(() => {});
+      return new Response(JSON.stringify({ error: "server_error", error_description: "OAuth service temporarily unavailable." }), {
+        status: 500,
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+      });
+    }
+
+    if (request.method === "GET") {
+      // robots.txt с Content Signals (декларира как може да се ползва съдържанието).
+      if (pathname === "/robots.txt") return robotsTxt();
+      // Карта на съдържанието за езикови модели (llmstxt.org).
+      if (pathname === "/llms.txt") {
+        try { return markdownResponse(await llmsTxt(env), { canonicalUrl: `${url.origin}/llms.txt`, maxAge: 3600 }); } catch { /* пада надолу */ }
+      }
+      // Машинно четимо описание на API-то + каталог (RFC 9727).
+      if (pathname === "/openapi.json") return openApiResponse(APP_VERSION);
+      if (pathname === "/.well-known/api-catalog") return apiCatalog();
+      // Човешка документация (service-doc) — с markdown вариант за агенти.
+      if (pathname === "/docs/api" || pathname === "/docs/api/") {
+        if (wantsMarkdown(request)) return markdownResponse(apiDocsMarkdown(APP_VERSION), { canonicalUrl: `${url.origin}/docs/api`, maxAge: 3600 });
+        return new Response(apiDocsHtml(APP_VERSION), { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600" } });
+      }
+      // Здравен статус (rel="status" в API каталога).
+      if (pathname === "/api/health") return handleHealth(env, APP_VERSION);
+    }
+
+    // Markdown представяне на публичните страници при Accept: text/markdown.
+    if (wantsMarkdown(request)) {
+      try {
+        const md = await handleMarkdown(request, env, url, { defaultCountry: DEFAULT_COUNTRY, normalizeCountry });
+        if (md) return md;
+      } catch (e) {
+        await logError(env, { source: "server", method: request.method, path: pathname, status: 500, message: "markdown: " + String((e && e.message) || e), detail: String((e && e.stack) || "") }).catch(() => {});
+        // При грешка продължаваме с нормалния HTML отговор.
+      }
+    }
+    // ------------------------------------------------------------------------
 
     // Динамичен sitemap от D1.
     if (request.method === "GET" && pathname === "/sitemap.xml") {
@@ -311,5 +369,4 @@ export default {
     }
 
     return env.ASSETS.fetch(request);
-  },
-};
+}

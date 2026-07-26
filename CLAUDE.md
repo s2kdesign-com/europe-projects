@@ -8,7 +8,7 @@ AI платформа за откриване/анализ на европейс
 > междусесийна памет е в Claude memory (`evroproekti-*` файлове). Прогрес по държави:
 > `docs/multi-country-progress.md`. Последна синхронизация на паметта: 2026-07-24.
 
-## Състояние (2026-07-24)
+## Състояние (2026-07-26)
 - Worker `evroproekti-dashboard` е деплойнат и се обновява (last modified 24.07) — старият
   open item „redeploy за admin console" изглежда решен; при съмнение провери `/admin` онлайн.
 - Multi-country: 26 държави active/partial (BG 42 процедури към 18.07; BE connector_ready,
@@ -52,6 +52,12 @@ AI платформа за откриване/анализ на европейс
   `daily-eu-country-sync` (виж docs/claude-scheduled-task-all-countries.md).
 - AI: `worker/ai/*`; активен системен модел gpt-5.6-terra; daily review модел се
   управлява от Scheduled Tasks (desired ≠ actual). Цени: `app/lib/ai-pricing.js`.
+- **Готовност за агенти (v2.47.0)**: `worker/agent/*`. `markdown.js` — `Accept: text/markdown`
+  връща markdown, генериран ОТ D1 (не от HTML — сайтът е SPA shell); `discovery.js` — Link
+  заглавки (RFC 8288), `/.well-known/api-catalog` (RFC 9727), `/openapi.json`, `/docs/api`,
+  `/api/health`, динамичен robots.txt с Content-Signal; `oauth-server.js` — OAuth 2.1 AS
+  само за ЧЕТЕНЕ (PKCE S256, ES256, refresh с ротация, без DCR). Bearer токен НИКОГА не
+  дава писане и не стига до `/api/admin/*`. Мигр. `0022`. Тестове: `test/agent-readiness.test.mjs`.
 - JS-blocked портали (playbook от docs/multi-country-progress.md): meta tags на detail
   страници → прес/новинарски секции → съседни официални домейни → WebSearch с потвърден
   official_url.
