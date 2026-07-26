@@ -100,19 +100,19 @@ export default function ApiAgentsTab() {
         <ReadinessScore checks={agentChecks} tl={tl} busy={busy} onRun={() => setConfirm(true)} />
         <div className="disc-sum-grid">
           <SummaryCard tl={tl} titleKey="Публично API" status={idx.rollup(["api.health", "api.endpoint:*"])}
-            value={cfg.counts.publicRoutes} hint={tl("публични маршрута")} checkedAt={lastRun && lastRun.completedAt} />
+            value={cfg.counts.publicRoutes} hint={tl("публични маршрута")} checkedAt={idx.checkedAt("api.health", "api.endpoint:*")} />
           <SummaryCard tl={tl} titleKey="OpenAPI" status={idx.rollup(["api.openapi", "api.openapi.router_match"])}
-            value={openapi && openapi.safeDetails.openapiVersion ? openapi.safeDetails.openapiVersion : "—"} checkedAt={lastRun && lastRun.completedAt} />
+            value={openapi && openapi.safeDetails.openapiVersion ? openapi.safeDetails.openapiVersion : "—"} checkedAt={idx.checkedAt("api.openapi", "api.openapi.router_match")} />
           <SummaryCard tl={tl} titleKey="API каталог" status={idx.rollup(["api.catalog", "api.catalog.targets", "api.catalog.head"])}
-            value={catalog ? (catalog.safeDetails.entries || 0) : "—"} hint={catalog ? tl("записа в linkset") : null} checkedAt={lastRun && lastRun.completedAt} />
+            value={catalog ? (catalog.safeDetails.entries || 0) : "—"} hint={catalog ? tl("записа в linkset") : null} checkedAt={idx.checkedAt("api.catalog", "api.catalog.targets", "api.catalog.head")} />
           <SummaryCard tl={tl} titleKey="Markdown за агенти" status={idx.rollup(["agents.markdown*", "agents.html_default"])}
-            value={mdChecks.length ? `${mdChecks.filter((c) => c.status === "passed").length}/${mdChecks.length}` : "—"} hint={mdChecks.length ? tl("страници с markdown") : null} checkedAt={lastRun && lastRun.completedAt} />
+            value={mdChecks.length ? `${mdChecks.filter((c) => c.status === "passed").length}/${mdChecks.length}` : "—"} hint={mdChecks.length ? tl("страници с markdown") : null} checkedAt={idx.checkedAt("agents.markdown*", "agents.html_default")} />
           <SummaryCard tl={tl} titleKey="Link заглавки" status={idx.rollup(["agents.link_headers.html", "agents.link_headers.targets"])}
-            value={linkHtml ? (linkHtml.safeDetails.relations || []).length : "—"} hint={linkHtml ? tl("открити релации") : null} checkedAt={lastRun && lastRun.completedAt} />
+            value={linkHtml ? (linkHtml.safeDetails.relations || []).length : "—"} hint={linkHtml ? tl("открити релации") : null} checkedAt={idx.checkedAt("agents.link_headers.html", "agents.link_headers.targets")} />
           <SummaryCard tl={tl} titleKey="OAuth/OIDC откриване" status={idx.rollup(["api.oauth.metadata", "api.oauth.openid", "api.oauth.jwks"])}
-            value={oauthMeta && oauthMeta.safeDetails.issuer ? tl("Собствен издател") : "—"} checkedAt={lastRun && lastRun.completedAt} />
+            value={oauthMeta && oauthMeta.safeDetails.issuer ? tl("Собствен издател") : "—"} checkedAt={idx.checkedAt("api.oauth.metadata", "api.oauth.openid", "api.oauth.jwks")} />
           <SummaryCard tl={tl} titleKey="Страници за агенти" status={idx.rollup(["agents.markdown*"])}
-            value={`${cfg.agentPages.length}`} checkedAt={lastRun && lastRun.completedAt} />
+            value={`${cfg.agentPages.length}`} checkedAt={idx.checkedAt("agents.markdown*")} />
           <SummaryCard tl={tl} titleKey="Последна пълна валидация"
             status={lastRun ? (lastRun.overallStatus || "unknown") : "unknown"}
             value={lastRun ? <FormattedDate value={lastRun.completedAt} /> : tl("Няма")}

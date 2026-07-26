@@ -16,7 +16,9 @@ import {
   publicRoutes, protectedRoutes,
 } from "../worker/discovery/inventory.js";
 import { GROUPS, STATUS, buildPlan, executeCheck } from "../worker/discovery/validation.js";
-import { makeFetchImpl } from "../worker/discovery/handlers.js";
+import { SCOPE_GROUPS, makeFetchImpl, runInScope } from "../worker/discovery/handlers.js";
+import { indexChecks } from "../app/admin/discovery-index.js";
+import { codeSlug } from "../app/lib/slug.js";
 
 let passed = 0;
 const tests = [];
@@ -972,6 +974,99 @@ t("проверка през вътрешния рутер дава passed та�
   const fixed = await executeCheck(robotsCheck, { origin: ORIGIN, fetchImpl: makeFetchImpl({ SELF_FETCH: routed }, ORIGIN) });
   assert.equal(fixed.responseStatus, 200);
   assert.notEqual(fixed.status, STATUS.FAILED, `очаквах не-провал, получих ${fixed.summaryKey}`);
+});
+
+// ===========================================================================
+// Адреси на процедури (codeSlug, а не суров id)
+// ===========================================================================
+
+t("процедурен адрес се гради от codeSlug — суровият id дава 404", () => {
+  // Тези три реални процедури проваляха 11 проверки в продукцията: одитът
+  // строеше „/procedures/HU:hu-palyazat:…" (404), вместо каноничния слъг.
+  const cases = [
+    ["HU:hu-palyazat:ssns-ncc-hu-2026-fstp", "hu-hu-palyazat-ssns-ncc-hu-2026-fstp"],
+    ["LT:lt-esinvesticijos:step-defence", "lt-lt-esinvesticijos-step-defence"],
+    ["SI:si-podjetniskisklad:jp-start-up-mentorji", "si-si-podjetniskisklad-jp-start-up-mentorji"],
+  ];
+  for (const [id, expected] of cases) {
+    assert.equal(codeSlug(id), expected, id);
+    assert.equal(/[:%]/.test(codeSlug(id)), false, "слъгът не бива да носи двоеточия");
+  }
+});
+
+// ===========================================================================
+// Обхват на таба (одит в единия таб не бива да „изпразва" другия)
+// ===========================================================================
+
+t("двата таба покриват различни групи и заедно покриват всички", () => {
+  const api = SCOPE_GROUPS.api, seo = SCOPE_GROUPS.seo;
+  assert.equal(api.some((g) => seo.includes(g)), false, "групите се застъпват");
+  assert.deepEqual([...api, ...seo].sort(), [...GROUPS].sort(), "групите не покриват GROUPS");
+});
+
+t("одит от „API & Agents“ не се брои за таба „SEO & Discovery“", () => {
+  const apiRun = { groups_json: JSON.stringify(["api", "agents"]) };
+  const seoRun = { groups_json: JSON.stringify(SCOPE_GROUPS.seo) };
+  const partial = { groups_json: JSON.stringify(["sitemap"]) };
+
+  assert.equal(runInScope(apiRun, SCOPE_GROUPS.api), true);
+  assert.equal(runInScope(apiRun, SCOPE_GROUPS.seo), false, "именно това чупеше екрана");
+  assert.equal(runInScope(seoRun, SCOPE_GROUPS.seo), true);
+  assert.equal(runInScope(seoRun, SCOPE_GROUPS.api), false);
+  // Частична валидация принадлежи на своя таб.
+  assert.equal(runInScope(partial, SCOPE_GROUPS.seo), true);
+  assert.equal(runInScope(partial, SCOPE_GROUPS.api), false);
+  // Без обхват (стар клиент) — показваме всичко, а не нищо.
+  assert.equal(runInScope(apiRun, null), true);
+});
+
+t("повреден groups_json не хвърля и не влиза в никой обхват", () => {
+  assert.equal(runInScope({ groups_json: "{не е json" }, SCOPE_GROUPS.seo), false);
+  assert.equal(runInScope({}, SCOPE_GROUPS.seo), false);
+});
+
+// ===========================================================================
+// Индекс на резултатите (шаблони и дати по карта)
+// ===========================================================================
+
+const CH = [
+  { code: "seo.sitemap", category: "sitemap", status: "passed", completedAt: "2026-07-26T21:00:00.000Z" },
+  { code: "seo.metadata:/", category: "metadata", status: "passed", completedAt: "2026-07-26T21:41:00.000Z" },
+  { code: "seo.metadata:/about", category: "metadata", status: "warning", completedAt: "2026-07-26T21:42:00.000Z" },
+  { code: "seo.structured_data:/", category: "structured_data", status: "failed", completedAt: "2026-07-26T21:42:30.000Z" },
+];
+
+t("шаблонът „код:*“ намира всички ресурси на тази проверка", () => {
+  const idx = indexChecks(CH);
+  // Преди поправката „seo.metadata:*" → „seo.metadata:" и не съвпадаше с
+  // ключа „seo.metadata" → всяка такава карта оставаше „Няма валидация".
+  assert.equal(idx.rollup(["seo.metadata:*"]), "warning");
+  assert.equal(idx.rollup(["seo.structured_data:*"]), "failed");
+  assert.equal(idx.rollup(["seo.sitemap"]), "passed");
+});
+
+t("шаблон без двоеточие продължава да работи", () => {
+  const idx = indexChecks([
+    { code: "agents.markdown:/", status: "passed", completedAt: "2026-07-26T10:00:00.000Z" },
+    { code: "agents.markdown:/about", status: "passed", completedAt: "2026-07-26T10:01:00.000Z" },
+  ]);
+  assert.equal(idx.rollup(["agents.markdown*"]), "passed");
+});
+
+t("непозната проверка си остава „unknown“, а не „passed“", () => {
+  const idx = indexChecks(CH);
+  assert.equal(idx.rollup(["seo.nope:*"]), "unknown");
+  assert.equal(idx.status("seo.nope"), "unknown");
+});
+
+t("всяка карта носи собствената си дата на проверка", () => {
+  const idx = indexChecks(CH);
+  assert.equal(idx.checkedAt("seo.sitemap"), "2026-07-26T21:00:00.000Z");
+  // Най-новата измежду покритите от шаблона.
+  assert.equal(idx.checkedAt("seo.metadata:*"), "2026-07-26T21:42:00.000Z");
+  // Няколко кода наведнъж → най-новият.
+  assert.equal(idx.checkedAt("seo.sitemap", "seo.structured_data:*"), "2026-07-26T21:42:30.000Z");
+  assert.equal(idx.checkedAt("seo.nope"), null);
 });
 
 // ===========================================================================

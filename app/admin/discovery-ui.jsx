@@ -120,31 +120,8 @@ export function EmptyState({ tl, titleKey, textKey }) {
 // Резултати от проверки
 // ---------------------------------------------------------------------------
 
-/** Индексира резултатите по код за бърз достъп от картите. */
-export function indexChecks(checks) {
-  const byCode = new Map();
-  const byPrefix = new Map();
-  for (const c of checks || []) {
-    byCode.set(c.code, c);
-    const prefix = c.code.split(":")[0];
-    if (!byPrefix.has(prefix)) byPrefix.set(prefix, []);
-    byPrefix.get(prefix).push(c);
-  }
-  return {
-    get: (code) => byCode.get(code) || null,
-    all: (prefix) => byPrefix.get(prefix) || [],
-    status: (code) => (byCode.get(code) || {}).status || "unknown",
-    /** Най-лошият статус измежду няколко проверки — за обобщаващите карти. */
-    rollup: (codes) => {
-      const list = codes.flatMap((c) => (c.endsWith("*") ? byPrefix.get(c.slice(0, -1)) || [] : [byCode.get(c)].filter(Boolean)));
-      if (!list.length) return "unknown";
-      if (list.some((x) => x.status === "failed")) return "failed";
-      if (list.some((x) => x.status === "warning")) return "warning";
-      if (list.every((x) => x.status === "not_applicable")) return "not_applicable";
-      return "passed";
-    },
-  };
-}
+// indexChecks живее в discovery-index.js (чист JS, за да е тестваем с node).
+export { indexChecks } from "./discovery-index.js";
 
 /** Прозрачен резултат: „8 от 9 проверки минаха" + разбивка, без подвеждащ процент. */
 export function ReadinessScore({ checks, tl, categories, onRun, busy }) {
@@ -248,9 +225,13 @@ export function useDiscovery(scope) {
   const [progress, setProgress] = useState(null);
   const driving = useRef(false);
 
+  // Двата таба споделят една база, но всеки показва СВОИТЕ групи проверки.
+  // Без scope одит от единия таб „изпразваше" картите на другия.
+  const scopeQuery = scope ? `?scope=${encodeURIComponent(scope)}` : "";
+
   const load = useCallback(async () => {
     try {
-      const r = await fetch("/api/admin/discovery/overview", { credentials: "same-origin", cache: "no-store" });
+      const r = await fetch(`/api/admin/discovery/overview${scopeQuery}`, { credentials: "same-origin", cache: "no-store" });
       const d = await r.json();
       if (!d.ok) throw new Error(d.error || "load_failed");
       setData(d);
@@ -260,7 +241,7 @@ export function useDiscovery(scope) {
       setError(String(e.message || e));
       return null;
     }
-  }, []);
+  }, [scopeQuery]);
 
   useEffect(() => { load(); }, [load]);
 

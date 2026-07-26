@@ -14,6 +14,7 @@ import { GROUPS, STATUS, buildPlan, executeCheck, probe } from "./validation.js"
 import { AGENT_PAGES, DISCOVERY_RESOURCES, ROUTES, SEO_PAGES, internalRoutes, protectedRoutes, publicRoutes } from "./inventory.js";
 import { APP_VERSION } from "../../app/lib/version.js";
 import { BUILD_ID } from "../../app/lib/build-info.js";
+import { codeSlug } from "../../app/lib/slug.js";
 
 const NO_STORE = { "cache-control": "no-store, no-cache, must-revalidate", pragma: "no-cache" };
 const ok = (data) => json({ ok: true, ...data }, 200, NO_STORE);
@@ -86,11 +87,19 @@ function makeDbAdapter(env) {
   };
 }
 
+/**
+ * Примерни процедурни страници за одита.
+ *
+ * Адресът се гради от codeSlug(id), НЕ от суровия id. Идентификаторите съдържат
+ * двоеточия („HU:hu-palyazat:ssns-ncc-hu-2026-fstp"), а рутерът разпознава само
+ * каноничния слъг — със суровия id всяка такава проверка връщаше 404 и одитът
+ * обвиняваше сайта за собствената си грешка.
+ */
 async function sampleProcedurePaths(env, limit = 4) {
   const { results } = await env.DB.prepare(
     "SELECT id FROM projects WHERE id IS NOT NULL ORDER BY last_updated DESC LIMIT ?1"
   ).bind(limit).all().catch(() => ({ results: [] }));
-  return (results || []).map((r) => `/procedures/${r.id}`);
+  return (results || []).map((r) => `/procedures/${codeSlug(r.id)}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -287,31 +296,65 @@ function checkRow(r) {
 }
 const safeJson = (s, fb) => { try { return JSON.parse(s || ""); } catch { return fb; } };
 
-async function latestCompletedRun(env) {
-  return env.DB.prepare("SELECT * FROM agent_readiness_runs WHERE status='completed' ORDER BY started_at DESC LIMIT 1").first().catch(() => null);
+/**
+ * Кой таб кои групи проверки показва. Двата таба гледат ЕДНА и съща база, но
+ * НЕ едни и същи проверки — иначе одит от „API & Agents" изтрива на екрана
+ * резултатите в „SEO & Discovery" (и обратно).
+ */
+export const SCOPE_GROUPS = {
+  api: ["api", "agents"],
+  seo: ["seo", "sitemap", "robots", "metadata", "structured_data", "social", "i18n_seo", "procedures"],
+};
+
+/** Одитът е „на този таб", ако е пуснал поне една проверка от неговите групи. */
+export function runInScope(row, groups) {
+  if (!groups) return true;
+  const g = safeJson(row && row.groups_json, []);
+  return Array.isArray(g) && g.some((x) => groups.includes(x));
 }
 
 /**
  * Бърз преглед за първоначално зареждане на таба: конфигурация (от кода) +
- * последния РЕАЛЕН одит (от D1). Без мрежови заявки — страницата се отваря
- * веднага, а стойностите са от последната валидация, с ясна дата.
+ * реалните резултати от D1. Без мрежови заявки — страницата се отваря веднага.
+ *
+ * Показваме НЕ „проверките от последния одит", а ПОСЛЕДНИЯ РЕЗУЛТАТ ЗА ВСЯКА
+ * проверка. Иначе частична валидация (напр. само „sitemap") би оставила всички
+ * останали карти на „Няма валидация", въпреки че са проверявани преди минута.
+ * Всяка карта носи собствената си дата на проверка.
  */
-async function overview(env, url) {
-  const last = await latestCompletedRun(env);
-  const active = await env.DB.prepare("SELECT * FROM agent_readiness_runs WHERE status='running' ORDER BY started_at DESC LIMIT 1").first().catch(() => null);
-  let checks = [];
-  if (last) {
-    const { results } = await env.DB.prepare(
-      "SELECT * FROM agent_readiness_check_results WHERE run_id=?1 ORDER BY sequence"
-    ).bind(last.id).all().catch(() => ({ results: [] }));
-    checks = (results || []).map(checkRow);
-  }
-  const { results: history } = await env.DB.prepare(
-    "SELECT * FROM agent_readiness_runs ORDER BY started_at DESC LIMIT 20"
+async function overview(env, url, scope) {
+  const groups = SCOPE_GROUPS[scope] || null;
+  const inScope = (row) => runInScope(row, groups);
+
+  const { results: runRows } = await env.DB.prepare(
+    "SELECT * FROM agent_readiness_runs ORDER BY started_at DESC LIMIT 120"
   ).all().catch(() => ({ results: [] }));
-  const { results: signals } = await env.DB.prepare(
-    "SELECT * FROM discovery_signals WHERE state='open' ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'warning' THEN 2 ELSE 3 END, last_seen_at DESC LIMIT 50"
-  ).all().catch(() => ({ results: [] }));
+  const scoped = (runRows || []).filter(inScope);
+  const last = scoped.find((r) => r.status === "completed") || null;
+  const active = scoped.find((r) => r.status === "running") || null;
+
+  // Последният завършил резултат за всяка двойка (код на проверка, ресурс).
+  // MAX(id) е коректно „най-новото", защото id е AUTOINCREMENT.
+  const placeholders = groups ? groups.map((_, i) => `?${i + 1}`).join(",") : null;
+  const scopeSql = groups ? ` AND category IN (${placeholders})` : "";
+  const stmt = env.DB.prepare(
+    `SELECT * FROM agent_readiness_check_results WHERE id IN (
+       SELECT MAX(id) FROM agent_readiness_check_results
+       WHERE status <> 'pending'${scopeSql}
+       GROUP BY check_code, COALESCE(resource_url, '')
+     ) ORDER BY sequence`
+  );
+  const { results: checkRows } = await (groups ? stmt.bind(...groups) : stmt)
+    .all().catch(() => ({ results: [] }));
+  const checks = (checkRows || []).map(checkRow);
+
+  const history = scoped.slice(0, 20);
+  const sigStmt = env.DB.prepare(
+    `SELECT * FROM discovery_signals WHERE state='open'${groups ? ` AND category IN (${placeholders})` : ""}
+     ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'warning' THEN 2 ELSE 3 END, last_seen_at DESC LIMIT 50`
+  );
+  const { results: signals } = await (groups ? sigStmt.bind(...groups) : sigStmt)
+    .all().catch(() => ({ results: [] }));
 
   const origin = url.origin;
   return ok({
@@ -345,6 +388,7 @@ async function overview(env, url) {
       // достъпни през наличния API токен — интерфейсът го казва честно.
       cloudflare: { zoneSettingsReadable: false, markdownForAgentsSource: "worker" },
     },
+    scope: scope || null,
     lastRun: last ? runRow(last) : null,
     activeRun: active ? runRow(active) : null,
     checks,
@@ -400,11 +444,17 @@ export async function handleDiscoveryAdmin(request, env, url, userId, readJson) 
   const p = url.pathname;
   const method = request.method;
 
-  if (p === "/api/admin/discovery/overview" && method === "GET") return overview(env, url);
+  // `scope` е името на таба („api" или „seo"). Непознат scope се игнорира и
+  // прегледът показва всичко — по-добре повече, отколкото празен екран.
+  const scope = url.searchParams.get("scope");
+  const scopeGroups = SCOPE_GROUPS[scope] || null;
+
+  if (p === "/api/admin/discovery/overview" && method === "GET") return overview(env, url, scope);
 
   if (p === "/api/admin/discovery/runs" && method === "GET") {
-    const { results } = await env.DB.prepare("SELECT * FROM agent_readiness_runs ORDER BY started_at DESC LIMIT 50").all().catch(() => ({ results: [] }));
-    return ok({ runs: (results || []).map(runRow) });
+    const { results } = await env.DB.prepare("SELECT * FROM agent_readiness_runs ORDER BY started_at DESC LIMIT 120").all().catch(() => ({ results: [] }));
+    const runs = (results || []).filter((r) => runInScope(r, scopeGroups)).slice(0, 50);
+    return ok({ runs: runs.map(runRow) });
   }
 
   if (p === "/api/admin/discovery/runs" && method === "POST") {
@@ -473,7 +523,9 @@ export async function handleDiscoveryAdmin(request, env, url, userId, readJson) 
         id: r.id, name: r.name, country: r.country_code, program: r.program, status: r.status,
         deadlineDate: r.deadline_date, officialUrl: r.official_url || r.link || null,
         lastUpdated: r.last_updated, documents: r.doc_count,
-        canonical: `${url.origin}/procedures/${r.id}`,
+        // Каноничният адрес се гради от codeSlug — суровият id съдържа
+        // двоеточия и връзката в таблицата водеше към 404.
+        canonical: `${url.origin}/procedures/${codeSlug(r.id)}`,
         expiredButOpen: !!(r.deadline_date && r.deadline_date < new Date().toISOString().slice(0, 10) && ["open", "closing_soon"].includes(r.status)),
       })),
     });

@@ -104,12 +104,14 @@ export default function SeoDiscoveryTab() {
         </>}>
         <ReadinessScore checks={seoChecks} tl={tl} busy={busy} onRun={() => setConfirm(true)} />
         <div className="disc-sum-grid">
-          <SummaryCard tl={tl} titleKey="Адреси в sitemap" status={idx.status("seo.sitemap")} value={sm.total == null ? "—" : sm.total} checkedAt={lastRun && lastRun.completedAt} />
-          <SummaryCard tl={tl} titleKey="Адреси на процедури" status={idx.status("seo.sitemap.coverage")} value={(sm.byType && sm.byType.procedure) || "—"} checkedAt={lastRun && lastRun.completedAt} />
-          <SummaryCard tl={tl} titleKey="Индексируеми публични страници" status={idx.rollup(["seo.metadata:*"])} value={metaChecks.length ? metaChecks.filter((c) => !/noindex/i.test((c.safeDetails || {}).robots || "")).length : "—"} checkedAt={lastRun && lastRun.completedAt} />
-          <SummaryCard tl={tl} titleKey="Страници с валиден каноничен адрес" status={idx.status("seo.canonical_host")} value={metaChecks.length ? `${withCanonical}/${metaChecks.length}` : "—"} checkedAt={lastRun && lastRun.completedAt} />
-          <SummaryCard tl={tl} titleKey="Страници със структурирани данни" status={idx.rollup(["seo.structured_data:*"])} value={metaChecks.length ? `${withStructured}/${metaChecks.length}` : "—"} checkedAt={lastRun && lastRun.completedAt} />
-          <SummaryCard tl={tl} titleKey="Страници с пълни метаданни" status={idx.rollup(["seo.metadata:*"])} value={metaChecks.length ? `${validMeta}/${metaChecks.length}` : "—"} checkedAt={lastRun && lastRun.completedAt} />
+          {/* Всяка карта носи СВОЯТА дата на проверка — частична валидация
+              („само sitemap") не бива да състарява останалите карти. */}
+          <SummaryCard tl={tl} titleKey="Адреси в sitemap" status={idx.status("seo.sitemap")} value={sm.total == null ? "—" : sm.total} checkedAt={idx.checkedAt("seo.sitemap")} />
+          <SummaryCard tl={tl} titleKey="Адреси на процедури" status={idx.status("seo.sitemap.coverage")} value={(sm.byType && sm.byType.procedure) || "—"} checkedAt={idx.checkedAt("seo.sitemap.coverage")} />
+          <SummaryCard tl={tl} titleKey="Индексируеми публични страници" status={idx.rollup(["seo.metadata:*"])} value={metaChecks.length ? metaChecks.filter((c) => !/noindex/i.test((c.safeDetails || {}).robots || "")).length : "—"} checkedAt={idx.checkedAt("seo.metadata:*")} />
+          <SummaryCard tl={tl} titleKey="Страници с валиден каноничен адрес" status={idx.status("seo.canonical_host")} value={metaChecks.length ? `${withCanonical}/${metaChecks.length}` : "—"} checkedAt={idx.checkedAt("seo.canonical_host")} />
+          <SummaryCard tl={tl} titleKey="Страници със структурирани данни" status={idx.rollup(["seo.structured_data:*"])} value={metaChecks.length ? `${withStructured}/${metaChecks.length}` : "—"} checkedAt={idx.checkedAt("seo.structured_data:*")} />
+          <SummaryCard tl={tl} titleKey="Страници с пълни метаданни" status={idx.rollup(["seo.metadata:*"])} value={metaChecks.length ? `${validMeta}/${metaChecks.length}` : "—"} checkedAt={idx.checkedAt("seo.metadata:*")} />
           <SummaryCard tl={tl} titleKey="Предупреждения" status={warnings ? "warning" : seoChecks.length ? "passed" : "unknown"} value={seoChecks.length ? warnings : "—"} />
           <SummaryCard tl={tl} titleKey="Критични проблеми" status={critical ? "failed" : seoChecks.length ? "passed" : "unknown"} value={seoChecks.length ? critical : "—"} />
           <SummaryCard tl={tl} titleKey="Последен SEO одит" status={lastRun ? (lastRun.overallStatus || "unknown") : "unknown"}
