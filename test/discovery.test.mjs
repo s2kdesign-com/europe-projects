@@ -813,14 +813,15 @@ t("всеки summaryKey от валидатора има шаблон", async (
 
 t("проверката хваща страница с грешен обявен език", async () => {
   const site = makeSite({
-    "/procedures/hu-x": { status: 200, ct: "text/html", body: HTML },        // lang="bg"
+    "/procedures/hu-x": { status: 200, ct: "text/html", body: HTML },        // codeSlug("HU:x") → lang="bg"
     "/procedures/bg-y": { status: 200, ct: "text/html", body: HTML },        // lang="bg"
   });
-  const db = { ...makeDb(), procedureLanguages: async () => ([{ slug: "hu-x", language: "hu" }, { slug: "bg-y", language: "bg" }]) };
+  // Суровите id-та съдържат „:" и точки — проверката трябва да ползва codeSlug.
+  const db = { ...makeDb(), procedureLanguages: async () => ([{ slug: "HU:x", language: "hu" }, { slug: "bg-y", language: "bg" }]) };
   const r = await runCheck("seo.procedures.language", "procedures", {}, site, db);
   assert.equal(r.status, STATUS.WARNING);
   assert.equal(r.safeDetails.mismatched.length, 1);
-  assert.equal(r.safeDetails.mismatched[0].slug, "hu-x");
+  assert.equal(r.safeDetails.mismatched[0].slug, "hu-x", "адресът минава през codeSlug");
   assert.equal(r.safeDetails.mismatched[0].expected, "hu");
   assert.equal(r.safeDetails.mismatched[0].actual, "bg");
 });

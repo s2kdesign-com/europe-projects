@@ -910,12 +910,13 @@ H("seo.procedures.language", async (c, ctx) => {
   if (!rows.length) return result(c.code, c.category, STATUS.NOT_APPLICABLE, "procedures.noSamples");
   const checked = [];
   for (const r of rows) {
-    const p = await probe(`${ctx.origin}/procedures/${r.slug}`, { accept: "text/html", fetchImpl: ctx.fetchImpl, maxBytes: 120_000 });
-    if (p.status !== 200) { checked.push({ slug: r.slug, expected: r.language, actual: null, status: p.status, ok: false }); continue; }
+    // Адресът е каноничният слъг, не суровият id (id-тата съдържат „:" и точки).
+    const p = await probe(`${ctx.origin}/procedures/${codeSlug(r.slug)}`, { accept: "text/html", fetchImpl: ctx.fetchImpl, maxBytes: 120_000 });
+    if (p.status !== 200) { checked.push({ slug: codeSlug(r.slug), expected: r.language, actual: null, status: p.status, ok: false }); continue; }
     const meta = extractMetadata(p.body);
     const actual = String(meta.lang || "").toLowerCase();
     const expected = String(r.language || "bg").toLowerCase();
-    checked.push({ slug: r.slug, expected, actual, status: p.status, ok: actual === expected });
+    checked.push({ slug: codeSlug(r.slug), expected, actual, status: p.status, ok: actual === expected });
   }
   const wrong = checked.filter((x) => !x.ok);
   return result(c.code, c.category, wrong.length ? STATUS.WARNING : STATUS.PASSED, wrong.length ? "procedures.langMismatch" : "procedures.langOk", {
