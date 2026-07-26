@@ -148,6 +148,7 @@ export function buildPlan(groups, context = {}) {
 
   if (want.has("procedures")) {
     add("seo.procedures.coverage", "procedures");
+    add("seo.procedures.language", "procedures");
     for (const p of sample.slice(0, 3)) add(`agents.procedure_fields:${p}`, "procedures", { path: p });
   }
 
@@ -900,6 +901,28 @@ H("seo.canonical_host", async (c, ctx) => {
 });
 
 // --- Процедури (от D1, не от мрежата) --------------------------------------
+
+H("seo.procedures.language", async (c, ctx) => {
+  // Регресия v2.48.1: страниците обявяваха `lang="bg"` дори при съдържание на
+  // езика на официалния източник. Проверява се срещу реалния HTML.
+  if (!ctx.db || !ctx.db.procedureLanguages) return result(c.code, c.category, STATUS.NOT_APPLICABLE, "procedures.noDatabase");
+  const rows = await ctx.db.procedureLanguages(6);
+  if (!rows.length) return result(c.code, c.category, STATUS.NOT_APPLICABLE, "procedures.noSamples");
+  const checked = [];
+  for (const r of rows) {
+    const p = await probe(`${ctx.origin}/procedures/${r.slug}`, { accept: "text/html", fetchImpl: ctx.fetchImpl, maxBytes: 120_000 });
+    if (p.status !== 200) { checked.push({ slug: r.slug, expected: r.language, actual: null, status: p.status, ok: false }); continue; }
+    const meta = extractMetadata(p.body);
+    const actual = String(meta.lang || "").toLowerCase();
+    const expected = String(r.language || "bg").toLowerCase();
+    checked.push({ slug: r.slug, expected, actual, status: p.status, ok: actual === expected });
+  }
+  const wrong = checked.filter((x) => !x.ok);
+  return result(c.code, c.category, wrong.length ? STATUS.WARNING : STATUS.PASSED, wrong.length ? "procedures.langMismatch" : "procedures.langOk", {
+    summaryParams: { checked: checked.length, wrong: wrong.length },
+    safeDetails: { pages: checked, mismatched: wrong },
+  });
+});
 
 H("seo.procedures.coverage", async (c, ctx) => {
   if (!ctx.db) return result(c.code, c.category, STATUS.NOT_APPLICABLE, "procedures.noDatabase");

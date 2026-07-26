@@ -1,10 +1,12 @@
 export const metadata = {
-  title: "Относно Euro-Funding — държави, официални източници и AI анализ",
+  // Кратко заглавие: с добавения суфикс „| Euro-Funding" общата дължина остава
+  // под ~60 знака, за да не се отрязва в резултатите от търсене.
+  title: "Относно платформата",
   description: "Вижте покритието на Euro-Funding по държави, официалните източници, ежедневния AI преглед и моделите, които структурират процедурите, документите и бюджетите.",
   alternates: { canonical: "/about", languages: { "bg-BG": "/about", "en": "/en/about", "de": "/de/about", "x-default": "/about" } },
   robots: { index: true, follow: true },
   openGraph: { images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Euro-Funding", type: "image/png" }],
-    title: "Относно Euro-Funding — държави, официални източници и AI анализ",
+    title: "Относно Euro-Funding — държави, източници и AI анализ",
     description: "Покритие по държави, официални източници, ежедневен AI преглед и използваните модели.",
     url: "/about",
     type: "website",

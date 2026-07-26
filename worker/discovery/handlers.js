@@ -35,6 +35,13 @@ function makeDbAdapter(env) {
       ).all().catch(() => ({ results: [] }));
       return results || [];
     },
+    /** Процедури с обявен изходен език — за проверката на `html lang`. */
+    async procedureLanguages(limit = 6) {
+      const { results } = await env.DB.prepare(
+        "SELECT id AS slug, original_language AS language FROM projects WHERE original_language IS NOT NULL AND original_language != '' ORDER BY last_updated DESC LIMIT ?1"
+      ).bind(limit).all().catch(() => ({ results: [] }));
+      return results || [];
+    },
     async procedureSeoStats() {
       const one = async (sql) => {
         try { const r = await env.DB.prepare(sql).first(); return r ? Number(Object.values(r)[0]) || 0 : 0; } catch { return 0; }

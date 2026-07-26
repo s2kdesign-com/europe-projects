@@ -808,6 +808,70 @@ t("всеки summaryKey от валидатора има шаблон", async (
 });
 
 // ===========================================================================
+// Език на страницата на процедурата (регресия от одита)
+// ===========================================================================
+
+t("проверката хваща страница с грешен обявен език", async () => {
+  const site = makeSite({
+    "/procedures/hu-x": { status: 200, ct: "text/html", body: HTML },        // lang="bg"
+    "/procedures/bg-y": { status: 200, ct: "text/html", body: HTML },        // lang="bg"
+  });
+  const db = { ...makeDb(), procedureLanguages: async () => ([{ slug: "hu-x", language: "hu" }, { slug: "bg-y", language: "bg" }]) };
+  const r = await runCheck("seo.procedures.language", "procedures", {}, site, db);
+  assert.equal(r.status, STATUS.WARNING);
+  assert.equal(r.safeDetails.mismatched.length, 1);
+  assert.equal(r.safeDetails.mismatched[0].slug, "hu-x");
+  assert.equal(r.safeDetails.mismatched[0].expected, "hu");
+  assert.equal(r.safeDetails.mismatched[0].actual, "bg");
+});
+
+t("проверката минава, когато езикът е верен", async () => {
+  const huHtml = HTML.replace('<html lang="bg">', '<html lang="hu">');
+  const site = makeSite({ "/procedures/hu-x": { status: 200, ct: "text/html", body: huHtml } });
+  const db = { ...makeDb(), procedureLanguages: async () => ([{ slug: "hu-x", language: "hu" }]) };
+  const r = await runCheck("seo.procedures.language", "procedures", {}, site, db);
+  assert.equal(r.status, STATUS.PASSED);
+});
+
+t("езикът на процедурната страница следва източника, не интерфейса", async () => {
+  const { pageLanguage, contentLanguageTag, ogLocale } = await import("../worker/procedure-page.js");
+  // Реален случай от продукцията: унгарска процедура се сервираше с lang="bg".
+  const hu = { original_language: "hu" };
+  assert.equal(pageLanguage(hu), "hu");
+  assert.equal(contentLanguageTag(hu), "hu-HU");
+  assert.equal(ogLocale(hu), "hu_HU");
+
+  // Регионални варианти се запазват.
+  const pt = { original_language: "pt-BR" };
+  assert.equal(pageLanguage(pt), "pt-br");
+  assert.equal(ogLocale(pt), "pt_BR");
+
+  // Липсващ/невалиден език → български (описателните полета са на български).
+  for (const v of [null, "", "  ", "английски", "xx-YY-ZZ", 42]) {
+    assert.equal(pageLanguage({ original_language: v }), "bg", JSON.stringify(v));
+  }
+  assert.equal(pageLanguage(null), "bg");
+  assert.equal(contentLanguageTag({}), "bg-BG");
+});
+
+t("HTML на процедурата обявява езика последователно", async () => {
+  const { renderProcedureHTML } = await import("../worker/procedure-page.js");
+  const html = renderProcedureHTML(
+    { id: "hu-x", name: "A hazai KKV szektor", program: "NCC-HU", status: "open", deadline: "30.09.2026", original_language: "hu" },
+    []
+  );
+  assert.match(html, /<html lang="hu"/);
+  assert.match(html, /hreflang="hu"/);
+  assert.match(html, /og:locale" content="hu_HU"/);
+  assert.match(html, /"inLanguage":"hu-HU"/);
+  assert.ok(!/<html lang="bg"/.test(html), "не бива да остава bg");
+
+  // Българска процедура остава на български.
+  const bg = renderProcedureHTML({ id: "bg-x", name: "Подкрепа", status: "open", original_language: "bg" }, []);
+  assert.match(bg, /<html lang="bg"/);
+});
+
+// ===========================================================================
 // Пускане
 // ===========================================================================
 

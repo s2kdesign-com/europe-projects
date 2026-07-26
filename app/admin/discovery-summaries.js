@@ -113,6 +113,9 @@ export const SUMMARY_TEMPLATES = {
   "procedures.missingFields": "Липсват {missing} полета за агенти.",
   "procedures.noMarkdown": "Процедурата няма markdown представяне.",
   "procedures.noDatabase": "Няма достъп до базата.",
+  "procedures.noSamples": "Няма процедури с обявен изходен език.",
+  "procedures.langOk": "Всички {checked} проверени страници обявяват езика на източника.",
+  "procedures.langMismatch": "{wrong} от {checked} страници обявяват грешен език.",
 
   // Служебни
   "check.unknown": "Непозната проверка.",

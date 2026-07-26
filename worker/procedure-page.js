@@ -15,6 +15,29 @@ function esc(s) {
 }
 function trunc(s, n) { s = String(s || ""); return s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s; }
 
+// Съдържанието на процедурата е на езика на официалния източник (унгарски,
+// немски, гръцки…), затова `<html lang>` НЕ бива да е винаги "bg" — това
+// подвежда търсачките, екранните четци и автоматичния превод.
+// Езикът идва от `projects.original_language`; при липса остава български,
+// защото описателните полета около данните са на български.
+const LANG_RE = /^[a-z]{2}(-[A-Za-z]{2})?$/;
+export function pageLanguage(project) {
+  const raw = String((project && project.original_language) || "").trim().toLowerCase();
+  return LANG_RE.test(raw) ? raw : "bg";
+}
+/** og:locale очаква формат `xx_XX`. */
+export function ogLocale(project) {
+  const lang = pageLanguage(project);
+  const [l, r] = lang.split("-");
+  return `${l}_${(r || l).toUpperCase()}`;
+}
+
+// BCP 47 таг за JSON-LD (`inLanguage`).
+export function contentLanguageTag(project) {
+  const lang = pageLanguage(project);
+  return lang.includes("-") ? lang : `${lang}-${lang.toUpperCase()}`;
+}
+
 const STATUS_LABEL = { open: "Отворена", closing_soon: "Изтича скоро", upcoming: "Предстояща", closed: "Приключена" };
 
 function canonicalSlug(p) { return codeSlug(p.id); }
@@ -34,6 +57,7 @@ export async function findProcedureBySlug(env, slug) {
 }
 
 function jsonLd(p, url) {
+  const inLanguage = contentLanguageTag(p);
   const g = {
     "@context": "https://schema.org",
     "@type": "MonetaryGrant",
@@ -41,7 +65,7 @@ function jsonLd(p, url) {
     url,
     description: trunc(`${p.name}. Програма: ${p.program || "—"}. Статус: ${STATUS_LABEL[p.status] || p.status || "—"}.`, 300),
     identifier: p.id,
-    inLanguage: "bg-BG",
+    inLanguage,
   };
   if (p.program) g.funder = { "@type": "Organization", name: p.program };
   if (p.eligible) g.audience = { "@type": "Audience", audienceType: trunc(p.eligible, 120) };
@@ -128,17 +152,18 @@ export function renderProcedureHTML(p, docs) {
 <meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${url}">
 <meta name="robots" content="index,follow">
-<link rel="alternate" hreflang="bg" href="${url}"><link rel="alternate" hreflang="x-default" href="${url}">
+<link rel="alternate" hreflang="${pageLanguage(p)}" href="${url}"><link rel="alternate" hreflang="x-default" href="${url}">
 <meta property="og:type" content="article"><meta property="og:site_name" content="Euro-Funding">
 <meta property="og:title" content="${esc(trunc(p.name, 90))}"><meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${url}"><meta property="og:image" content="${OG_IMAGE}">
-<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:locale" content="bg_BG">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:locale" content="${ogLocale(p)}">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(trunc(p.name, 90))}"><meta name="twitter:description" content="${esc(description)}"><meta name="twitter:image" content="${OG_IMAGE}">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 ${jsonLd(p, url)}
 <style>${css}</style>`;
 
-  return `<!doctype html><html lang="bg" dir="ltr"><head>${head}</head><body>${body}</body></html>`;
+  // Езикът следва съдържанието на процедурата, а не езика на интерфейса.
+  return `<!doctype html><html lang="${pageLanguage(p)}" dir="ltr"><head>${head}</head><body>${body}</body></html>`;
 }
 
 // ---------------------------------------------------------------------------
