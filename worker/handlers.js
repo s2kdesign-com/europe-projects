@@ -3,6 +3,7 @@
 import { err, isSecure, nowISO, ok, parseCookies, safeReturnTo, serializeCookie, uuid, isoPlusSeconds } from "./util.js";
 import { buildAuthUrl, callbackUrl, createPkce, exchangeCode, verifyIdToken } from "./oauth.js";
 import { authenticateBearer, requiredScope, wwwAuthenticate } from "./agent/oauth-server.js";
+import { handleDiscoveryAdmin } from "./discovery/handlers.js";
 import { createSession, destroySessionByToken, getSession, sessionClearCookie, sessionSetCookie } from "./session.js";
 import { listChangelog, addFeedback, listFeedback } from "./changelog.js";
 import * as data from "./db.js";
@@ -210,6 +211,12 @@ export async function handleAuth(request, env, url) {
   if (pathname.startsWith("/api/admin/")) {
     if (s.user.role !== "admin") return err("forbidden", 403);
     // AI управление (доставчици/модели/логове) — отделен модул.
+    // Валидации за готовност за агенти и SEO (табове „API & Agents" / „SEO & Discovery").
+    if (pathname.startsWith("/api/admin/discovery/")) {
+      const discoveryResp = await handleDiscoveryAdmin(request, env, url, userId, readJson);
+      if (discoveryResp) return discoveryResp;
+      return err("not_found", 404);
+    }
     if (pathname.startsWith("/api/admin/ai/")) {
       const jr = readJson ? (() => readJson(request)) : (async () => null);
       const pipeResp = await handleAIPipeline(request, env, url, userId, method, jr);

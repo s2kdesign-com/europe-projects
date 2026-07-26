@@ -352,6 +352,42 @@ async function listLandingMarkdown(env, { title, description, url, intro, sql, b
   return out.join("\n");
 }
 
+async function calendarMarkdown(env, country) {
+  const { results } = await env.DB.prepare(
+    `SELECT id, name, program, status, deadline, deadline_date, country_code FROM projects
+     WHERE country_code = ?1 AND deadline_date IS NOT NULL AND deadline_date >= date('now')
+     ORDER BY deadline_date LIMIT 200`
+  ).bind(country).all().catch(() => ({ results: [] }));
+  const rows = results || [];
+  const byMonth = new Map();
+  for (const r of rows) {
+    const key = String(r.deadline_date).slice(0, 7);
+    if (!byMonth.has(key)) byMonth.set(key, []);
+    byMonth.get(key).push(r);
+  }
+  const out = [];
+  out.push(head({
+    title: `Календар на крайните срокове (${country}) | ${BRAND}`,
+    description: `Предстоящите крайни срокове за кандидатстване по процедури за финансиране в държава ${country}, подредени по месец.`,
+    url: `${SITE}/calendar?country=${country}`,
+    extra: { country, count: String(rows.length) },
+  }));
+  out.push(`# Календар на крайните срокове — ${country}\n`);
+  out.push(`${rows.length} предстоящи крайни срока. Датите са както са обявени от официалния източник.\n`);
+  for (const [month, items] of [...byMonth.entries()].sort()) {
+    out.push(`\n## ${month} (${items.length})\n`);
+    out.push(table(["Краен срок", "Процедура", "Статус", "Програма"], items.map((p) => [
+      p.deadline_date,
+      `[${trunc(p.name, 90)}](${SITE}/procedures/${codeSlug(p.id)})`,
+      STATUS_LABEL[p.status] || p.status,
+      p.program,
+    ])));
+  }
+  if (!rows.length) out.push("_Няма предстоящи крайни срокове за тази държава._\n");
+  out.push(agentFooter());
+  return out.join("\n");
+}
+
 async function sourcesMarkdown(env, country) {
   const { results } = await env.DB.prepare(
     `SELECT name, authority_name, authority_type, base_url, calls_url, source_type, source_level,
@@ -513,6 +549,7 @@ export async function handleMarkdown(request, env, url, { defaultCountry = "BG",
   if (path === "/about") return md(await aboutMarkdown(env), 600);
   if (path === "/sources") return md(await sourcesMarkdown(env, country), 600);
   if (path === "/changelog") return md(await changelogMarkdown(env), 600);
+  if (path === "/calendar") return md(await calendarMarkdown(env, country));
 
   if (path === "/procedures/programs") {
     const { results } = await env.DB.prepare(

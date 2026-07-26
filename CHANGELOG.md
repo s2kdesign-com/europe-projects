@@ -3,6 +3,45 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.48.0] — 2026-07-26
+
+### Добавено — администрация: „API & Agents" и „SEO & Discovery"
+- **Два нови таба** в `/admin` (`app/admin/ApiAgentsTab.jsx`, `app/admin/SeoDiscoveryTab.jsx`)
+  + споделен UI слой `discovery-ui.jsx` и преводими резюмета `discovery-summaries.js`.
+  Визуалният език е непроменен: `.prof-card`, `.sys-grid`, `.admin-table`, компактни бейджове.
+- **`SiteDiscoveryValidationService`** (`worker/discovery/`): `inventory.js` (единен източник
+  за класификацията на маршрутите), `parsers.js` (Link/robots/sitemap/HTML/JSON-LD + редакция),
+  `validation.js` (план + изпълнение на проверките), `handlers.js` (админ API, сигнали).
+  Групи: api, agents, seo, sitemap, robots, metadata, structured_data, social, i18n_seo, procedures.
+- **Одитът се изпълнява на парчета сървърно** — планът се записва в D1 като чакащи проверки,
+  всяко „drive" изпълнява до 18 s. Презареждане на страницата не прекъсва одита.
+- **Миграция `0023_discovery_audit.sql`**: `agent_readiness_runs`, `agent_readiness_check_results`,
+  `discovery_signals` (UNIQUE по `signal_key` → дедупликация).
+- Ново админ API: `GET/POST /api/admin/discovery/runs`, `POST …/runs/:id/{drive,stop}`,
+  `GET …/runs/:id`, `GET …/overview`, `GET …/procedures`, `GET …/signals`,
+  `POST …/endpoint-test`. Всичко е `no-store` и само за администратор.
+
+### Сигурност
+- Всяко `safeDetails` минава през `redactObject` ПРЕДИ запис в D1 и преди отговор към браузъра;
+  заглавките `authorization`/`cookie`/`x-api-key` никога не се връщат.
+- Тестът за JWKS проверява, че частният компонент `d` не изтича; тестове потвърждават, че
+  тайни не попадат нито в резултата, нито в сигналите.
+- Вътрешните маршрути се probe-ват само за да се докаже, че искат вход — и никога от таблицата.
+
+### Поправено (открито от новия одит срещу продукцията)
+- **`/calendar` не връщаше markdown** на `Accept: text/markdown` — добавен маршрут с крайните
+  срокове по месец от D1.
+- **Разбор на Link заглавки**: стойност в кавички със `;` (реалната
+  `type="application/openapi+json;version=3.1"`) се отрязваше — параметрите вече се четат коректно.
+- **„Най-нов lastmod"** се смяташе и от невалидни дати; вече се броят само ISO дати.
+- Редакцията на JWT хващаше само дълги токени.
+
+### Тестове
+- `test/discovery.test.mjs` — **64 теста**: класификация на маршрути, сравнение с OpenAPI,
+  Link/robots/sitemap/JSON-LD парсери, разпознаване на празна SPA обвивка, редакция на тайни,
+  дедупликация на сигнали, план на одита и интеграционни проверки срещу мокнат сайт.
+- Общо с `agent-readiness` — 114 теста.
+
 ## [2.47.0] — 2026-07-26
 
 ### Добавено — готовност за AI агенти
