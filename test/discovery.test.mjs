@@ -294,13 +294,27 @@ t("смисленият markdown се различава от празна SPA �
 // Сигурност: редакция
 // ===========================================================================
 
+const REAL_OPENAI_KEY = "sk-" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0U1v2";
+const REAL_ANTHROPIC_KEY = "sk-ant-api03-" + "Zx9Yw8Vu7Ts6Rq5Po4Nm3Lk2Ji1Hg0Fe9Dc8Ba7";
+
 t("тайните се премахват от текст", () => {
-  const text = 'ключ sk-abcdefghijklmnop и токен eyJhbGciOi.eyJzdWIiOiIx.SflKxwRJSM и AIzaSyA1234567890abcdefghijkl';
+  const text = `ключ ${REAL_OPENAI_KEY} и токен eyJhbGciOi.eyJzdWIiOiIx.SflKxwRJSM и AIzaSyA1234567890abcdefghijkl`;
   const out = redactText(text);
-  assert.ok(!out.includes("sk-abcdefghijklmnop"));
+  assert.ok(!out.includes(REAL_OPENAI_KEY));
   assert.ok(!out.includes("eyJhbGciOi.eyJzdWIiOiIx.SflKxwRJSM"));
   assert.ok(!out.includes("AIzaSyA1234567890abcdefghijkl"));
   assert.ok(out.includes(REDACTED));
+});
+
+t("словашките слъгове не се бъркат с API ключ (регресия от продукцията)", () => {
+  // Реален id от продукцията: „sk" е кодът на Словакия, не префикс на OpenAI ключ.
+  const slug = "sk-sk-minzp-psk-mzp-001-2023-dv-efrr";
+  assert.equal(redactText(`процедура ${slug}`).includes(slug), true, "слъгът трябва да остане");
+  assert.deepEqual(detectLeakage(`виж /procedures/${slug}`), []);
+  // А истинските ключове продължават да се хващат.
+  assert.ok(detectLeakage(REAL_OPENAI_KEY).includes("api_key"));
+  assert.ok(detectLeakage(REAL_ANTHROPIC_KEY).includes("api_key"));
+  assert.ok(!redactText(REAL_ANTHROPIC_KEY).includes(REAL_ANTHROPIC_KEY));
 });
 
 t("имейлите се скриват по подразбиране", () => {
@@ -326,16 +340,16 @@ t("чувствителните ключове в обект се заличав
 });
 
 t("preview на тялото е ограничено и изчистено", () => {
-  const b = safeBodyPreview("x".repeat(5000) + " sk-abcdefghijklmnop", 100);
+  const b = safeBodyPreview("x".repeat(5000) + " " + REAL_OPENAI_KEY, 100);
   assert.equal(b.preview.length, 100);
   assert.equal(b.truncated, true);
-  assert.ok(!b.preview.includes("sk-abcdef"));
+  assert.ok(!b.preview.includes(REAL_OPENAI_KEY));
 });
 
 t("изтичане на данни се разпознава", () => {
   assert.deepEqual(detectLeakage("нищо особено"), []);
   assert.ok(detectLeakage("виж /api/admin/users").includes("admin_route"));
-  assert.ok(detectLeakage("sk-abcdefghijklmnop").includes("api_key"));
+  assert.ok(detectLeakage(REAL_OPENAI_KEY).includes("api_key"));
   assert.ok(detectLeakage('"client_secret": "x"').includes("secret_field"));
   assert.ok(detectLeakage("-----BEGIN PRIVATE KEY-----").includes("private_key"));
 });
@@ -593,10 +607,24 @@ t("социалните метаданни се четат от реалния H
 });
 
 t("непокритите процедури в sitemap се засичат", async () => {
-  const r = await runCheck("seo.sitemap.coverage", "sitemap", {}, makeSite(), makeDb([{ slug: "a" }, { slug: "липсва" }]));
+  const r = await runCheck("seo.sitemap.coverage", "sitemap", {}, makeSite(), makeDb([{ slug: "a" }, { slug: "nyama-takava" }]));
   assert.equal(r.status, STATUS.WARNING);
   assert.equal(r.safeDetails.missingCount, 1);
-  assert.deepEqual(r.safeDetails.missing, ["липсва"]);
+  assert.deepEqual(r.safeDetails.missing, ["nyama-takava"]);
+});
+
+t("id с двоеточие/кирилица се сравнява по каноничен слъг (регресия)", async () => {
+  // Sitemap-ът съдържа /procedures/a; в базата id-то е „A:isun:A" → codeSlug „a-isun-a".
+  const site = makeSite({
+    "/sitemap.xml": {
+      status: 200, ct: "application/xml",
+      body: `<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+        <url><loc>https://euro-funds.eu/procedures/bg-isun-bg16ffpr003-2-004</loc></url></urlset>`,
+    },
+  });
+  const r = await runCheck("seo.sitemap.coverage", "sitemap", {}, site, makeDb([{ slug: "BG:isun:BG16FFPR003-2.004" }]));
+  assert.equal(r.status, STATUS.PASSED, "не бива да се отчита като липсваща");
+  assert.equal(r.safeDetails.missingCount, 0);
 });
 
 t("вътрешните маршрути трябва да искат вход", async () => {

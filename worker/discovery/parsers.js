@@ -13,7 +13,10 @@ const SECRET_HEADERS = new Set([
 
 const SECRET_KEY_RE = /(secret|password|passwd|token|api[_-]?key|apikey|client[_-]?secret|private[_-]?key|authorization|session|cookie|jwt|bearer|credential|salt|nonce_secret|master[_-]?key)/i;
 const SECRET_VALUE_RE = [
-  /sk-[A-Za-z0-9_-]{12,}/g,
+  // Истинските ключове имат ДЪЛГА непрекъсната алфанумерична поредица.
+  // Само „sk-…" не стига: „sk" е и кодът на Словакия, а слъгове като
+  // sk-sk-minzp-psk-mzp-001-2023-dv-efrr са напълно легитимни.
+  /\bsk-[A-Za-z0-9_-]*[A-Za-z0-9]{20,}[A-Za-z0-9_-]*\b/g,
   /eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{4,}/g,   // JWT
   /AIza[0-9A-Za-z_-]{20,}/g,                                        // Google API key
   /\b[0-9a-f]{64}\b/gi,                                             // 64-hex (хешове/ключове)
@@ -404,7 +407,7 @@ export function detectLeakage(text) {
   const s = String(text || "");
   const found = [];
   if (/\/api\/admin|\/api\/internal/.test(s)) found.push("admin_route");
-  if (/sk-[A-Za-z0-9_-]{12,}|AIza[0-9A-Za-z_-]{20,}/.test(s)) found.push("api_key");
+  if (/\bsk-[A-Za-z0-9_-]*[A-Za-z0-9]{20,}[A-Za-z0-9_-]*\b|AIza[0-9A-Za-z_-]{20,}/.test(s)) found.push("api_key");
   if (/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\./.test(s)) found.push("jwt");
   if (/"?(client_secret|AUTH_SECRET|MASTER_KEY|private_jwk)"?\s*[:=]/i.test(s)) found.push("secret_field");
   if (/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(s)) found.push("private_key");

@@ -15,6 +15,7 @@ import {
   parseSitemap, robotsAllows, safeBodyPreview, safeHeaders, validateJsonLd,
 } from "./parsers.js";
 import { AGENT_PAGES, DISCOVERY_RESOURCES, ROUTES, compareOpenApiWithRouter, documentedRoutes, internalRoutes, isNeverPublic, protectedRoutes, publicRoutes } from "./inventory.js";
+import { codeSlug } from "../../app/lib/slug.js";
 
 export const STATUS = { PASSED: "passed", WARNING: "warning", FAILED: "failed", NOT_APPLICABLE: "not_applicable" };
 export const GROUPS = ["api", "agents", "seo", "sitemap", "robots", "metadata", "structured_data", "social", "i18n_seo", "procedures"];
@@ -599,8 +600,9 @@ H("seo.sitemap", async (c, ctx) => {
 });
 
 H("seo.sitemap.xsl", async (c, ctx) => {
-  const p = await probe(`${ctx.origin}/sitemap.xsl`, { fetchImpl: ctx.fetchImpl, maxBytes: 5000 });
-  const ok = p.status === 200 && /xsl/i.test(String(p.contentType || ""));
+  const p = await probe(`${ctx.origin}/sitemap.xsl`, { fetchImpl: ctx.fetchImpl, maxBytes: 8000 });
+  // XSLT се сервира валидно и като application/xml — решава съдържанието.
+  const ok = p.status === 200 && (/xsl/i.test(String(p.contentType || "")) || /<xsl:stylesheet/i.test(p.body));
   return result(c.code, c.category, ok ? STATUS.PASSED : p.status === 404 ? STATUS.NOT_APPLICABLE : STATUS.WARNING, ok ? "sitemap.xsl.ok" : "sitemap.xsl.missing", { ...fromProbe(p) });
 });
 
@@ -611,12 +613,14 @@ H("seo.sitemap.coverage", async (c, ctx) => {
   const parsed = parseSitemap(p.body);
   const inSitemap = new Set(parsed.entries.map((e) => { try { return new URL(e.loc).pathname; } catch { return ""; } }).filter((x) => /^\/procedures\/[^/]+$/.test(x)));
   const rows = ctx.db ? await ctx.db.procedureSlugs() : [];
-  const missing = rows.filter((r) => !inSitemap.has(`/procedures/${r.slug}`));
+  // Sitemap-ът публикува КАНОНИЧНИЯ слъг (codeSlug), а не суровия id — иначе
+  // процедури с „:" или кирилица в id-то биха изглеждали като липсващи.
+  const missing = rows.filter((r) => !inSitemap.has(`/procedures/${codeSlug(r.slug)}`));
   const status = !rows.length ? STATUS.NOT_APPLICABLE : missing.length ? STATUS.WARNING : STATUS.PASSED;
   return result(c.code, c.category, status, missing.length ? "sitemap.coverage.missing" : "sitemap.coverage.ok", {
     resourceUrl: p.url,
     summaryParams: { total: rows.length, inSitemap: rows.length - missing.length, missing: missing.length },
-    safeDetails: { databaseProcedures: rows.length, sitemapProcedures: inSitemap.size, missing: missing.slice(0, 25).map((m) => m.slug), missingCount: missing.length },
+    safeDetails: { databaseProcedures: rows.length, sitemapProcedures: inSitemap.size, missing: missing.slice(0, 25).map((m) => codeSlug(m.slug)), missingCount: missing.length },
   });
 });
 
@@ -794,13 +798,14 @@ H("seo.social.image", async (c, ctx) => {
   if (!src) return result(c.code, c.category, STATUS.FAILED, "social.noImage");
   const p = await probe(src, { method: "HEAD", fetchImpl: ctx.fetchImpl });
   const ok = p.status === 200;
-  const bytes = Number(p.headers["content-length"] || 0);
+  // HEAD невинаги връща content-length — тогава размерът е неизвестен, не нула.
+  const bytes = p.headers["content-length"] ? Number(p.headers["content-length"]) : null;
   const problems = [];
   if (!ok) problems.push("unreachable");
   if (bytes && bytes > 5 * 1024 * 1024) problems.push("too_large");
   if (!/image\//.test(String(p.contentType || ""))) problems.push("content_type");
   return result(c.code, c.category, ok ? (problems.length ? STATUS.WARNING : STATUS.PASSED) : STATUS.FAILED, "social.image", {
-    ...fromProbe(p), summaryParams: { bytes }, safeDetails: { url: src, bytes, contentType: p.contentType, problems },
+    ...fromProbe(p), summaryParams: { bytes: bytes == null ? "неизвестен" : bytes }, safeDetails: { url: src, bytes, contentType: p.contentType, problems },
   });
 });
 

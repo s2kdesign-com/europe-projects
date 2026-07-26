@@ -53,6 +53,27 @@ export function withAgentHeaders(response, url) {
 }
 
 // ---------------------------------------------------------------------------
+// HEAD семантика (RFC 9110 §9.3.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * HEAD трябва да върне същите заглавки като GET, само без тяло. Машинно
+ * четимите маршрути бяха зад `method === "GET"`, затова HEAD падаше към
+ * статиката и връщаше 404 — а RFC 9727 изисква HEAD да работи за каталога.
+ * Затова HEAD се пуска по същия път като GET, а тялото се маха накрая.
+ */
+export function asGetRequest(request, url) {
+  if (request.method !== "HEAD") return request;
+  return new Request(url.toString(), { method: "GET", headers: request.headers, cf: request.cf });
+}
+
+/** Маха тялото, ако оригиналната заявка е била HEAD. Заглавките се запазват. */
+export function stripBodyForHead(response, isHead) {
+  if (!isHead || !response) return response;
+  return new Response(null, { status: response.status, statusText: response.statusText, headers: response.headers });
+}
+
+// ---------------------------------------------------------------------------
 // /.well-known/api-catalog (RFC 9727 — linkset+json)
 // ---------------------------------------------------------------------------
 
@@ -395,6 +416,9 @@ export function apiDocsHtml(version = "") {
 <meta property="og:url" content="${SITE}/docs/api">
 <meta property="og:type" content="website">
 <meta property="og:image" content="${SITE}/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="API документация | ${BRAND}">
+<meta name="twitter:description" content="Публично API, OpenAPI 3.1, markdown за агенти и OAuth 2.1 достъп само за четене.">
 <style>
 :root{--primary:#0b6ea3;--text:#0f2942;--muted:#64748b;--line:#e2e8f0;--bg:#f8fafc}
 *{box-sizing:border-box}
@@ -474,7 +498,7 @@ export function apiDocsMarkdown(version = "") {
     "# API документация",
     "",
     "Публично, безплатно API върху данните за европейско и национално финансиране в 27-те държави",
-    `от ЕС. Машинно четимо описание: ${SITE}/openapi.json (OpenAPI 3.1).`,
+    `от ЕС. Машинно четимо описание: [\`/openapi.json\`](${SITE}/openapi.json) (OpenAPI 3.1).`,
     "",
     "> Данните не заменят официалната документация. Липсващите стойности се връщат като `null` —",
     "> това означава „няма структурирани данни“, а не нула.",
@@ -505,16 +529,23 @@ export function apiDocsMarkdown(version = "") {
     "Публичните данни не изискват автентикация. Личните данни се достъпват с authorization code",
     "+ PKCE (S256). Издаваните токени са **само за четене**.",
     "",
-    `- Метаданни: ${SITE}/.well-known/oauth-authorization-server`,
-    `- OpenID Connect: ${SITE}/.well-known/openid-configuration`,
-    `- Ресурс: ${SITE}/.well-known/oauth-protected-resource`,
-    `- Ключове: ${SITE}/.well-known/jwks.json (ES256)`,
+    `- Метаданни: [\`/.well-known/oauth-authorization-server\`](${SITE}/.well-known/oauth-authorization-server)`,
+    `- OpenID Connect: [\`/.well-known/openid-configuration\`](${SITE}/.well-known/openid-configuration)`,
+    `- Ресурс: [\`/.well-known/oauth-protected-resource\`](${SITE}/.well-known/oauth-protected-resource)`,
+    `- Ключове: [\`/.well-known/jwks.json\`](${SITE}/.well-known/jwks.json) (ES256)`,
     "- Обхвати: `openid`, `profile:read`, `saved:read`",
     "- Динамична регистрация на клиенти не се поддържа.",
     "",
     "```",
     `curl -H "Authorization: Bearer <access_token>" "${SITE}/api/saved-procedures"`,
     "```",
+    "",
+    "## Свързани ресурси",
+    "",
+    `- [API каталог (RFC 9727)](${SITE}/.well-known/api-catalog)`,
+    `- [Карта на съдържанието](${SITE}/llms.txt)`,
+    `- [Здравен статус](${SITE}/api/health)`,
+    `- [Условия за ползване](${SITE}/terms)`,
     "",
   ].filter((l) => l !== "").join("\n");
 }

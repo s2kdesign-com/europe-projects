@@ -11,6 +11,7 @@
 // https://developers.cloudflare.com/fundamentals/reference/markdown-for-agents/
 
 import { codeSlug } from "../../app/lib/slug.js";
+import { agentLinkHeader } from "./discovery.js";
 
 const SITE = "https://euro-funds.eu";
 const BRAND = "Euro-Funding";
@@ -74,7 +75,11 @@ export function markdownResponse(markdown, { canonicalUrl, maxAge = 300, status 
     "x-markdown-tokens": String(estimateTokens(markdown)),
     "x-robots-tag": "index, follow",
   };
-  if (canonicalUrl) headers.link = `<${canonicalUrl}>; rel="canonical"`;
+  // Агент, който чете markdown, трябва да открие API-то оттам — иначе
+  // разчита на HTML вариант, който изобщо не е поискал.
+  const links = [agentLinkHeader()];
+  if (canonicalUrl) links.unshift(`<${canonicalUrl}>; rel="canonical"`);
+  headers.link = links.join(", ");
   return new Response(markdown, { status, headers });
 }
 

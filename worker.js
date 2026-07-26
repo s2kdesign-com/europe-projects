@@ -15,7 +15,7 @@ import { APP_VERSION } from "./app/lib/version.js";
 // Слой „готовност за агенти": markdown negotiation, Link заглавки, API каталог,
 // OpenAPI, Content Signals и OAuth 2.1 authorization server.
 import { handleMarkdown, wantsMarkdown, markdownResponse, llmsTxt } from "./worker/agent/markdown.js";
-import { apiCatalog, apiDocsHtml, apiDocsMarkdown, handleHealth, openApiResponse, robotsTxt, withAgentHeaders } from "./worker/agent/discovery.js";
+import { apiCatalog, apiDocsHtml, apiDocsMarkdown, asGetRequest, handleHealth, openApiResponse, robotsTxt, stripBodyForHead, withAgentHeaders } from "./worker/agent/discovery.js";
 import { handleOAuthServer } from "./worker/agent/oauth-server.js";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" };
@@ -129,8 +129,14 @@ export default {
   // Външната обвивка добавя Link заглавките за агенти към HTML отговорите.
   async fetch(request, env) {
     const url = new URL(request.url);
-    const response = await handleRequest(request, env, url);
-    return withAgentHeaders(response, url);
+
+    // HEAD трябва да е идентичен на GET, само без тяло (RFC 9110 §9.3.2).
+    // Досега машинно четимите маршрути бяха зад `method === "GET"`, затова
+    // HEAD /.well-known/api-catalog връщаше 404, докато GET връщаше 200 —
+    // агент, който проверява наличност с HEAD, получаваше грешен отговор.
+    const isHead = request.method === "HEAD";
+    const response = await handleRequest(asGetRequest(request, url), env, url);
+    return stripBodyForHead(withAgentHeaders(response, url), isHead);
   },
 };
 

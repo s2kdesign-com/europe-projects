@@ -673,6 +673,38 @@ t("WWW-Authenticate е ASCII (заглавките не приемат кири�
   assert.ok(/^[\x20-\x7E]*$/.test(r.headers.get("www-authenticate")));
 });
 
+t("HEAD минава по същия път като GET и се връща без тяло (регресия)", async () => {
+  const { asGetRequest, stripBodyForHead, apiCatalog, openApiResponse, robotsTxt } = await import("../worker/agent/discovery.js");
+  const env = makeEnv();
+
+  // 1) HEAD се нормализира до GET, за да не пада към статиката (беше 404).
+  const url = new URL("https://euro-funds.eu/.well-known/api-catalog");
+  const head = new Request(url, { method: "HEAD" });
+  assert.equal(asGetRequest(head, url).method, "GET");
+  assert.equal(asGetRequest(new Request(url), url).method, "GET", "GET остава непроменен");
+
+  // 2) Заглавките са идентични с GET, тялото е празно — за всички machine-readable маршрути.
+  const producers = [
+    ["api-catalog", () => apiCatalog()],
+    ["openapi", () => openApiResponse("2.48.0")],
+    ["robots", () => robotsTxt()],
+    ["oauth-metadata", async () => handleOAuthServer(new Request("https://euro-funds.eu/.well-known/oauth-authorization-server"), env, new URL("https://euro-funds.eu/.well-known/oauth-authorization-server"))],
+    ["jwks", async () => handleOAuthServer(new Request("https://euro-funds.eu/.well-known/jwks.json"), env, new URL("https://euro-funds.eu/.well-known/jwks.json"))],
+  ];
+  for (const [name, make] of producers) {
+    const g = await make();
+    const h = stripBodyForHead(await make(), true);
+    assert.ok(g && g.status === 200, `${name}: GET не върна 200`);
+    assert.equal(h.status, g.status, `${name}: различен статус`);
+    assert.equal(h.headers.get("content-type"), g.headers.get("content-type"), `${name}: различен тип`);
+    assert.equal(await h.text(), "", `${name}: HEAD не бива да има тяло`);
+    assert.ok((await g.text()).length > 0, `${name}: GET трябва да има тяло`);
+  }
+
+  // 3) Не-HEAD отговорите остават непокътнати.
+  assert.equal(await stripBodyForHead(new Response("данни", { status: 200 }), false).text(), "данни");
+});
+
 t("непокрит път връща null (не прихваща чужди маршрути)", async () => {
   const env = makeEnv();
   assert.equal(await call(env, "https://euro-funds.eu/procedures"), null);
