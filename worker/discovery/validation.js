@@ -12,9 +12,9 @@
 import {
   analyseMarkdown, analyseSitemap, detectLeakage, duplicateLinks, extractMetadata,
   groupForAgent, isValidHreflang, parseContentSignal, parseLinkHeader, parseRobots,
-  parseSitemap, robotsAllows, safeBodyPreview, safeHeaders, validateJsonLd,
+  parseSitemap, robotsAllows, safeHeaders, validateJsonLd,
 } from "./parsers.js";
-import { AGENT_PAGES, DISCOVERY_RESOURCES, ROUTES, compareOpenApiWithRouter, documentedRoutes, internalRoutes, isNeverPublic, protectedRoutes, publicRoutes } from "./inventory.js";
+import { AGENT_PAGES, ROUTES, compareOpenApiWithRouter, internalRoutes, isNeverPublic, publicRoutes } from "./inventory.js";
 import { codeSlug } from "../../app/lib/slug.js";
 
 export const STATUS = { PASSED: "passed", WARNING: "warning", FAILED: "failed", NOT_APPLICABLE: "not_applicable" };
@@ -67,7 +67,6 @@ const result = (code, category, status, summaryKey, extra = {}) => ({
 
 const fromProbe = (p) => ({ resourceUrl: p.url, responseStatus: p.status, responseContentType: p.contentType, durationMs: p.durationMs });
 const ctIs = (ct, expected) => String(ct || "").toLowerCase().split(";")[0].trim() === expected;
-const worst = (statuses) => statuses.includes(STATUS.FAILED) ? STATUS.FAILED : statuses.includes(STATUS.WARNING) ? STATUS.WARNING : statuses.length ? STATUS.PASSED : STATUS.NOT_APPLICABLE;
 
 // ---------------------------------------------------------------------------
 // План
@@ -940,4 +939,3 @@ H("seo.procedures.coverage", async (c, ctx) => {
   });
 });
 
-export { worst };

@@ -9,7 +9,7 @@
 // презареждане на страницата не спира одита — истината е в базата.
 
 import { json, nowISO, uuid } from "../util.js";
-import { redactObject, safeBodyPreview, safeHeaders } from "./parsers.js";
+import { redactObject, safeBodyPreview } from "./parsers.js";
 import { GROUPS, STATUS, buildPlan, executeCheck, probe } from "./validation.js";
 import { AGENT_PAGES, DISCOVERY_RESOURCES, ROUTES, SEO_PAGES, internalRoutes, protectedRoutes, publicRoutes } from "./inventory.js";
 import { APP_VERSION } from "../../app/lib/version.js";
