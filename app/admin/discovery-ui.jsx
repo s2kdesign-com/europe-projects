@@ -147,14 +147,30 @@ export function indexChecks(checks) {
 }
 
 /** Прозрачен резултат: „8 от 9 проверки минаха" + разбивка, без подвеждащ процент. */
-export function ReadinessScore({ checks, tl, categories }) {
+export function ReadinessScore({ checks, tl, categories, onRun, busy }) {
   const list = (checks || []).filter((c) => !categories || categories.includes(c.category));
   const counted = list.filter((c) => c.status !== "not_applicable" && c.status !== "pending");
   const passed = counted.filter((c) => c.status === "passed").length;
   const warning = counted.filter((c) => c.status === "warning").length;
   const failed = counted.filter((c) => c.status === "failed").length;
   const na = list.filter((c) => c.status === "not_applicable").length;
-  if (!list.length) return <EmptyState tl={tl} titleKey="Още няма валидация" textKey="Пуснете одит, за да видите реалното състояние. Дотогава не се показват статуси." />;
+  // Преди първия одит страницата няма какво да покаже. Вместо десетина еднакви
+  // празни блока — един ясен призив за действие, а секциите остават компактни.
+  if (!list.length) {
+    return (
+      <div className="disc-cta">
+        <div className="disc-cta-text">
+          <strong>{tl("Още няма валидация")}</strong>
+          <p>{tl("Пуснете първия одит, за да се провери какво реално връща продукцията. Дотогава не се показват статуси.")}</p>
+        </div>
+        {onRun && (
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={onRun}>
+            <Icon name="refresh" size={14} /> {tl(busy ? "Изпълнява се…" : "Пусни първия одит")}
+          </button>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="disc-score">
       <div className="disc-score-main">
@@ -310,7 +326,7 @@ export function AuditProgress({ progress, tl, onStop }) {
     <section className="prof-card disc-progress">
       <div className="disc-card-head">
         <h2 className="prof-section-title">{tl("Одитът се изпълнява")}</h2>
-        <button type="button" className="btn-stop" onClick={() => onStop(progress.runId || progress.id)}>{tl("Спри безопасно")}</button>
+        <button type="button" className="btn btn-danger" onClick={() => onStop(progress.runId || progress.id)}>{tl("Спри безопасно")}</button>
       </div>
       <div className="apl-bar"><span style={{ width: `${pct}%` }} /></div>
       <InfoGrid tl={tl} rows={[
@@ -405,8 +421,8 @@ export function ConfirmModal({ open, tl, titleKey, textKey, confirmKey, onConfir
         <h3>{tl(titleKey)}</h3>
         <p>{tl(textKey)}</p>
         <div className="disc-actions" style={{ justifyContent: "flex-end", marginTop: 16 }}>
-          <button type="button" className="btn-ghost" onClick={onCancel}>{tl("Отказ")}</button>
-          <button type="button" className="btn-primary" onClick={onConfirm}>{tl(confirmKey)}</button>
+          <button type="button" className="btn btn-ghost" onClick={onCancel}>{tl("Отказ")}</button>
+          <button type="button" className="btn btn-primary" onClick={onConfirm}>{tl(confirmKey)}</button>
         </div>
       </div>
     </div>

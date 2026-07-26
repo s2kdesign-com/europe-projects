@@ -81,29 +81,29 @@ export default function ApiAgentsTab() {
         titleKey="Готовност за агенти" tl={tl}
         actions={
           <>
-            <button type="button" className="btn-primary" disabled={busy} onClick={() => setConfirm(true)}>
+            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => setConfirm(true)}>
               <Icon name="refresh" size={14} /> {tl(busy ? "Изпълнява се…" : "Пълен одит на API и агенти")}
             </button>
-            <button type="button" className="btn-ghost" onClick={reload}>{tl("Обнови")}</button>
-            <button type="button" className="btn-ghost" disabled={!checks.length}
+            <button type="button" className="btn btn-ghost" onClick={reload}>{tl("Обнови")}</button>
+            <button type="button" className="btn btn-ghost" disabled={!checks.length}
               onClick={() => downloadReport("api-agents-audit", { run: lastRun, checks: agentChecks })}>
               {tl("Изтегли отчета")}
             </button>
           </>
         }
       >
-        <ReadinessScore checks={agentChecks} tl={tl} />
+        <ReadinessScore checks={agentChecks} tl={tl} busy={busy} onRun={() => setConfirm(true)} />
         <div className="disc-sum-grid">
           <SummaryCard tl={tl} titleKey="Публично API" status={idx.rollup(["api.health", "api.endpoint:*"])}
-            value={`${cfg.counts.publicRoutes} ${tl("маршрута")}`} checkedAt={lastRun && lastRun.completedAt} />
+            value={cfg.counts.publicRoutes} hint={tl("публични маршрута")} checkedAt={lastRun && lastRun.completedAt} />
           <SummaryCard tl={tl} titleKey="OpenAPI" status={idx.rollup(["api.openapi", "api.openapi.router_match"])}
             value={openapi && openapi.safeDetails.openapiVersion ? openapi.safeDetails.openapiVersion : "—"} checkedAt={lastRun && lastRun.completedAt} />
           <SummaryCard tl={tl} titleKey="API каталог" status={idx.rollup(["api.catalog", "api.catalog.targets", "api.catalog.head"])}
-            value={catalog ? `${catalog.safeDetails.entries || 0} ${tl("записа")}` : "—"} checkedAt={lastRun && lastRun.completedAt} />
+            value={catalog ? (catalog.safeDetails.entries || 0) : "—"} hint={catalog ? tl("записа в linkset") : null} checkedAt={lastRun && lastRun.completedAt} />
           <SummaryCard tl={tl} titleKey="Markdown за агенти" status={idx.rollup(["agents.markdown*", "agents.html_default"])}
-            value={mdChecks.length ? `${mdChecks.filter((c) => c.status === "passed").length}/${mdChecks.length} ${tl("страници")}` : "—"} checkedAt={lastRun && lastRun.completedAt} />
+            value={mdChecks.length ? `${mdChecks.filter((c) => c.status === "passed").length}/${mdChecks.length}` : "—"} hint={mdChecks.length ? tl("страници с markdown") : null} checkedAt={lastRun && lastRun.completedAt} />
           <SummaryCard tl={tl} titleKey="Link заглавки" status={idx.rollup(["agents.link_headers.html", "agents.link_headers.targets"])}
-            value={linkHtml ? `${(linkHtml.safeDetails.relations || []).length} ${tl("релации")}` : "—"} checkedAt={lastRun && lastRun.completedAt} />
+            value={linkHtml ? (linkHtml.safeDetails.relations || []).length : "—"} hint={linkHtml ? tl("открити релации") : null} checkedAt={lastRun && lastRun.completedAt} />
           <SummaryCard tl={tl} titleKey="OAuth/OIDC откриване" status={idx.rollup(["api.oauth.metadata", "api.oauth.openid", "api.oauth.jwks"])}
             value={oauthMeta && oauthMeta.safeDetails.issuer ? tl("Собствен издател") : "—"} checkedAt={lastRun && lastRun.completedAt} />
           <SummaryCard tl={tl} titleKey="Страници за агенти" status={idx.rollup(["agents.markdown*"])}
@@ -125,8 +125,8 @@ export default function ApiAgentsTab() {
       {/* --- OpenAPI -------------------------------------------------------- */}
       <Card titleKey="OpenAPI спецификация" tl={tl}
         actions={<>
-          <a className="btn-ghost" href={cfg.openapiUrl} target="_blank" rel="noopener noreferrer">{tl("Отвори документа")}</a>
-          <button type="button" className="btn-ghost" disabled={busy} onClick={() => startAudit(["api"])}>{tl("Валидирай спрямо реалните маршрути")}</button>
+          <a className="btn btn-ghost" href={cfg.openapiUrl} target="_blank" rel="noopener noreferrer">{tl("Отвори документа")}</a>
+          <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => startAudit(["api"])}>{tl("Валидирай спрямо реалните маршрути")}</button>
         </>}>
         {!openapi ? <EmptyState tl={tl} titleKey="Още няма валидация" textKey="Пуснете одит, за да се провери документът срещу продукцията." /> : (
           <>
@@ -163,8 +163,8 @@ export default function ApiAgentsTab() {
       {/* --- API каталог ---------------------------------------------------- */}
       <Card titleKey="API каталог (RFC 9727)" tl={tl}
         actions={<>
-          <a className="btn-ghost" href={cfg.catalogUrl} target="_blank" rel="noopener noreferrer">{tl("Отвори каталога")}</a>
-          <button type="button" className="btn-ghost" disabled={busy} onClick={() => startAudit(["api"])}>{tl("Валидирай каталога")}</button>
+          <a className="btn btn-ghost" href={cfg.catalogUrl} target="_blank" rel="noopener noreferrer">{tl("Отвори каталога")}</a>
+          <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => startAudit(["api"])}>{tl("Валидирай каталога")}</button>
         </>}>
         {!catalog ? <EmptyState tl={tl} titleKey="Още няма валидация" textKey="Пуснете одит, за да се провери каталогът." /> : (
           <>
@@ -188,7 +188,7 @@ export default function ApiAgentsTab() {
 
       {/* --- Link заглавки --------------------------------------------------- */}
       <Card titleKey="Link заглавки за откриване (RFC 8288)" tl={tl}
-        actions={<button type="button" className="btn-ghost" disabled={busy} onClick={() => startAudit(["agents"])}>{tl("Валидирай отново")}</button>}>
+        actions={<button type="button" className="btn btn-ghost" disabled={busy} onClick={() => startAudit(["agents"])}>{tl("Валидирай отново")}</button>}>
         {!linkHtml ? <EmptyState tl={tl} titleKey="Още няма валидация" textKey="Пуснете одит, за да се прочетат заглавките от продукцията." /> : (
           <>
             <InfoGrid tl={tl} rows={[
@@ -206,8 +206,8 @@ export default function ApiAgentsTab() {
       {/* --- Markdown за агенти ---------------------------------------------- */}
       <Card titleKey="Markdown за агенти" tl={tl}
         actions={<>
-          <button type="button" className="btn-ghost" disabled={busy} onClick={() => startAudit(["agents"])}>{tl("Валидирай всички страници")}</button>
-          <button type="button" className="btn-ghost" disabled={!mdChecks.length}
+          <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => startAudit(["agents"])}>{tl("Валидирай всички страници")}</button>
+          <button type="button" className="btn btn-ghost" disabled={!mdChecks.length}
             onClick={() => downloadReport("markdown-agents", mdChecks)}>{tl("Изтегли отчета")}</button>
         </>}>
         <InfoGrid tl={tl} rows={[
@@ -345,9 +345,9 @@ function PublicApiCard({ cfg, health, checks, tl, lastRun, st }) {
   return (
     <Card titleKey="Публично API" tl={tl}
       actions={<>
-        <a className="btn-ghost" href={cfg.docsUrl} target="_blank" rel="noopener noreferrer">{tl("Документация")}</a>
-        <a className="btn-ghost" href={cfg.openapiUrl} target="_blank" rel="noopener noreferrer">OpenAPI</a>
-        <a className="btn-ghost" href={cfg.healthUrl} target="_blank" rel="noopener noreferrer">{tl("Статус")}</a>
+        <a className="btn btn-ghost" href={cfg.docsUrl} target="_blank" rel="noopener noreferrer">{tl("Документация")}</a>
+        <a className="btn btn-ghost" href={cfg.openapiUrl} target="_blank" rel="noopener noreferrer">OpenAPI</a>
+        <a className="btn btn-ghost" href={cfg.healthUrl} target="_blank" rel="noopener noreferrer">{tl("Статус")}</a>
       </>}>
       <InfoGrid tl={tl} rows={[
         ["Базов адрес", <UrlValue href={cfg.apiBaseUrl} key="a" />],
@@ -460,7 +460,7 @@ function EndpointTable({ cfg, checks, tl, onTest, st }) {
                   <td><StatusChip status={c ? c.status : "unknown"} tl={tl} /></td>
                   <td>
                     {r.probe
-                      ? <button type="button" className="btn-ghost btn-xs" onClick={() => onTest(r.id)}>{tl("Тествай")}</button>
+                      ? <button type="button" className="btn btn-ghost btn-xs" onClick={() => onTest(r.id)}>{tl("Тествай")}</button>
                       : <span className="disc-hint">{tl("няма безопасна проба")}</span>}
                   </td>
                 </tr>
@@ -502,7 +502,7 @@ function EndpointDrawer({ routeId, tl, onClose }) {
       <div className="modal-card disc-drawer" onClick={(e) => e.stopPropagation()}>
         <div className="disc-card-head">
           <h3>{tl("Отговор от продукцията")}</h3>
-          <button type="button" className="btn-ghost" onClick={onClose} aria-label={tl("Затвори")}><Icon name="close" size={16} /></button>
+          <button type="button" className="btn btn-ghost" onClick={onClose} aria-label={tl("Затвори")}><Icon name="close" size={16} /></button>
         </div>
         {state.loading && <p>{tl("Зареждане…")}</p>}
         {state.error && <p className="chart-note">{state.error}</p>}

@@ -90,14 +90,14 @@ export default function SeoDiscoveryTab() {
 
       <Card titleKey="Обобщение" tl={tl}
         actions={<>
-          <button type="button" className="btn-primary" disabled={busy} onClick={() => setConfirm(true)}>
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={() => setConfirm(true)}>
             <Icon name="refresh" size={14} /> {tl(busy ? "Изпълнява се…" : "Пълен SEO одит")}
           </button>
-          <button type="button" className="btn-ghost" onClick={reload}>{tl("Обнови")}</button>
-          <button type="button" className="btn-ghost" disabled={!seoChecks.length}
+          <button type="button" className="btn btn-ghost" onClick={reload}>{tl("Обнови")}</button>
+          <button type="button" className="btn btn-ghost" disabled={!seoChecks.length}
             onClick={() => downloadReport("seo-audit", { run: lastRun, checks: seoChecks })}>{tl("Изтегли отчета")}</button>
         </>}>
-        <ReadinessScore checks={seoChecks} tl={tl} />
+        <ReadinessScore checks={seoChecks} tl={tl} busy={busy} onRun={() => setConfirm(true)} />
         <div className="disc-sum-grid">
           <SummaryCard tl={tl} titleKey="Адреси в sitemap" status={idx.status("seo.sitemap")} value={sm.total == null ? "—" : sm.total} checkedAt={lastRun && lastRun.completedAt} />
           <SummaryCard tl={tl} titleKey="Адреси на процедури" status={idx.status("seo.sitemap.coverage")} value={(sm.byType && sm.byType.procedure) || "—"} checkedAt={lastRun && lastRun.completedAt} />
@@ -115,8 +115,8 @@ export default function SeoDiscoveryTab() {
       {/* --- Sitemap --------------------------------------------------------- */}
       <Card titleKey="Динамичен XML sitemap" tl={tl}
         actions={<>
-          <a className="btn-ghost" href={cfg.sitemapUrl} target="_blank" rel="noopener noreferrer">{tl("Отвори")}</a>
-          <button type="button" className="btn-ghost" disabled={busy} onClick={() => startAudit(["sitemap"])}>{tl("Валидирай")}</button>
+          <a className="btn btn-ghost" href={cfg.sitemapUrl} target="_blank" rel="noopener noreferrer">{tl("Отвори")}</a>
+          <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => startAudit(["sitemap"])}>{tl("Валидирай")}</button>
         </>}>
         {!sitemap ? <EmptyState tl={tl} titleKey="Още няма валидация" textKey="Пуснете одит, за да се прочете sitemap-ът от продукцията." /> : (
           <>
@@ -155,8 +155,8 @@ export default function SeoDiscoveryTab() {
       {/* --- robots ---------------------------------------------------------- */}
       <Card titleKey="Robots и политика за обхождане" tl={tl}
         actions={<>
-          <a className="btn-ghost" href={cfg.robotsUrl} target="_blank" rel="noopener noreferrer">{tl("Отвори")}</a>
-          <button type="button" className="btn-ghost" disabled={busy} onClick={() => startAudit(["robots"])}>{tl("Валидирай")}</button>
+          <a className="btn btn-ghost" href={cfg.robotsUrl} target="_blank" rel="noopener noreferrer">{tl("Отвори")}</a>
+          <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => startAudit(["robots"])}>{tl("Валидирай")}</button>
         </>}>
         {!robots ? <EmptyState tl={tl} titleKey="Още няма валидация" textKey="Пуснете одит, за да се прочете robots.txt от продукцията." /> : (
           <>
@@ -206,7 +206,7 @@ export default function SeoDiscoveryTab() {
 
       {/* --- Структурирани данни --------------------------------------------- */}
       <Card titleKey="Структурирани данни" tl={tl}
-        actions={<button type="button" className="btn-ghost" disabled={busy} onClick={() => startAudit(["structured_data"])}>{tl("Валидирай структурираните данни")}</button>}>
+        actions={<button type="button" className="btn btn-ghost" disabled={busy} onClick={() => startAudit(["structured_data"])}>{tl("Валидирай структурираните данни")}</button>}>
         {!sdChecks.length ? <EmptyState tl={tl} titleKey="Още няма валидация" textKey="Пуснете одит, за да се прочетат JSON-LD блоковете от продукцията." /> : (
           <div className="table-scroll">
             <table className="admin-table">
@@ -234,7 +234,7 @@ export default function SeoDiscoveryTab() {
 
       {/* --- Социални метаданни ---------------------------------------------- */}
       <Card titleKey="Социални визитки" tl={tl}
-        actions={<button type="button" className="btn-ghost" disabled={busy} onClick={() => startAudit(["social"])}>{tl("Валидирай")}</button>}>
+        actions={<button type="button" className="btn btn-ghost" disabled={busy} onClick={() => startAudit(["social"])}>{tl("Валидирай")}</button>}>
         {!socialChecks.length ? <EmptyState tl={tl} titleKey="Още няма валидация" textKey="Пуснете одит, за да се прочетат og: и twitter: таговете от продукцията." /> : (
           <>
             {socialChecks.map((c) => <SocialPreview key={c.code} check={c} tl={tl} />)}
@@ -245,7 +245,7 @@ export default function SeoDiscoveryTab() {
 
       {/* --- Многоезичност ---------------------------------------------------- */}
       <Card titleKey="Многоезично SEO" tl={tl}
-        actions={<button type="button" className="btn-ghost" disabled={busy} onClick={() => startAudit(["i18n_seo"])}>{tl("Валидирай")}</button>}>
+        actions={<button type="button" className="btn btn-ghost" disabled={busy} onClick={() => startAudit(["i18n_seo"])}>{tl("Валидирай")}</button>}>
         {!hreflang ? <EmptyState tl={tl} titleKey="Още няма валидация" textKey="Пуснете одит, за да се проверят езиковите алтернативи." /> : (
           <>
             <InfoGrid tl={tl} rows={[
@@ -350,7 +350,7 @@ function MetadataTable({ checks, tl, st, busy, onValidate, origin }) {
           <option value="warnings">{tl("Само предупреждения")}</option>
           <option value="noindex">{tl("Неиндексируеми")}</option>
         </select>
-        <button type="button" className="btn-ghost" disabled={busy} onClick={onValidate}>{tl("Валидирай")}</button>
+        <button type="button" className="btn btn-ghost" disabled={busy} onClick={onValidate}>{tl("Валидирай")}</button>
       </>}>
       {!checks.length ? <EmptyState tl={tl} titleKey="Още няма валидация" textKey="Пуснете одит, за да се прочетат метаданните от продукцията." /> : (
         <div className="table-scroll">
@@ -450,7 +450,7 @@ function ProcedureSeo({ data, coverage, tl, origin }) {
                 <td>{p.documents}</td>
                 <td>{p.officialUrl ? <UrlValue href={p.officialUrl} label={hostOf(p.officialUrl)} /> : <span className="disc-chip st-warn">{tl("липсва")}</span>}</td>
                 <td className="nowrap">{p.lastUpdated || "—"}</td>
-                <td><a className="btn-ghost btn-xs" href={p.canonical} target="_blank" rel="noopener noreferrer">{tl("Отвори")}</a></td>
+                <td><a className="btn btn-ghost btn-xs" href={p.canonical} target="_blank" rel="noopener noreferrer">{tl("Отвори")}</a></td>
               </tr>
             ))}
           </tbody>
