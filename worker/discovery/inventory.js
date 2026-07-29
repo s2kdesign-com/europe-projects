@@ -45,6 +45,16 @@ export const ROUTES = [
   { id: "oauthToken", method: "POST", path: "/oauth/token", kind: "public", group: "oauth", purposeKey: "route.token", auth: "pkce", contentType: "application/json", cache: "no-store", openapi: false, probe: null },
   { id: "oauthRevoke", method: "POST", path: "/oauth/revoke", kind: "public", group: "oauth", purposeKey: "route.revoke", auth: "none", contentType: "application/json", cache: "no-store", openapi: false, probe: null },
 
+  // --- auth.md: агентска регистрация (публично по спецификация) --------------
+  // POST маршрутите НЕ се сондират — регистрацията има странични ефекти (създава
+  // запис, може да изпрати имейл). Сондира се само описателният GET.
+  { id: "agentAuthInfo", method: "GET", path: "/agent/auth", kind: "public", group: "agentAuth", purposeKey: "route.agentAuthInfo", auth: "none", contentType: "application/json", cache: "no-store", openapi: false, probe: "/agent/auth" },
+  { id: "agentAuthRegister", method: "POST", path: "/agent/auth", kind: "public", group: "agentAuth", purposeKey: "route.agentAuthRegister", auth: "assertion", contentType: "application/json", cache: "no-store", openapi: false, probe: null },
+  { id: "agentAuthClaim", method: "POST", path: "/agent/auth/claim", kind: "public", group: "agentAuth", purposeKey: "route.agentAuthClaim", auth: "none", contentType: "application/json", cache: "no-store", openapi: false, probe: null },
+  { id: "agentAuthClaimComplete", method: "POST", path: "/agent/auth/claim/complete", kind: "public", group: "agentAuth", purposeKey: "route.agentAuthClaimComplete", auth: "claim_token", contentType: "application/json", cache: "no-store", openapi: false, probe: null },
+  { id: "agentAuthToken", method: "POST", path: "/agent/auth/token", kind: "public", group: "agentAuth", purposeKey: "route.agentAuthToken", auth: "refresh_token", contentType: "application/json", cache: "no-store", openapi: false, probe: null },
+  { id: "agentAuthRevoke", method: "POST", path: "/agent/auth/revoke", kind: "public", group: "agentAuth", purposeKey: "route.agentAuthRevoke", auth: "none", contentType: "application/json", cache: "no-store", openapi: false, probe: null },
+
   // --- Вътрешни: НЕ се документират и НЕ се публикуват -----------------------
   { id: "adminUsers", method: "GET", path: "/api/admin/users", kind: "internal", group: "admin", purposeKey: "route.adminUsers", auth: "session:admin", contentType: "application/json", cache: "no-store", openapi: false },
   { id: "adminSystem", method: "GET", path: "/api/admin/system", kind: "internal", group: "admin", purposeKey: "route.adminSystem", auth: "session:admin", contentType: "application/json", cache: "no-store", openapi: false },
@@ -71,6 +81,8 @@ export const DISCOVERY_RESOURCES = [
   { id: "robots", path: "/robots.txt", standard: "RFC 9309", official: true, expectType: "text/plain" },
   // llms.txt НЕ е официален стандарт — обозначава се като експериментален.
   { id: "llmsTxt", path: "/llms.txt", standard: "llmstxt.org", official: false, expectType: "text/markdown" },
+  // auth.md също не е IETF стандарт — конвенция на WorkOS, приета от скенерите.
+  { id: "authMd", path: "/auth.md", standard: "auth.md", official: false, expectType: "text/markdown" },
   { id: "oauthMetadata", path: "/.well-known/oauth-authorization-server", standard: "RFC 8414", official: true, expectType: "application/json" },
   { id: "openidConfiguration", path: "/.well-known/openid-configuration", standard: "OpenID Connect Discovery 1.0", official: true, expectType: "application/json" },
   { id: "protectedResource", path: "/.well-known/oauth-protected-resource", standard: "RFC 9728", official: true, expectType: "application/json" },

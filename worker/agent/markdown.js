@@ -506,6 +506,7 @@ export async function llmsTxt(env) {
     `- [Документация](${SITE}/docs/api): описание на endpoint-ите и автентикацията`,
     `- [Здравен статус](${SITE}/api/health): наличност и версия`,
     `- [OAuth 2.1 метаданни](${SITE}/.well-known/oauth-authorization-server): достъп до личните данни на потребител`,
+    `- [auth.md](${SITE}/auth.md): как агент да се регистрира сам (ID-JAG, потвърден имейл, анонимно)`,
     "",
     "## Условия",
     "",

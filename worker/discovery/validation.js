@@ -95,6 +95,8 @@ export function buildPlan(groups, context = {}) {
     add("api.oauth.openid", "api");
     add("api.oauth.protected_resource", "api");
     add("api.oauth.jwks", "api");
+    add("api.oauth.agent_auth", "api");
+    add("api.auth_md", "api");
     add("api.no_private_exposure", "api");
     for (const r of publicRoutes().filter((x) => x.probe)) add(`api.endpoint:${r.id}`, "api", { routeId: r.id });
   }
@@ -360,6 +362,66 @@ const oauthDoc = async (c, ctx, path, requiredFields, summaryKey) => {
 H("api.oauth.metadata", (c, ctx) => oauthDoc(c, ctx, "/.well-known/oauth-authorization-server", ["issuer", "authorization_endpoint", "token_endpoint", "jwks_uri", "grant_types_supported"], "oauth.metadata"));
 H("api.oauth.openid", (c, ctx) => oauthDoc(c, ctx, "/.well-known/openid-configuration", ["issuer", "authorization_endpoint", "token_endpoint", "jwks_uri", "id_token_signing_alg_values_supported"], "oauth.openid"));
 H("api.oauth.protected_resource", (c, ctx) => oauthDoc(c, ctx, "/.well-known/oauth-protected-resource", ["resource", "authorization_servers"], "oauth.protectedResource"));
+
+// --- auth.md (агентска регистрация) ----------------------------------------
+
+// Задължителните полета на блока `agent_auth` според auth.md. Липсващо поле →
+// скенерът отчита „authMd: failed", затова е отделна проверка, а не част от
+// общата проверка на метаданните.
+const AGENT_AUTH_FIELDS = ["skill", "register_uri", "identity_types_supported", "credential_types_supported"];
+
+H("api.oauth.agent_auth", async (c, ctx) => {
+  const p = await probe(`${ctx.origin}/.well-known/oauth-authorization-server`, { fetchImpl: ctx.fetchImpl });
+  if (p.status !== 200) return result(c.code, c.category, STATUS.FAILED, "oauth.unreachable", { ...fromProbe(p) });
+  let doc; try { doc = JSON.parse(p.body); } catch { return result(c.code, c.category, STATUS.FAILED, "oauth.invalidJson", { ...fromProbe(p) }); }
+  const block = doc.agent_auth;
+  if (!block || typeof block !== "object") {
+    return result(c.code, c.category, STATUS.FAILED, "agentAuth.absent", { ...fromProbe(p) });
+  }
+  const problems = AGENT_AUTH_FIELDS.filter((f) => !block[f]).map((f) => `missing_${f}`);
+  // Указателите трябва да сочат към СЪЩИЯ произход — иначе агентът се праща другаде.
+  for (const f of ["skill", "register_uri", "claim_uri", "revocation_uri", "token_uri"]) {
+    if (block[f] && !String(block[f]).startsWith(ctx.origin)) problems.push(`foreign_${f}`);
+  }
+  const identity = block.identity_types_supported || [];
+  const assertions = block.assertion_types_supported || [];
+  // Обявен identity_assertion без нито един тип твърдение е празно обещание.
+  if (identity.includes("identity_assertion") && !assertions.length) problems.push("assertion_types_missing");
+  if (identity.includes("anonymous") && !block.claim_uri) problems.push("anonymous_without_claim_uri");
+  const status = problems.some((x) => x.startsWith("missing_") || x.startsWith("foreign_")) ? STATUS.FAILED
+    : problems.length ? STATUS.WARNING : STATUS.PASSED;
+  return result(c.code, c.category, status, "agentAuth.block", {
+    ...fromProbe(p),
+    summaryParams: { methods: identity.length, problems: problems.length },
+    safeDetails: {
+      skill: block.skill || null, register_uri: block.register_uri || null, claim_uri: block.claim_uri || null,
+      revocation_uri: block.revocation_uri || null, token_uri: block.token_uri || null,
+      identity_types_supported: identity, assertion_types_supported: assertions,
+      credential_types_supported: block.credential_types_supported || null,
+      events_supported: block.events_supported || null, problems,
+    },
+  });
+});
+
+H("api.auth_md", async (c, ctx) => {
+  const p = await probe(`${ctx.origin}/auth.md`, { fetchImpl: ctx.fetchImpl, maxBytes: 120_000 });
+  if (p.status !== 200) return result(c.code, c.category, STATUS.FAILED, "authMd.absent", { ...fromProbe(p) });
+  const problems = [];
+  if (!ctIs(p.contentType, "text/markdown")) problems.push("content_type");
+  // Изискване на auth.md: H1 заглавие, което съдържа „auth.md".
+  const h1 = (/^#\s+(.+)$/m.exec(p.body) || [])[1] || "";
+  if (!/auth\.md/i.test(h1)) problems.push("h1_missing_auth_md");
+  const missingTopics = ["register", "claim", "revoc", "scope"].filter((t) => !new RegExp(t, "i").test(p.body));
+  if (missingTopics.length) problems.push(`topics_${missingTopics.join("_")}`);
+  if (detectLeakage(p.body).length) problems.push("secret_exposure");
+  const status = problems.includes("h1_missing_auth_md") || problems.includes("secret_exposure") ? STATUS.FAILED
+    : problems.length ? STATUS.WARNING : STATUS.PASSED;
+  return result(c.code, c.category, status, "authMd.ok", {
+    ...fromProbe(p),
+    summaryParams: { bytes: p.bytes, problems: problems.length },
+    safeDetails: { heading: h1.slice(0, 120), bytes: p.bytes, contentType: p.contentType, problems },
+  });
+});
 
 H("api.oauth.jwks", async (c, ctx) => {
   const p = await probe(`${ctx.origin}/.well-known/jwks.json`, { fetchImpl: ctx.fetchImpl });

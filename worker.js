@@ -17,6 +17,7 @@ import { APP_VERSION } from "./app/lib/version.js";
 import { handleMarkdown, wantsMarkdown, markdownResponse, llmsTxt } from "./worker/agent/markdown.js";
 import { apiCatalog, apiDocsHtml, apiDocsMarkdown, asGetRequest, handleHealth, openApiResponse, robotsTxt, stripBodyForHead, withAgentHeaders } from "./worker/agent/discovery.js";
 import { handleOAuthServer } from "./worker/agent/oauth-server.js";
+import { handleAgentAuth } from "./worker/agent/agent-auth.js";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" };
 function json(body, status = 200) {
@@ -163,6 +164,18 @@ async function handleRequest(request, env, url) {
     if (legacy) return legacy;
 
     // ---- Слой за агенти -----------------------------------------------------
+    // auth.md — манифестът /auth.md + агентската регистрация (/agent/auth*).
+    try {
+      const agentResp = await handleAgentAuth(request, env, url);
+      if (agentResp) return agentResp;
+    } catch (e) {
+      await logError(env, { source: "server", method: request.method, path: pathname, status: 500, message: "agent-auth: " + String((e && e.message) || e), detail: String((e && e.stack) || "") }).catch(() => {});
+      return new Response(JSON.stringify({ error: "server_error", error_description: "Agent registration is temporarily unavailable.", skill: "https://euro-funds.eu/auth.md" }), {
+        status: 500,
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+      });
+    }
+
     // OAuth 2.1 / OpenID Connect (метаданни, authorize, token, jwks, userinfo).
     try {
       const oauthResp = await handleOAuthServer(request, env, url);

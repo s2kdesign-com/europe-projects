@@ -190,6 +190,11 @@ export async function handleAuth(request, env, url) {
     if (bearer && bearer.error) {
       return err(bearer.error, 401, { "www-authenticate": wwwAuthenticate(bearer.error, bearer.description) });
     }
+    // Креденшъл по auth.md, който още не е свързан с акаунт (anonymous или
+    // незавършен claim) няма потребител → лични данни не му се дават.
+    if (bearer && !bearer.error && !bearer.user) {
+      return err("insufficient_scope", 403, { "www-authenticate": wwwAuthenticate("insufficient_scope", "credential is not linked to an account; complete the claim ceremony") });
+    }
     if (bearer) s = { user: bearer.user, session: null };
   }
   if (!s) return err("unauthorized", 401, { "www-authenticate": wwwAuthenticate() });

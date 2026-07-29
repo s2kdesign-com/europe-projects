@@ -14,3 +14,11 @@ AI_CREDENTIALS_MASTER_KEY=
 SCHEDULED_TASK_REPORTING_SECRET=
 # Feature flag за бъдещия публичен AI чат (изключен по подразбиране).
 AI_CHAT_ENABLED=false
+
+# auth.md — агентска регистрация (/auth.md, /agent/auth). Кодът за потвърждаване
+# се праща по имейл през Resend. Без ключ регистрацията пак работи, но отговорът
+# честно казва `delivered: false` и никой не получава код.
+#   wrangler secret put RESEND_API_KEY
+RESEND_API_KEY=
+# Подателят на имейла с кода (по избор; по подразбиране Euro-Funding <noreply@euro-funds.eu>).
+AGENT_CLAIM_FROM=

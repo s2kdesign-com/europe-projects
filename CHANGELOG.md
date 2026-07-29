@@ -3,6 +3,85 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.49.0] — 2026-07-29
+
+### Добавено — auth.md: агент може сам да си поиска достъп
+
+Досега единственият път към личните данни на потребител минаваше през
+`/oauth/authorize` — тоест през човек пред браузъра. Скенерът на
+isitagentready.com отчиташе `authMd: not found`. Добавена е конвенцията
+[auth.md](https://workos.com/auth-md) (github.com/workos/auth.md).
+
+**`/auth.md`** се генерира от Worker-а (`worker/agent/agent-auth.js`), не е файл
+в `public/`. Причината е същата, както при markdown представянето: съдържанието
+зависи от състоянието на базата — списъкът с доверени издатели и това дали
+имейл доставчикът е конфигуриран се четат от D1 при всяка заявка. Документът е
+на **английски** нарочно: това е протоколен манифест за агенти, не текст за
+потребители (човешката документация остава на `/docs/api`, на български).
+Заглавието H1 съдържа „auth.md", както изисква проверката.
+
+⚠️ Не бъркайте с `AUTH.md` в корена на хранилището — той е инструкция за
+настройка на Google SSO и няма нищо общо. Затова новият документ НЕ е файл.
+
+**Блок `agent_auth`** в `/.well-known/oauth-authorization-server`: `skill`,
+`register_uri`, `claim_uri`, `revocation_uri`, `token_uri`,
+`identity_types_supported`, `assertion_types_supported`,
+`credential_types_supported`, `events_supported` (CAEP). Блокът е САМО тук —
+`/.well-known/openid-configuration` остава чист OIDC документ.
+`/.well-known/oauth-protected-resource` получава указателя `agent_auth_skill`.
+
+**Три потока на регистрация** (`POST /agent/auth`):
+
+| `identity_type` | `assertion_type` | Резултат |
+| --- | --- | --- |
+| `identity_assertion` | `urn:ietf:params:oauth:token-type:id-jag` | свързан веднага, ако имейлът съвпада с потвърден акаунт |
+| `identity_assertion` | `verified_email` | свързан след 6-цифрен код по имейл |
+| `anonymous` | — | само публични данни, може да бъде свързан по-късно |
+
+ID-JAG се проверява срещу JWKS на издателя (RS256/PS256/ES256, кеш 6 ч в
+`agent_issuer_keys`), с `aud` = `https://euro-funds.eu/api`, максимална възраст
+5 минути и **еднократен `jti`** (`agent_assertion_jti`). Издателят трябва да е
+вписан в `agent_trusted_issuers` — таблицата се създава ПРАЗНА нарочно: без
+изричен запис всяко твърдение се отхвърля с `invalid_assertion`, а `/auth.md`
+казва това честно, вместо да обещава поток, който не работи.
+
+**Церемония по потвърждаване:** `POST /agent/auth/claim` →6-цифрен код по имейл
+(Resend HTTP API, нов секрет `RESEND_API_KEY`; по избор `AGENT_CLAIM_FROM`) →
+`POST /agent/auth/claim/complete`. Кодът важи 15 минути, 5 опита. В базата се
+пазят само хешове — нито claim токенът, нито кодът се записват в прав вид.
+Липсващ доставчик на имейл НЕ се премълчава: отговорът връща
+`delivered: false` и `delivery_error`.
+
+**Граница на правата.** Нов обхват `procedures:read` (публични данни). Докато
+регистрацията не е свързана с акаунт, това е ЕДИНСТВЕНИЯТ обхват — `requireUser`
+в `worker/handlers.js` връща `403 insufficient_scope` за Bearer без потребител.
+След успешен claim: `procedures:read openid profile:read saved:read`. Всичко си
+остава само за четене; `/api/admin/*` не е достижим с креденшъл.
+
+**Креденшълът** е JWT (`at+jwt`), подписан със същия ES256 ключ, но със
+`sub = "agent:<registration_id>"`. `authenticateBearer` чете реда в
+`agent_registrations` при ВСЯКА заявка → отменянето действа веднага, а обхватът
+идва от базата, не от токена (подправен, но валидно подписан токен с по-широк
+`scope` не получава нищо повече). Access токен: 1 час. Refresh: 30 дни за
+свързан, 7 дни за непотвърден, с ротация; преизползване гаси регистрацията.
+
+**`GET /agent/auth`** връща безопасно описание без странични ефекти — за да не
+се налага скенер да прави `POST` (който създава запис и праща имейл).
+
+- Миграция `0024_agent_auth.sql`: `agent_registrations`, `agent_refresh_tokens`,
+  `agent_claims`, `agent_trusted_issuers`, `agent_issuer_keys`,
+  `agent_assertion_jti`, `agent_auth_events`. Само добавяща.
+- `/auth.md` се обявява в Link заглавките (`rel="describedby"`), в
+  `/.well-known/api-catalog`, в `/llms.txt` и в коментарите на `robots.txt`.
+- Администрация → „API & Agents": нови проверки `api.auth_md` (наличност, тип,
+  H1) и `api.oauth.agent_auth` (пълнота на блока, указатели към собствения
+  произход).
+- Анонимните регистрации се ограничават до 20/час на източник. В дневника се
+  пише псевдоним (SHA-256 с `AUTH_SECRET`), никога суров IP адрес.
+- Тестове: `test/auth-md.test.mjs` — 34 теста (и трите потока, replay на `jti`,
+  `alg=none`, подправен подпис, грешен `aud`, ротация, отменяне, границата на
+  обхватите). `node test/auth-md.test.mjs`.
+
 ## [2.48.5] — 2026-07-26
 
 ### Поправено — резултатите „изчезваха" след презареждане

@@ -42,6 +42,10 @@ export const SUMMARY_TEMPLATES = {
   "oauth.openid": "OpenID конфигурация от {issuer}; {problems} несъответствия.",
   "oauth.protectedResource": "Метаданни на ресурса; {problems} несъответствия.",
   "oauth.jwks": "Публикувани {keys} публични ключа.",
+  "agentAuth.block": "Блокът agent_auth описва {methods} начина за регистрация; {problems} несъответствия.",
+  "agentAuth.absent": "В метаданните липсва блокът agent_auth.",
+  "authMd.ok": "auth.md е публикуван: {bytes} байта, {problems} несъответствия.",
+  "authMd.absent": "auth.md не е публикуван на адрес /auth.md.",
   "oauth.unreachable": "Документът с метаданни не е достъпен.",
   "oauth.invalidJson": "Документът с метаданни не е валиден JSON.",
 

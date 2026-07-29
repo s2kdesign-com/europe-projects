@@ -30,12 +30,64 @@ const BRAND = "Euro-Funding";
 export const ISSUER = SITE;
 export const RESOURCE = `${SITE}/api`;
 
-export const SUPPORTED_SCOPES = ["openid", "profile:read", "saved:read"];
+export const SUPPORTED_SCOPES = ["openid", "profile:read", "saved:read", "procedures:read"];
 const SCOPE_LABEL = {
   openid: "Кой сте вие — идентификатор, име и имейл",
   "profile:read": "Профилът ви за финансиране (държава, регион, сектор, размер на фирмата)",
   "saved:read": "Списъкът с процедурите, които сте запазили",
+  "procedures:read": "Публичните данни за процедурите (не са лични данни)",
 };
+
+// auth.md — агентска регистрация. Пътищата се публикуват в метаданните на
+// authorization server-а (блок `agent_auth`) и се обслужват от agent-auth.js.
+export const AGENT_AUTH_PATHS = {
+  skill: `${SITE}/auth.md`,
+  register: `${SITE}/agent/auth`,
+  claim: `${SITE}/agent/auth/claim`,
+  claimComplete: `${SITE}/agent/auth/claim/complete`,
+  revoke: `${SITE}/agent/auth/revoke`,
+  token: `${SITE}/agent/auth/token`,
+};
+
+export const ID_JAG_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id-jag";
+
+/**
+ * Блокът `agent_auth` в /.well-known/oauth-authorization-server (auth.md).
+ * Чиста функция без зависимости — за да няма кръгов внос с agent-auth.js.
+ */
+export function agentAuthBlock() {
+  return {
+    skill: AGENT_AUTH_PATHS.skill,
+    register_uri: AGENT_AUTH_PATHS.register,
+    claim_uri: AGENT_AUTH_PATHS.claim,
+    revocation_uri: AGENT_AUTH_PATHS.revoke,
+    token_uri: AGENT_AUTH_PATHS.token,
+    identity_types_supported: ["identity_assertion", "anonymous"],
+    assertion_types_supported: [ID_JAG_TOKEN_TYPE, "verified_email"],
+    credential_types_supported: ["access_token"],
+    scopes_supported: SUPPORTED_SCOPES,
+    events_supported: [
+      "https://schemas.openid.net/secevent/caep/event-type/token-claims-change",
+      "https://schemas.openid.net/secevent/caep/event-type/session-revoked",
+    ],
+    identity_assertion: {
+      assertion_types_supported: [ID_JAG_TOKEN_TYPE, "verified_email"],
+      credential_types_supported: ["access_token"],
+      claim_uri: AGENT_AUTH_PATHS.claim,
+      revocation_uri: AGENT_AUTH_PATHS.revoke,
+      signing_alg_values_supported: ["RS256", "PS256", "ES256"],
+      audience: RESOURCE,
+      trusted_issuers_uri: `${SITE}/agent/auth`,
+    },
+    anonymous: {
+      credential_types_supported: ["access_token"],
+      claim_uri: AGENT_AUTH_PATHS.claim,
+      revocation_uri: AGENT_AUTH_PATHS.revoke,
+      scopes_supported: ["procedures:read"],
+    },
+    documentation: `${SITE}/docs/api`,
+  };
+}
 
 const ACCESS_TOKEN_TTL = 3600;              // 1 час
 const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 30; // 30 дни
@@ -131,7 +183,7 @@ function b64urlJson(obj) {
   return b64urlFromBytes(te.encode(JSON.stringify(obj)));
 }
 
-async function signJwt(env, { claims, typ = "JWT" }) {
+export async function signJwt(env, { claims, typ = "JWT" }) {
   const key = await activeSigningKey(env);
   const header = { alg: "ES256", typ, kid: key.kid };
   const payload = `${b64urlJson(header)}.${b64urlJson(claims)}`;
@@ -523,9 +575,24 @@ export function wwwAuthenticate(error, description) {
   return parts.join(", ");
 }
 
+const AGENT_SUB_PREFIX = "agent:";
+
+/** Регистрация на агент по id (auth.md). Отменянето действа веднага, защото
+ *  редът се чете при ВСЯКА заявка — JWT-то само носи идентификатора. */
+export async function loadAgentRegistration(env, registrationId) {
+  if (!registrationId) return null;
+  return env.DB.prepare(
+    "SELECT id, identity_type, assertion_type, agent_issuer, agent_subject, agent_name, email, user_id, scope, status, expires_at, revoked_at FROM agent_registrations WHERE id = ?1"
+  ).bind(String(registrationId)).first().catch(() => null);
+}
+
 /**
- * Връща { user, scopes, clientId } при валиден Bearer токен, { error } при
- * невалиден, или null ако изобщо няма Authorization: Bearer заглавка.
+ * Връща { user, agent, scopes, clientId } при валиден Bearer токен, { error }
+ * при невалиден, или null ако изобщо няма Authorization: Bearer заглавка.
+ *
+ * Токен, издаден по auth.md, има `sub = "agent:<registration_id>"` — тогава се
+ * връща и `agent` (регистрацията). `user` е null, докато креденшълът не бъде
+ * свързан с акаунт (claim или ID-JAG съвпадение по имейл).
  */
 export async function authenticateBearer(env, request) {
   const header = request.headers.get("Authorization") || "";
@@ -538,10 +605,31 @@ export async function authenticateBearer(env, request) {
     // Описанието стига до WWW-Authenticate заглавка → само ASCII.
     return { error: "invalid_token", description: `token verification failed: ${e.message}` };
   }
+  const scopes = String(claims.scope || "").split(/\s+/).filter(Boolean);
+  const sub = String(claims.sub || "");
+
+  if (sub.startsWith(AGENT_SUB_PREFIX)) {
+    const agent = await loadAgentRegistration(env, sub.slice(AGENT_SUB_PREFIX.length));
+    if (!agent) return { error: "invalid_token", description: "agent registration not found" };
+    if (agent.status === "revoked" || agent.revoked_at) return { error: "invalid_token", description: "agent registration revoked" };
+    if (agent.expires_at && new Date(agent.expires_at).getTime() < Date.now()) {
+      return { error: "invalid_token", description: "agent registration expired" };
+    }
+    let user = null;
+    if (agent.user_id) {
+      user = await env.DB.prepare("SELECT id, email, email_verified, display_name, avatar_url, locale, role, created_at, last_login_at FROM users WHERE id = ?1")
+        .bind(agent.user_id).first().catch(() => null);
+      if (!user) return { error: "invalid_token", description: "user no longer exists" };
+    }
+    // Обхватът никога не надхвърля записания в регистрацията (тя е истината).
+    const granted = String(agent.scope || "").split(/\s+/).filter(Boolean);
+    return { user, agent, scopes: scopes.filter((s) => granted.includes(s)), clientId: claims.client_id || null };
+  }
+
   const user = await env.DB.prepare("SELECT id, email, email_verified, display_name, avatar_url, locale, role, created_at, last_login_at FROM users WHERE id = ?1")
-    .bind(claims.sub).first().catch(() => null);
+    .bind(sub).first().catch(() => null);
   if (!user) return { error: "invalid_token", description: "user no longer exists" };
-  return { user, scopes: String(claims.scope || "").split(/\s+/).filter(Boolean), clientId: claims.client_id || null };
+  return { user, agent: null, scopes, clientId: claims.client_id || null };
 }
 
 /** Кой обхват е нужен за даден път (само GET). null → достъпът е забранен за токен. */
@@ -601,7 +689,10 @@ function baseMetadata() {
 }
 
 export function authorizationServerMetadata() {
-  return metadataResponse(baseMetadata());
+  // `agent_auth` е разширението на auth.md: казва на агента КАК да се регистрира
+  // сам, без човек пред браузъра. Не е част от RFC 8414 и затова стои само тук
+  // (не и в /.well-known/openid-configuration, което остава чисто OIDC).
+  return metadataResponse({ ...baseMetadata(), agent_auth: agentAuthBlock() });
 }
 
 export function openidConfiguration() {
@@ -626,6 +717,9 @@ export function protectedResourceMetadata() {
     resource_documentation: `${SITE}/docs/api`,
     resource_policy_uri: `${SITE}/privacy`,
     tls_client_certificate_bound_access_tokens: false,
+    // Пряк указател към агентската регистрация — стъпка 1 от auth.md е точно
+    // този документ, а без указателя агентът трябва да гадае къде е /auth.md.
+    agent_auth_skill: AGENT_AUTH_PATHS.skill,
   });
 }
 

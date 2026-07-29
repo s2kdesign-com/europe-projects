@@ -16,6 +16,8 @@ export const AGENT_LINKS = [
   { href: "/api/health", rel: "status", type: "application/json" },
   { href: "/.well-known/oauth-authorization-server", rel: "describedby", type: "application/json" },
   { href: "/llms.txt", rel: "describedby", type: "text/markdown" },
+  // auth.md: как агент да се регистрира сам (https://workos.com/auth-md).
+  { href: "/auth.md", rel: "describedby", type: "text/markdown" },
   { href: "/sitemap.xml", rel: "sitemap", type: "application/xml" },
 ];
 
@@ -88,7 +90,10 @@ export function apiCatalog() {
         status: [{ href: `${SITE}/api/health`, type: "application/json", title: "Здравен статус" }],
         author: [{ href: `${SITE}/about`, title: BRAND }],
         "terms-of-service": [{ href: `${SITE}/terms`, title: "Условия за ползване" }],
-        describedby: [{ href: `${SITE}/llms.txt`, type: "text/markdown", title: "Карта на съдържанието за езикови модели" }],
+        describedby: [
+          { href: `${SITE}/llms.txt`, type: "text/markdown", title: "Карта на съдържанието за езикови модели" },
+          { href: `${SITE}/auth.md`, type: "text/markdown", title: "auth.md — регистрация на агент" },
+        ],
       },
     ],
   };
@@ -210,9 +215,18 @@ export function openApiDocument(version = "0.0.0") {
                 openid: "Идентификатор и основен профил на потребителя",
                 "profile:read": "Четене на профила за финансиране (държава, регион, сектор)",
                 "saved:read": "Четене на запазените процедури",
+                "procedures:read": "Четене на публичните данни за процедурите",
               },
             },
           },
+        },
+        // auth.md: агентът се регистрира сам на /agent/auth и представя
+        // издадения креденшъл като Bearer. Виж https://euro-funds.eu/auth.md
+        agentAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description: "Креденшъл, издаден по auth.md (POST /agent/auth). Правата са само за четене; преди завършен claim обхватът е само `procedures:read`. Манифест: https://euro-funds.eu/auth.md",
         },
       },
       schemas: {
@@ -369,6 +383,7 @@ export function robotsTxt() {
     "# /llms.txt                    — карта на съдържанието (llmstxt.org)",
     "# /openapi.json                — OpenAPI 3.1 описание на публичното API",
     "# /.well-known/api-catalog     — API каталог (RFC 9727)",
+    "# /auth.md                     — регистрация на агент (auth.md)",
     "# Accept: text/markdown        — markdown версия на всяка публична страница",
     "",
     `Sitemap: ${SITE}/sitemap.xml`,
