@@ -109,6 +109,8 @@ export function buildPlan(groups, context = {}) {
     for (const p of AGENT_PAGES) add(`agents.markdown:${p.path}`, "agents", { path: p.path, typeKey: p.typeKey });
     if (sample[0]) add(`agents.markdown:${sample[0]}`, "agents", { path: sample[0], typeKey: "page.procedureDetail" });
     add("agents.llms_txt", "agents");
+    add("agents.agent_index", "agents");
+    add("agents.dns_aid", "agents");
     add("agents.html_default", "agents");
   }
 
@@ -495,6 +497,81 @@ async function linkHeaderCheck(c, ctx, { method = "GET", accept = null, ua = BRO
     safeDetails: { method, accept, relations: rels, links, missing, duplicates: dups },
   });
 }
+
+// --- DNS-AID (draft-mozleywilliams-dnsop-dnsaid) ---------------------------
+
+// Индексът, към който сочи SVCB записът `_index._agents`.
+H("agents.agent_index", async (c, ctx) => {
+  const p = await probe(`${ctx.origin}/.well-known/agent-index.json`, { fetchImpl: ctx.fetchImpl });
+  if (p.status !== 200) return result(c.code, c.category, STATUS.FAILED, "agentIndex.absent", { ...fromProbe(p) });
+  let doc; try { doc = JSON.parse(p.body); } catch { return result(c.code, c.category, STATUS.FAILED, "agentIndex.invalidJson", { ...fromProbe(p) }); }
+  const problems = [];
+  if (!ctIs(p.contentType, "application/json")) problems.push("content_type");
+  for (const f of ["spec", "organization", "services", "discovery"]) if (!doc[f]) problems.push(`missing_${f}`);
+  if (!Array.isArray(doc.agents)) problems.push("missing_agents");
+  // Празен списък агенти е ЛЕГИТИМЕН (ние сме ресурс за агенти, не агент), но
+  // тогава трябва да е обяснен — иначе индексът изглежда просто счупен.
+  if (Array.isArray(doc.agents) && !doc.agents.length && !doc.agents_note) problems.push("empty_agents_without_note");
+  if (Array.isArray(doc.services) && !doc.services.length) problems.push("no_services");
+  if (detectLeakage(p.body).length) problems.push("secret_exposure");
+  const status = problems.some((x) => x.startsWith("missing_") || x === "secret_exposure") ? STATUS.FAILED
+    : problems.length ? STATUS.WARNING : STATUS.PASSED;
+  return result(c.code, c.category, status, "agentIndex.ok", {
+    ...fromProbe(p),
+    summaryParams: { services: (doc.services || []).length, problems: problems.length },
+    safeDetails: {
+      spec: doc.spec || null, dnsRecord: doc.dns_record || null,
+      agents: (doc.agents || []).length, services: (doc.services || []).map((x) => x.id),
+      problems,
+    },
+  });
+});
+
+// Самият DNS запис. Проверява се през DNS-over-HTTPS — същия път, по който го
+// чете и външният скенер. `AD: true` идва само при валидиран DNSSEC подпис;
+// без DS запис при регистратора флагът остава false, макар записът да съществува.
+const DOH_RESOLVERS = ["https://cloudflare-dns.com/dns-query", "https://dns.google/resolve"];
+
+H("agents.dns_aid", async (c, ctx) => {
+  let host;
+  try { host = new URL(ctx.origin).hostname; } catch { host = "euro-funds.eu"; }
+  // Локални/предварителни среди нямат публичен DNS — проверката не важи за тях.
+  if (host === "localhost" || host.endsWith(".localhost") || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+    return result(c.code, c.category, STATUS.NOT_APPLICABLE, "dnsAid.notPublic", { safeDetails: { host } });
+  }
+  const name = `_index._agents.${host}`;
+  let answer = null, ad = false, resolver = null, lastError = null;
+  for (const base of DOH_RESOLVERS) {
+    const p = await probe(`${base}?name=${encodeURIComponent(name)}&type=SVCB&do=true`, {
+      accept: "application/dns-json", fetchImpl: ctx.fetchImpl, maxBytes: 20_000,
+    });
+    if (p.status !== 200) { lastError = `resolver_status_${p.status}`; continue; }
+    let doc; try { doc = JSON.parse(p.body); } catch { lastError = "resolver_invalid_json"; continue; }
+    resolver = base;
+    ad = doc.AD === true;
+    answer = (doc.Answer || []).filter((a) => a.type === 64 || a.type === 65);
+    break;
+  }
+  if (!resolver) {
+    return result(c.code, c.category, STATUS.WARNING, "dnsAid.resolverUnreachable", { safeDetails: { name, error: lastError } });
+  }
+  if (!answer || !answer.length) {
+    return result(c.code, c.category, STATUS.FAILED, "dnsAid.absent", { safeDetails: { name, resolver, dnssecAuthenticated: ad } });
+  }
+  const data = answer.map((a) => String(a.data || ""));
+  const joined = data.join(" ").toLowerCase();
+  const problems = [];
+  // ServiceMode = приоритет различен от 0 (0 е AliasMode и не носи параметри).
+  if (data.every((d) => /^\s*0\s/.test(d))) problems.push("alias_mode_only");
+  if (!joined.includes("alpn")) problems.push("missing_alpn");
+  if (!ad) problems.push("dnssec_unauthenticated");
+  const status = problems.includes("alias_mode_only") || problems.includes("missing_alpn") ? STATUS.FAILED
+    : problems.length ? STATUS.WARNING : STATUS.PASSED;
+  return result(c.code, c.category, status, "dnsAid.ok", {
+    summaryParams: { records: data.length, problems: problems.length },
+    safeDetails: { name, resolver, records: data, dnssecAuthenticated: ad, problems },
+  });
+});
 
 H("agents.link_headers.html", (c, ctx) => linkHeaderCheck(c, ctx, { accept: "text/html" }));
 H("agents.link_headers.head", (c, ctx) => linkHeaderCheck(c, ctx, { method: "HEAD", accept: "text/html" }));

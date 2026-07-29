@@ -3,6 +3,60 @@
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично
 версиониране. Най-новото е най-отгоре. Добавяй нов запис при всяка версия.
 
+## [2.50.0] — 2026-07-29
+
+### Добавено — DNS-AID: откриване на платформата през DNS
+
+Скенерът на isitagentready.com отчиташе `dnsAid: not found`. DNS-AID
+([draft-mozleywilliams-dnsop-dnsaid-02](https://datatracker.ietf.org/doc/draft-mozleywilliams-dnsop-dnsaid/),
+върху [RFC 9460](https://www.rfc-editor.org/rfc/rfc9460)) публикува SVCB запис на
+`_index._agents.<домейн>`, който сочи към регистър на организацията. Черновата
+нарочно оставя ФОРМАТА на регистъра извън обхвата си — тук е нашият.
+
+**Нов документ `/.well-known/agent-index.json`** (`agentIndex()` в
+`worker/agent/discovery.js`). Пътят е `agent-index.json`, а НЕ `agents.json`:
+последният вече е зает от друга конвенция (wild-card-ai/agents-json), която
+описва API действия и потоци — агент, който очаква онзи формат, щеше да прочете
+нашия и да се обърка.
+
+⚠️ Документът обявява **нула собствени агенти**. `agents: []` + `agents_note`,
+който казва открито, че euro-funds.eu не пуска A2A или MCP сървър. Домейнът е
+ресурс ЗА агенти, не доставчик на агенти. Изброените услуги са само за четене и
+това се проверява от теста (`methods: ["GET"]` за всяка услуга).
+
+Съдържа: организация, услуги (публично API, markdown представяне, лични данни),
+всички машинни описания (`api-catalog`, `openapi.json`, `llms.txt`, `auth.md`,
+OAuth метаданни, JWKS, health, sitemap, robots), обхватите за автентикация,
+Content Signal и живи числа от D1 (процедури, държави, последна снимка).
+Недостъпна база НЕ сваля документа — числата стават `null`.
+
+**DNS записът** (въвежда се ръчно в Cloudflare, не е в кода):
+
+```
+_index._agents  SVCB  1 euro-funds.eu. alpn="h2,h3" port="443"
+```
+
+ServiceMode (приоритет ≠ 0) — AliasMode не носи параметри. TargetName е
+`euro-funds.eu.`, без долни черти, защото се ползва публичният X.509 сертификат.
+
+**Защо не `_a2a` / `_mcp`.** Не пускаме такива сървъри. Запис за протокол, който
+не обслужваме, праща агенти към несъществуващ endpoint.
+
+- Индексът се обявява в Link заглавките (`rel="describedby"`), в
+  `/.well-known/api-catalog`, в `/llms.txt` и в коментарите на `robots.txt`.
+- Администрация → „API & Agents": нови проверки `agents.agent_index` (наличност,
+  задължителни полета, обяснен празен списък агенти) и `agents.dns_aid` (SVCB
+  през DNS-over-HTTPS с резервен резолвер; AliasMode и липсващ `alpn` са провал,
+  неподписана зона е предупреждение, локална среда е `not_applicable`).
+- Тестове: `test/dns-aid.test.mjs` — 21 теста. `node test/dns-aid.test.mjs`.
+
+### Остава ръчно (не може от кода)
+
+1. SVCB записът в Cloudflare DNS (конекторът дава D1/KV/R2/Workers, не DNS).
+2. **DNSSEC.** Зоната НЕ е подписана — няма DS при `.eu`, няма DNSKEY, `AD=false`.
+   Cloudflare → DNS → Settings → Enable DNSSEC, после DS записът се въвежда при
+   регистратора на домейна. Без това записът съществува, но не е доказано наш.
+
 ## [2.49.0] — 2026-07-29
 
 ### Добавено — auth.md: агент може сам да си поиска достъп

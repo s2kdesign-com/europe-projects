@@ -61,6 +61,13 @@ export const SUMMARY_TEMPLATES = {
   "agents.htmlDefault.ok": "Браузърските заявки получават HTML при всички {checked} страници.",
   "agents.htmlDefault.broken": "{broken} страници връщат грешен тип за браузър.",
   "agents.llms.ok": "llms.txt е наличен с {links} връзки.",
+  "agentIndex.ok": "Агентският индекс изброява {services} услуги; {problems} несъответствия.",
+  "agentIndex.absent": "Агентският индекс не е публикуван на /.well-known/agent-index.json.",
+  "agentIndex.invalidJson": "Агентският индекс не е валиден JSON.",
+  "dnsAid.ok": "DNS-AID: {records} SVCB записа, {problems} несъответствия.",
+  "dnsAid.absent": "Няма SVCB запис на _index._agents за този домейн.",
+  "dnsAid.resolverUnreachable": "DNS резолверът не отговори — проверката не е направена.",
+  "dnsAid.notPublic": "Домейнът не е публичен — DNS проверката не важи.",
   "agents.llms.absent": "llms.txt не е публикуван.",
   "agents.llms.unreachable": "llms.txt не отговори.",
 

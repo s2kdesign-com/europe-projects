@@ -15,7 +15,7 @@ import { APP_VERSION } from "./app/lib/version.js";
 // Слой „готовност за агенти": markdown negotiation, Link заглавки, API каталог,
 // OpenAPI, Content Signals и OAuth 2.1 authorization server.
 import { handleMarkdown, wantsMarkdown, markdownResponse, llmsTxt } from "./worker/agent/markdown.js";
-import { apiCatalog, apiDocsHtml, apiDocsMarkdown, asGetRequest, handleHealth, openApiResponse, robotsTxt, stripBodyForHead, withAgentHeaders } from "./worker/agent/discovery.js";
+import { agentIndex, apiCatalog, apiDocsHtml, apiDocsMarkdown, asGetRequest, handleHealth, openApiResponse, robotsTxt, stripBodyForHead, withAgentHeaders } from "./worker/agent/discovery.js";
 import { handleOAuthServer } from "./worker/agent/oauth-server.js";
 import { handleAgentAuth } from "./worker/agent/agent-auth.js";
 
@@ -198,6 +198,8 @@ async function handleRequest(request, env, url) {
       // Машинно четимо описание на API-то + каталог (RFC 9727).
       if (pathname === "/openapi.json") return openApiResponse(APP_VERSION);
       if (pathname === "/.well-known/api-catalog") return apiCatalog();
+      // Индексът зад DNS-AID: SVCB на _index._agents сочи насам (виж agentIndex).
+      if (pathname === "/.well-known/agent-index.json") return agentIndex(env, APP_VERSION);
       // Човешка документация (service-doc) — с markdown вариант за агенти.
       if (pathname === "/docs/api" || pathname === "/docs/api/") {
         if (wantsMarkdown(request)) return markdownResponse(apiDocsMarkdown(APP_VERSION), { canonicalUrl: `${url.origin}/docs/api`, maxAge: 3600 });

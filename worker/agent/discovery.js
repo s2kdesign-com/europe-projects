@@ -18,6 +18,8 @@ export const AGENT_LINKS = [
   { href: "/llms.txt", rel: "describedby", type: "text/markdown" },
   // auth.md: как агент да се регистрира сам (https://workos.com/auth-md).
   { href: "/auth.md", rel: "describedby", type: "text/markdown" },
+  // DNS-AID: индексът, към който сочи SVCB записът _index._agents.
+  { href: "/.well-known/agent-index.json", rel: "describedby", type: "application/json" },
   { href: "/sitemap.xml", rel: "sitemap", type: "application/xml" },
 ];
 
@@ -93,6 +95,7 @@ export function apiCatalog() {
         describedby: [
           { href: `${SITE}/llms.txt`, type: "text/markdown", title: "Карта на съдържанието за езикови модели" },
           { href: `${SITE}/auth.md`, type: "text/markdown", title: "auth.md — регистрация на агент" },
+          { href: `${SITE}/.well-known/agent-index.json`, type: "application/json", title: "Агентски индекс (DNS-AID)" },
         ],
       },
     ],
@@ -103,6 +106,154 @@ export function apiCatalog() {
       "content-type": "application/linkset+json; charset=utf-8",
       "cache-control": "public, max-age=3600",
       "access-control-allow-origin": "*",
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// /.well-known/agent-index.json — индексът зад DNS-AID
+// ---------------------------------------------------------------------------
+//
+// DNS-AID (draft-mozleywilliams-dnsop-dnsaid) казва, че SVCB заявка към
+// `_index._agents.<домейн>` връща указател към „регистър на всички агенти на
+// организацията", но нарочно оставя ФОРМАТА на този регистър извън обхвата си.
+// Този документ е нашият регистър.
+//
+// Пътят е `/.well-known/agent-index.json`, а НЕ `/.well-known/agents.json`:
+// последният вече е зает от друга конвенция (wild-card-ai/agents-json), която
+// описва API действия и потоци. Агент, който очаква онзи формат, щеше да
+// прочете нашия и да се обърка.
+//
+// Честността е важна тук: euro-funds.eu НЕ пуска A2A или MCP агент. Затова
+// `agents` е празен масив с изрично обяснение, вместо да изброяваме услуги,
+// преправени да звучат като агенти. Записът в DNS сочи към ресурс ЗА агенти.
+
+export async function agentIndex(env, version = "0.0.0") {
+  let procedures = null;
+  let countries = null;
+  let snapshot = null;
+  try {
+    const r = await env.DB.prepare(
+      "SELECT (SELECT COUNT(*) FROM projects) AS p, (SELECT COUNT(*) FROM countries WHERE enabled=1) AS c, (SELECT MAX(snapshot_date) FROM country_daily_statistics WHERE publish_status='published') AS s"
+    ).first();
+    if (r) { procedures = r.p; countries = r.c; snapshot = r.s || null; }
+  } catch { /* индексът се сервира и при недостъпна база — просто без числа */ }
+
+  const body = {
+    spec: "DNS-AID (draft-mozleywilliams-dnsop-dnsaid-02)",
+    specification_uri: "https://datatracker.ietf.org/doc/draft-mozleywilliams-dnsop-dnsaid/",
+    dns_record: `_index._agents.${new URL(SITE).hostname}`,
+    dns_record_type: "SVCB",
+    version,
+    generated_at: new Date().toISOString(),
+
+    organization: {
+      name: BRAND,
+      domain: new URL(SITE).hostname,
+      url: SITE,
+      description: "Публичен регистър на европейски и национални програми за финансиране в 27-те държави от ЕС.",
+      about: `${SITE}/about`,
+      terms_of_service: `${SITE}/terms`,
+      privacy_policy: `${SITE}/privacy`,
+    },
+
+    // Нула собствени агенти — и това е казано открито, вместо да се премълчи.
+    agents: [],
+    agents_note:
+      "Euro-Funding does not operate A2A or MCP agents. This domain is a data resource FOR agents: " +
+      "the services below are read-only HTTPS APIs that an agent can call directly.",
+
+    services: [
+      {
+        id: "procedures-api",
+        name: "Euro-Funding public API",
+        description: "Процедури, програми, държави и източници. Публични данни, без креденшъл.",
+        protocol: "https",
+        alpn: ["h2", "h3"],
+        port: 443,
+        base_url: `${SITE}/api`,
+        methods: ["GET"],
+        media_types: ["application/json"],
+        openapi: `${SITE}/openapi.json`,
+        documentation: `${SITE}/docs/api`,
+        authentication: "none",
+      },
+      {
+        id: "markdown-pages",
+        name: "Markdown представяне на публичните страници",
+        description: "Всяка публична страница се сервира и като markdown при Accept: text/markdown.",
+        protocol: "https",
+        alpn: ["h2", "h3"],
+        port: 443,
+        base_url: SITE,
+        methods: ["GET"],
+        media_types: ["text/markdown"],
+        documentation: `${SITE}/llms.txt`,
+        authentication: "none",
+      },
+      {
+        id: "user-data-api",
+        name: "Лични данни на потребител (профил и запазени процедури)",
+        description: "Изисква креденшъл, свързан с акаунт. Само за четене.",
+        protocol: "https",
+        alpn: ["h2", "h3"],
+        port: 443,
+        base_url: `${SITE}/api`,
+        methods: ["GET"],
+        media_types: ["application/json"],
+        openapi: `${SITE}/openapi.json`,
+        authentication: "oauth2 | auth.md",
+        scopes: ["profile:read", "saved:read", "openid"],
+      },
+    ],
+
+    discovery: {
+      api_catalog: `${SITE}/.well-known/api-catalog`,
+      openapi: `${SITE}/openapi.json`,
+      documentation: `${SITE}/docs/api`,
+      llms_txt: `${SITE}/llms.txt`,
+      auth_md: `${SITE}/auth.md`,
+      oauth_authorization_server: `${SITE}/.well-known/oauth-authorization-server`,
+      oauth_protected_resource: `${SITE}/.well-known/oauth-protected-resource`,
+      openid_configuration: `${SITE}/.well-known/openid-configuration`,
+      jwks: `${SITE}/.well-known/jwks.json`,
+      health: `${SITE}/api/health`,
+      sitemap: `${SITE}/sitemap.xml`,
+      robots: `${SITE}/robots.txt`,
+    },
+
+    authentication: {
+      required_for_public_data: false,
+      agent_registration_skill: `${SITE}/auth.md`,
+      register_uri: `${SITE}/agent/auth`,
+      identity_types_supported: ["identity_assertion", "anonymous"],
+      scopes_supported: ["procedures:read", "openid", "profile:read", "saved:read"],
+      note: "Public procedure data needs no credential. Register only for a user's profile or saved procedures.",
+    },
+
+    usage: {
+      read_only: true,
+      write_access: "browser session only; credentials are never granted write access",
+      content_signal: CONTENT_SIGNAL,
+      content_signal_source: `${SITE}/robots.txt`,
+      disclaimer: "Данните са събрани от официални източници и не заместват официалната документация по процедурите.",
+    },
+
+    data: {
+      procedures,
+      countries,
+      last_snapshot: snapshot,
+      sources: `${SITE}/api/sources`,
+    },
+  };
+
+  return new Response(JSON.stringify(body, null, 2), {
+    status: 200,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "public, max-age=3600",
+      "access-control-allow-origin": "*",
+      "x-content-type-options": "nosniff",
     },
   });
 }
@@ -384,6 +535,7 @@ export function robotsTxt() {
     "# /openapi.json                — OpenAPI 3.1 описание на публичното API",
     "# /.well-known/api-catalog     — API каталог (RFC 9727)",
     "# /auth.md                     — регистрация на агент (auth.md)",
+    "# /.well-known/agent-index.json — агентски индекс (DNS-AID, _index._agents)",
     "# Accept: text/markdown        — markdown версия на всяка публична страница",
     "",
     `Sitemap: ${SITE}/sitemap.xml`,
