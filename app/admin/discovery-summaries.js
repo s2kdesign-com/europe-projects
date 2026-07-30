@@ -68,6 +68,10 @@ export const SUMMARY_TEMPLATES = {
   "dnsAid.absent": "Няма SVCB запис на _index._agents за този домейн.",
   "dnsAid.resolverUnreachable": "DNS резолверът не отговори — проверката не е направена.",
   "dnsAid.notPublic": "Домейнът не е публичен — DNS проверката не важи.",
+  "skills.ok": "Публикувани {skills} skill-а за агенти; {problems} несъответствия.",
+  "skills.absent": "Индексът на skill-овете не е публикуван.",
+  "skills.invalidJson": "Индексът на skill-овете не е валиден JSON.",
+  "skills.noArray": "Индексът няма масив skills.",
   "agents.llms.absent": "llms.txt не е публикуван.",
   "agents.llms.unreachable": "llms.txt не отговори.",
 

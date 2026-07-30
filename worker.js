@@ -18,6 +18,7 @@ import { handleMarkdown, wantsMarkdown, markdownResponse, llmsTxt } from "./work
 import { agentIndex, apiCatalog, apiDocsHtml, apiDocsMarkdown, asGetRequest, handleHealth, openApiResponse, robotsTxt, stripBodyForHead, withAgentHeaders } from "./worker/agent/discovery.js";
 import { handleOAuthServer } from "./worker/agent/oauth-server.js";
 import { handleAgentAuth } from "./worker/agent/agent-auth.js";
+import { handleAgentSkills } from "./worker/agent/skills.js";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" };
 function json(body, status = 200) {
@@ -164,6 +165,14 @@ async function handleRequest(request, env, url) {
     if (legacy) return legacy;
 
     // ---- Слой за агенти -----------------------------------------------------
+    // Agent Skills Discovery — индекс + самите SKILL.md файлове.
+    try {
+      const skillsResp = await handleAgentSkills(request, env, url);
+      if (skillsResp) return skillsResp;
+    } catch (e) {
+      await logError(env, { source: "server", method: request.method, path: pathname, status: 500, message: "agent-skills: " + String((e && e.message) || e), detail: String((e && e.stack) || "") }).catch(() => {});
+    }
+
     // auth.md — манифестът /auth.md + агентската регистрация (/agent/auth*).
     try {
       const agentResp = await handleAgentAuth(request, env, url);

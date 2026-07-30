@@ -85,6 +85,8 @@ export const DISCOVERY_RESOURCES = [
   { id: "authMd", path: "/auth.md", standard: "auth.md", official: false, expectType: "text/markdown" },
   // DNS-AID също не е публикуван RFC — Internet-Draft (dnsop).
   { id: "agentIndex", path: "/.well-known/agent-index.json", standard: "DNS-AID", official: false, expectType: "application/json" },
+  // Agent Skills Discovery RFC v0.2.0 (Cloudflare) — също още не е стандарт.
+  { id: "agentSkills", path: "/.well-known/agent-skills/index.json", standard: "Agent Skills v0.2.0", official: false, expectType: "application/json" },
   { id: "oauthMetadata", path: "/.well-known/oauth-authorization-server", standard: "RFC 8414", official: true, expectType: "application/json" },
   { id: "openidConfiguration", path: "/.well-known/openid-configuration", standard: "OpenID Connect Discovery 1.0", official: true, expectType: "application/json" },
   { id: "protectedResource", path: "/.well-known/oauth-protected-resource", standard: "RFC 9728", official: true, expectType: "application/json" },

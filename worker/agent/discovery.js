@@ -20,6 +20,8 @@ export const AGENT_LINKS = [
   { href: "/auth.md", rel: "describedby", type: "text/markdown" },
   // DNS-AID: индексът, към който сочи SVCB записът _index._agents.
   { href: "/.well-known/agent-index.json", rel: "describedby", type: "application/json" },
+  // Agent Skills Discovery — инструкции, които агент зарежда преди работа.
+  { href: "/.well-known/agent-skills/index.json", rel: "describedby", type: "application/json" },
   { href: "/sitemap.xml", rel: "sitemap", type: "application/xml" },
 ];
 
@@ -96,6 +98,7 @@ export function apiCatalog() {
           { href: `${SITE}/llms.txt`, type: "text/markdown", title: "Карта на съдържанието за езикови модели" },
           { href: `${SITE}/auth.md`, type: "text/markdown", title: "auth.md — регистрация на агент" },
           { href: `${SITE}/.well-known/agent-index.json`, type: "application/json", title: "Агентски индекс (DNS-AID)" },
+          { href: `${SITE}/.well-known/agent-skills/index.json`, type: "application/json", title: "Индекс на агентските skill-ове" },
         ],
       },
     ],
@@ -536,6 +539,7 @@ export function robotsTxt() {
     "# /.well-known/api-catalog     — API каталог (RFC 9727)",
     "# /auth.md                     — регистрация на агент (auth.md)",
     "# /.well-known/agent-index.json — агентски индекс (DNS-AID, _index._agents)",
+    "# /.well-known/agent-skills/     — skill-ове за агенти (index.json + SKILL.md)",
     "# Accept: text/markdown        — markdown версия на всяка публична страница",
     "",
     `Sitemap: ${SITE}/sitemap.xml`,

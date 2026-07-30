@@ -111,6 +111,7 @@ export function buildPlan(groups, context = {}) {
     add("agents.llms_txt", "agents");
     add("agents.agent_index", "agents");
     add("agents.dns_aid", "agents");
+    add("agents.skills_index", "agents");
     add("agents.html_default", "agents");
   }
 
@@ -497,6 +498,78 @@ async function linkHeaderCheck(c, ctx, { method = "GET", accept = null, ua = BRO
     safeDetails: { method, accept, relations: rels, links, missing, duplicates: dups },
   });
 }
+
+// --- Agent Skills Discovery (RFC v0.2.0) -----------------------------------
+
+// Стойността на индекса е в дайджестите: агент тегли SKILL.md и отказва да го
+// ползва, ако хешът не съвпадне. Затова проверката НЕ спира до „индексът е
+// валиден JSON" — тегли всеки skill и сверява дайджеста байт по байт. Точно
+// това разминаване е тихо и вредно: индексът изглежда наред, а агентите
+// мълчаливо отказват всичко.
+const SKILLS_SCHEMA_PREFIX = "https://schemas.agentskills.io/discovery/";
+const SKILL_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+async function sha256HexOf(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+H("agents.skills_index", async (c, ctx) => {
+  const p = await probe(`${ctx.origin}/.well-known/agent-skills/index.json`, { fetchImpl: ctx.fetchImpl });
+  if (p.status !== 200) return result(c.code, c.category, STATUS.FAILED, "skills.absent", { ...fromProbe(p) });
+  let doc; try { doc = JSON.parse(p.body); } catch { return result(c.code, c.category, STATUS.FAILED, "skills.invalidJson", { ...fromProbe(p) }); }
+
+  const problems = [];
+  if (!ctIs(p.contentType, "application/json")) problems.push("content_type");
+  if (!String(doc.$schema || "").startsWith(SKILLS_SCHEMA_PREFIX)) problems.push("bad_schema");
+  const skills = Array.isArray(doc.skills) ? doc.skills : null;
+  if (!skills) return result(c.code, c.category, STATUS.FAILED, "skills.noArray", { ...fromProbe(p) });
+  if (!skills.length) problems.push("empty");
+
+  const seen = new Set();
+  const checked = [];
+  for (const s of skills) {
+    const label = String(s && s.name ? s.name : "?");
+    for (const f of ["name", "type", "description", "url", "digest"]) {
+      if (!s || !s[f]) problems.push(`missing_${f}:${label}`);
+    }
+    if (!s || !s.name) continue;
+    if (!SKILL_NAME_RE.test(s.name) || s.name.length > 64) problems.push(`bad_name:${label}`);
+    if (seen.has(s.name)) problems.push(`duplicate:${label}`);
+    seen.add(s.name);
+    if (s.type !== "skill-md" && s.type !== "archive") problems.push(`bad_type:${label}`);
+    if (s.description && s.description.length > 1024) problems.push(`long_description:${label}`);
+    if (s.digest && !/^sha256:[0-9a-f]{64}$/.test(s.digest)) problems.push(`bad_digest_format:${label}`);
+    // Чужд произход в индекса праща агента другаде — не го приемаме мълчаливо.
+    let target = null;
+    try { target = new URL(s.url, ctx.origin); } catch { problems.push(`bad_url:${label}`); }
+    if (target && target.origin !== new URL(ctx.origin).origin) problems.push(`foreign_url:${label}`);
+
+    if (!target || !s.digest || s.type !== "skill-md") continue;
+    const sp = await probe(target.href, { fetchImpl: ctx.fetchImpl, accept: "text/markdown", maxBytes: 200_000 });
+    if (sp.status !== 200) { problems.push(`unreachable:${label}`); checked.push({ name: s.name, status: sp.status, digestMatches: null }); continue; }
+    const actual = `sha256:${await sha256HexOf(sp.body)}`;
+    const matches = actual === s.digest;
+    if (!matches) problems.push(`digest_mismatch:${label}`);
+    // Изискване на RFC-то: SKILL.md започва с YAML frontmatter с name и description.
+    if (!/^---\r?\n/.test(sp.body)) problems.push(`no_frontmatter:${label}`);
+    else {
+      const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(sp.body);
+      const front = fm ? fm[1] : "";
+      if (!new RegExp(`^name:\\s*${s.name}\\s*$`, "m").test(front)) problems.push(`frontmatter_name:${label}`);
+      if (!/^description:\s*\S/m.test(front)) problems.push(`frontmatter_description:${label}`);
+    }
+    checked.push({ name: s.name, status: sp.status, bytes: sp.bytes, digestMatches: matches });
+  }
+
+  const fatal = problems.some((x) => x.startsWith("missing_") || x.startsWith("digest_mismatch") || x.startsWith("unreachable") || x.startsWith("foreign_url") || x === "bad_schema" || x === "empty");
+  const status = fatal ? STATUS.FAILED : problems.length ? STATUS.WARNING : STATUS.PASSED;
+  return result(c.code, c.category, status, "skills.ok", {
+    ...fromProbe(p),
+    summaryParams: { skills: skills.length, problems: problems.length },
+    safeDetails: { schema: doc.$schema || null, skills: skills.map((s) => (s && s.name) || "?"), verified: checked, problems },
+  });
+});
 
 // --- DNS-AID (draft-mozleywilliams-dnsop-dnsaid) ---------------------------
 

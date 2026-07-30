@@ -508,6 +508,7 @@ export async function llmsTxt(env) {
     `- [OAuth 2.1 метаданни](${SITE}/.well-known/oauth-authorization-server): достъп до личните данни на потребител`,
     `- [auth.md](${SITE}/auth.md): как агент да се регистрира сам (ID-JAG, потвърден имейл, анонимно)`,
     `- [Агентски индекс](${SITE}/.well-known/agent-index.json): регистърът зад DNS записа _index._agents (DNS-AID)`,
+    `- [Skill-ове за агенти](${SITE}/.well-known/agent-skills/index.json): инструкции за търсене на процедури, достъп и държави`,
     "",
     "## Условия",
     "",
