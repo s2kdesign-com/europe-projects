@@ -12,7 +12,7 @@
 import {
   analyseMarkdown, analyseSitemap, detectLeakage, duplicateLinks, extractMetadata,
   groupForAgent, isValidHreflang, parseContentSignal, parseLinkHeader, parseRobots,
-  parseSitemap, robotsAllows, safeHeaders, validateJsonLd,
+  parseSitemap, parseSvcbRecord, robotsAllows, safeHeaders, validateJsonLd,
 } from "./parsers.js";
 import { AGENT_PAGES, ROUTES, compareOpenApiWithRouter, internalRoutes, isNeverPublic, publicRoutes } from "./inventory.js";
 import { codeSlug } from "../../app/lib/slug.js";
@@ -559,17 +559,29 @@ H("agents.dns_aid", async (c, ctx) => {
     return result(c.code, c.category, STATUS.FAILED, "dnsAid.absent", { safeDetails: { name, resolver, dnssecAuthenticated: ad } });
   }
   const data = answer.map((a) => String(a.data || ""));
-  const joined = data.join(" ").toLowerCase();
+  // Записът НЕ се проверява с търсене на низа „alpn": Cloudflare връща SVCB в
+  // суров RFC 3597 вид (`\# 33 00 01 ...`), а Google — в презентационен. Само
+  // низово търсене дава фалшив „missing_alpn" при половината резолвери.
+  const parsed = data.map(parseSvcbRecord).filter(Boolean);
   const problems = [];
+  if (!parsed.length) problems.push("unparseable");
   // ServiceMode = приоритет различен от 0 (0 е AliasMode и не носи параметри).
-  if (data.every((d) => /^\s*0\s/.test(d))) problems.push("alias_mode_only");
-  if (!joined.includes("alpn")) problems.push("missing_alpn");
+  const service = parsed.filter((r) => r.priority !== 0);
+  if (parsed.length && !service.length) problems.push("alias_mode_only");
+  if (service.length && !service.some((r) => r.keys.includes(1))) problems.push("missing_alpn");
   if (!ad) problems.push("dnssec_unauthenticated");
-  const status = problems.includes("alias_mode_only") || problems.includes("missing_alpn") ? STATUS.FAILED
+  const fatal = ["unparseable", "alias_mode_only", "missing_alpn"];
+  const status = problems.some((x) => fatal.includes(x)) ? STATUS.FAILED
     : problems.length ? STATUS.WARNING : STATUS.PASSED;
   return result(c.code, c.category, status, "dnsAid.ok", {
     summaryParams: { records: data.length, problems: problems.length },
-    safeDetails: { name, resolver, records: data, dnssecAuthenticated: ad, problems },
+    safeDetails: {
+      name, resolver, dnssecAuthenticated: ad, problems,
+      // Разчетеният вид е това, което човек чете в администрацията — суровият
+      // hex от Cloudflare не казва нищо на никого.
+      records: parsed.map((r) => ({ priority: r.priority, target: r.target, alpn: r.params.alpn || null, port: r.params.port || null })),
+      raw: data,
+    },
   });
 });
 

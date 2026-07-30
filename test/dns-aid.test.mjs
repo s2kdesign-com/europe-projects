@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 
 import { agentIndex, AGENT_LINKS, agentLinkHeader, apiCatalog, robotsTxt, CONTENT_SIGNAL } from "../worker/agent/discovery.js";
 import { executeCheck, STATUS } from "../worker/discovery/validation.js";
+import { parseSvcbRecord } from "../worker/discovery/parsers.js";
 import { DISCOVERY_RESOURCES } from "../worker/discovery/inventory.js";
 
 let passed = 0;
@@ -221,11 +222,62 @@ function dohSite({ answer = [], ad = false, status = 200, origin = ORIGIN } = {}
 
 const svcb = (data) => ({ name: "_index._agents.euro-funds.eu", type: 64, TTL: 3600, data });
 
+// Двата вида, в които DoH резолверите връщат SVCB. Cloudflare дава суров
+// RFC 3597 hex, Google — презентационен низ. Проверка чрез търсене на низа
+// „alpn" минава на Google и се проваля на Cloudflare — точно това счупи
+// проверката при първото пускане срещу истинския DNS.
+const WIRE = "\\# 33 00 01 0a 65 75 72 6f 2d 66 75 6e 64 73 02 65 75 00 00 01 00 06 02 68 32 02 68 33 00 03 00 02 01 bb";
+const PRES = '1 euro-funds.eu. alpn=h2,h3 port=443';
+
+t("SVCB се разбира еднакво в суров и в презентационен вид", () => {
+  const a = parseSvcbRecord(WIRE);
+  const b = parseSvcbRecord(PRES);
+  const c = parseSvcbRecord('1 euro-funds.eu. alpn="h2,h3" port="443"');
+  for (const [label, r] of [["wire", a], ["presentation", b], ["quoted", c]]) {
+    assert.equal(r.priority, 1, label);
+    assert.equal(r.target, "euro-funds.eu.", label);
+    assert.deepEqual(r.params.alpn, ["h2", "h3"], label);
+    assert.equal(r.params.port, 443, label);
+    assert.ok(r.keys.includes(1), `${label}: alpn (key 1)`);
+    assert.ok(r.keys.includes(3), `${label}: port (key 3)`);
+  }
+  assert.deepEqual(a, b, "двата вида трябва да дават еднакъв резултат");
+});
+
+t("AliasMode и боклук се разпознават, а не се приемат мълчаливо", () => {
+  const alias = parseSvcbRecord("0 agent-index.euro-funds.eu.");
+  assert.equal(alias.priority, 0);
+  assert.deepEqual(alias.keys, [], "AliasMode няма параметри");
+  assert.equal(parseSvcbRecord(""), null);
+  assert.equal(parseSvcbRecord("\\# 5 zz zz"), null);
+  assert.equal(parseSvcbRecord("не е запис"), null);
+});
+
+t("суровият вид на Cloudflare минава проверката (регресия)", async () => {
+  const r = await run("agents.dns_aid", dohSite({ answer: [svcb(WIRE)], ad: true }));
+  assert.equal(r.status, STATUS.PASSED, "hex форматът не бива да дава фалшив missing_alpn");
+  assert.deepEqual(r.safeDetails.problems, []);
+  assert.deepEqual(r.safeDetails.records, [{ priority: 1, target: "euro-funds.eu.", alpn: ["h2", "h3"], port: 443 }]);
+  // Суровият вид се пази, но за човека се показва разчетеният.
+  assert.deepEqual(r.safeDetails.raw, [WIRE]);
+});
+
+t("суров AliasMode и суров запис без alpn пак са провал", async () => {
+  const alias = await run("agents.dns_aid", dohSite({ answer: [svcb("\\# 16 00 00 0a 65 75 72 6f 2d 66 75 6e 64 73 02 65 75 00")], ad: true }));
+  assert.equal(alias.status, STATUS.FAILED);
+  assert.ok(alias.safeDetails.problems.includes("alias_mode_only"));
+
+  const noAlpn = await run("agents.dns_aid", dohSite({ answer: [svcb("\\# 21 00 01 0a 65 75 72 6f 2d 66 75 6e 64 73 02 65 75 00 00 03 00 02 01 bb")], ad: true }));
+  assert.equal(noAlpn.status, STATUS.FAILED);
+  assert.ok(noAlpn.safeDetails.problems.includes("missing_alpn"));
+});
+
 t("подписан SVCB запис с alpn минава", async () => {
   const r = await run("agents.dns_aid", dohSite({ answer: [svcb('1 euro-funds.eu. alpn="h2,h3" port="443"')], ad: true }));
   assert.equal(r.status, STATUS.PASSED);
   assert.equal(r.safeDetails.dnssecAuthenticated, true);
   assert.equal(r.safeDetails.name, "_index._agents.euro-funds.eu");
+  assert.equal(r.safeDetails.records[0].priority, 1);
   assert.deepEqual(r.safeDetails.problems, []);
 });
 

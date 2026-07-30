@@ -413,3 +413,100 @@ export function detectLeakage(text) {
   if (/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(s)) found.push("private_key");
   return found;
 }
+
+// ---------------------------------------------------------------------------
+// SVCB / HTTPS записи (RFC 9460)
+// ---------------------------------------------------------------------------
+
+// Резолверите връщат SVCB в ДВА различни вида и това не е по избор на клиента:
+//   • Google (dns.google) дава презентационен вид:
+//       1 euro-funds.eu. alpn=h2,h3 port=443
+//   • Cloudflare (cloudflare-dns.com) дава суров RFC 3597 вид:
+//       \# 33 00 01 0a 65 75 72 6f ... 00 01 00 06 02 68 32 02 68 33 ...
+// Търсене на низа „alpn" работи само в първия и мълчаливо се проваля във втория.
+// Затова тук се разбират и двата.
+
+const SVCB_KEYS = {
+  mandatory: 0, alpn: 1, "no-default-alpn": 2, port: 3,
+  ipv4hint: 4, ech: 5, ipv6hint: 6, dohpath: 7, ohttp: 8,
+};
+export const SVCB_KEY_NAMES = Object.fromEntries(Object.entries(SVCB_KEYS).map(([k, v]) => [v, k]));
+
+function parseSvcbWire(text) {
+  const hex = text.replace(/^\\#\s*\d+\s*/, "").replace(/\s+/g, "");
+  if (!hex || hex.length % 2 || !/^[0-9a-fA-F]+$/.test(hex)) return null;
+  const b = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < b.length; i++) b[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  if (b.length < 3) return null;
+
+  let o = 0;
+  const priority = (b[o] << 8) | b[o + 1];
+  o += 2;
+
+  // TargetName — некомпресирано DNS име (RFC 9460 §2.2: без указатели).
+  const labels = [];
+  while (o < b.length) {
+    const len = b[o++];
+    if (!len) break;
+    if (len > 63 || o + len > b.length) return null;
+    labels.push(String.fromCharCode(...b.slice(o, o + len)));
+    o += len;
+  }
+  const target = labels.length ? labels.join(".") + "." : ".";
+
+  const keys = [];
+  const params = {};
+  while (o + 4 <= b.length) {
+    const key = (b[o] << 8) | b[o + 1];
+    const len = (b[o + 2] << 8) | b[o + 3];
+    o += 4;
+    if (o + len > b.length) return null;
+    const val = b.slice(o, o + len);
+    o += len;
+    keys.push(key);
+    if (key === SVCB_KEYS.alpn) {
+      const alpn = [];
+      let p = 0;
+      while (p < val.length) {
+        const n = val[p++];
+        if (p + n > val.length) break;
+        alpn.push(String.fromCharCode(...val.slice(p, p + n)));
+        p += n;
+      }
+      params.alpn = alpn;
+    } else if (key === SVCB_KEYS.port && len === 2) {
+      params.port = (val[0] << 8) | val[1];
+    }
+  }
+  return { priority, target, keys, params };
+}
+
+function parseSvcbPresentation(text) {
+  const m = /^(\d+)\s+(\S+)\s*(.*)$/.exec(text);
+  if (!m) return null;
+  const keys = [];
+  const params = {};
+  const re = /([a-zA-Z][a-zA-Z0-9-]*|key\d+)(?:=("?)([^"\s]*)\2)?/g;
+  let x;
+  while ((x = re.exec(m[3] || ""))) {
+    const name = x[1].toLowerCase();
+    const value = x[3] || "";
+    const numeric = /^key(\d+)$/.exec(name);
+    const key = numeric ? Number(numeric[1]) : SVCB_KEYS[name];
+    if (key != null) keys.push(key);
+    if (name === "alpn") params.alpn = value.split(",").filter(Boolean);
+    else if (name === "port") params.port = Number(value);
+  }
+  return { priority: Number(m[1]), target: m[2], keys, params };
+}
+
+/**
+ * Разбира един SVCB/HTTPS запис независимо в кой вид го е върнал резолверът.
+ * Връща { priority, target, keys: [номера], params: { alpn, port } } или null.
+ * priority === 0 значи AliasMode — такъв запис НЕ носи параметри.
+ */
+export function parseSvcbRecord(data) {
+  const text = String(data == null ? "" : data).trim();
+  if (!text) return null;
+  return text.startsWith("\\#") ? parseSvcbWire(text) : parseSvcbPresentation(text);
+}
