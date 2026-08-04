@@ -548,6 +548,14 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
 .cov-head { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 4px; }
 .cov-bar { height: 8px; background: var(--surface-2, #eef1f5); border-radius: 999px; overflow: hidden; }
 .cov-bar > span { display: block; height: 100%; background: var(--primary, #0b6ea3); }
+
+/* Подсказка (v2.52.0): достъпен info маркер до етикет — виж <Hint> в /about. */
+.ab-hint { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px;
+  margin-left: 4px; border-radius: 999px; color: var(--muted, #5b6b7c); background: var(--surface-2, #eef1f5);
+  cursor: help; vertical-align: middle; flex: none; }
+.ab-hint:hover, .ab-hint:focus-visible { color: var(--primary, #0b6ea3); background: var(--surface-3, #e3e9f0); }
+.ab-hint:focus-visible { outline: 2px solid var(--primary, #0b6ea3); outline-offset: 2px; }
+@media (max-width: 640px) { .ab-hint { width: 18px; height: 18px; } }
 .ab-cov-sub { display: block; font-size: 10.5px; color: var(--faint); font-weight: 400; }
 .ab-count-note, .ab-big-disclaimer { font-size: 11.5px; color: var(--faint); line-height: 1.4; }
 .ab-count-note { margin: 4px 0 0; }

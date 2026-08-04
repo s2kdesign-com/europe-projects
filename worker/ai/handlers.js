@@ -389,6 +389,14 @@ export async function handleAIRunReport(request, env) {
   const existing = await env.DB.prepare("SELECT id FROM ai_execution_runs WHERE scheduled_task_run_id=?1").bind(runId).first();
   if (existing) return ok({ duplicate: true });
   const now = nowISO();
+  // v2.52.0: пълните метрики за дълбоко извличане идват в `b.metrics` и се пазят
+  // в metadata_json (безопасни агрегати; без URL с токени и без тайни).
+  const metadata = buildRunMetadata(b);
+  const m = (b && b.metrics) || {};
+  const numOr = (...cands) => {
+    for (const c of cands) if (Number.isFinite(Number(c))) return Number(c);
+    return null;
+  };
   await env.DB.prepare(
     `INSERT INTO ai_execution_runs (id, execution_type, purpose, provider_key, model_id, model_display_name, execution_source, scheduled_task_name, scheduled_task_run_id, status, started_at, completed_at, procedures_reviewed, documents_reviewed, budgets_reviewed, changes_detected, safe_error_summary, metadata_json, created_at)
      VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19)`
@@ -399,12 +407,42 @@ export async function handleAIRunReport(request, env) {
     "claude_scheduled_task", b.scheduledTaskName ? String(b.scheduledTaskName).slice(0, 120) : null, runId,
     ["success", "partial", "error", "blocked"].includes(b.status) ? b.status : "success",
     b.startedAt || now, b.completedAt || now,
-    Number.isFinite(Number(b.proceduresReviewed)) ? Number(b.proceduresReviewed) : null,
-    Number.isFinite(Number(b.documentsReviewed)) ? Number(b.documentsReviewed) : null,
-    Number.isFinite(Number(b.budgetsReviewed)) ? Number(b.budgetsReviewed) : null,
-    Number.isFinite(Number(b.changesDetected)) ? Number(b.changesDetected) : null,
+    numOr(b.proceduresReviewed, m.procedures_discovered),
+    numOr(b.documentsReviewed, m.documents_downloaded),
+    numOr(b.budgetsReviewed, m.budgets_extracted),
+    numOr(b.changesDetected, m.changes_recorded),
     b.safeSummary ? redactSecrets(String(b.safeSummary)).slice(0, 1000) : null,
-    Array.isArray(b.countries) ? JSON.stringify({ countries: b.countries.slice(0, 30) }) : null, now
+    metadata, now
   ).run();
   return ok({});
+}
+
+/** Безопасни агрегати от отчета → metadata_json (макс. 20 KB). */
+function buildRunMetadata(b) {
+  const m = (b && b.metrics) || null;
+  const meta = {};
+  if (Array.isArray(b && b.countries)) meta.countries = b.countries.slice(0, 30);
+  if (m) {
+    meta.coverage = {
+      documentsBefore: m.document_coverage_before ?? null,
+      documentsAfter: m.document_coverage_after ?? null,
+      budgetBefore: m.budget_coverage_before ?? null,
+      budgetAfter: m.budget_coverage_after ?? null,
+      averageQualityScore: m.average_quality_score ?? null,
+    };
+    meta.counters = {};
+    for (const k of [
+      "countries_touched", "countries_fully_processed", "sources_checked", "new_sources_discovered",
+      "source_failures", "procedures_discovered", "procedures_created", "procedures_updated",
+      "procedures_unchanged", "procedures_completed", "procedures_revisited",
+      "documents_discovered", "documents_downloaded", "document_versions_added",
+      "budgets_extracted", "budgets_converted", "eligibility_records_added",
+      "anomalies_detected", "changes_recorded",
+    ]) if (Number.isFinite(Number(m[k]))) meta.counters[k] = Number(m[k]);
+    if (m.next_country) meta.next = { country: String(m.next_country).slice(0, 4), source: m.next_source ? String(m.next_source).slice(0, 120) : null };
+    if (Array.isArray(m.blockedSources)) meta.blockedSources = m.blockedSources.slice(0, 20);
+    if (m.timeAllocation) meta.timeAllocation = m.timeAllocation;
+  }
+  if (!Object.keys(meta).length) return null;
+  try { return redactSecrets(JSON.stringify(meta)).slice(0, 20000); } catch { return null; }
 }

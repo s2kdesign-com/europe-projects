@@ -19,6 +19,20 @@ import { intlLocale } from "../lib/project-utils.js";
 
 const SECTIONS = [["about-system", "navAbout"], ["how-we-use-ai", "navHowWeUse"], ["how-ai-works", "navHowWorks"]];
 
+/**
+ * Достъпен подсказващ маркер. Native `title` работи с мишка, но не и с
+ * клавиатура/екранни четци — затова добавяме role="note" + aria-label и
+ * tabIndex, за да е фокусируем.
+ */
+function Hint({ text }) {
+  if (!text) return null;
+  return (
+    <span className="ab-hint" role="note" tabIndex={0} title={text} aria-label={text}>
+      <Icon name="info" size={12} aria-hidden="true" />
+    </span>
+  );
+}
+
 // Картата е географска (EuropeGeoMap — локален оптимизиран SVG).
 
 export default function AboutPage() {
@@ -96,6 +110,13 @@ export default function AboutPage() {
   const maxTotal = Math.max(1, ...chartRows.map((c) => c.totalProcedures));
   // Компактен бюджет за реда (напр. €12M); "—" при липса на структурирани данни.
   const cfc = useMemo(() => new Intl.NumberFormat(intlLocale(), { style: "currency", currency: "EUR", notation: "compact", maximumFractionDigits: 1 }), [uiLang]);
+  // Историческа дълбочина: държави с най-ранна видяна процедура (реални данни).
+  const depthRows = useMemo(
+    () => countries
+      .filter((c) => c.earliestProcedureSeenAt)
+      .sort((a, b) => String(a.earliestProcedureSeenAt).localeCompare(String(b.earliestProcedureSeenAt))),
+    [countries]
+  );
   const daily = aiCfg?.dailyReview;
   const sysAI = aiCfg?.systemAI;
   const agents = aiCfg?.agents || null;
@@ -237,9 +258,28 @@ export default function AboutPage() {
                     <div><dt>{t("about.summaryWithSources")}</dt><dd>{nf.format(summary.countriesWithActiveSources)}</dd></div>
                     <div><dt>{t("about.totalProcedures")}</dt><dd>{nf.format(summary.totalProcedures)}</dd></div>
                     <div><dt>{t("about.activeProcedures")}</dt><dd>{nf.format(summary.activeProcedures)}</dd></div>
+                    <div><dt>{t("about.upcomingProcedures")}</dt><dd>{nf.format(summary.upcomingProcedures || 0)}</dd></div>
+                    <div><dt>{t("about.closedProcedures")}</dt><dd>{nf.format(summary.closedProcedures || 0)}</dd></div>
                     <div><dt>{t("about.summaryDocs")}</dt><dd>{nf.format(summary.proceduresWithDocuments)}</dd></div>
-                    <div><dt>{t("about.knownBudget")}</dt><dd title={t("about.budgetTooltip")}>{summary.publishedBudgetEur != null ? cf.format(summary.publishedBudgetEur) : t("about.budgetNoData")}</dd></div>
+                    <div>
+                      <dt>{t("about.primaryDocCoverage")} <Hint text={t("about.primaryDocTooltip")} /></dt>
+                      <dd>{nf.format(summary.proceduresWithPrimaryDocument || 0)}{summary.primaryDocumentCoveragePercent != null ? ` · ${nf.format(summary.primaryDocumentCoveragePercent)}%` : ""}</dd>
+                    </div>
+                    <div><dt>{t("about.documentsTotal")}</dt><dd>{nf.format(summary.documentsTotal || 0)}</dd></div>
+                    <div>
+                      <dt>{t("about.knownBudget")} <Hint text={t("about.knownBudgetTooltip")} /></dt>
+                      <dd title={t("about.knownBudgetTooltip")}>{summary.publishedBudgetEur != null ? cf.format(summary.publishedBudgetEur) : t("about.budgetNoData")}</dd>
+                    </div>
+                    <div><dt>{t("about.sourcesTotal")}</dt><dd>{nf.format(summary.sourcesTotal || summary.activeSources)}</dd></div>
                     <div><dt>{t("about.sources")}</dt><dd>{nf.format(summary.activeSources)}</dd></div>
+                    <div><dt>{t("about.sourcesVerified")}</dt><dd>{nf.format(summary.sourcesVerified || 0)}</dd></div>
+                    <div><dt>{t("about.sourcesHealthy")}</dt><dd>{nf.format(summary.sourcesHealthy || 0)}</dd></div>
+                    <div><dt>{t("about.sourcesFailing")}</dt><dd>{nf.format(summary.sourcesFailing || 0)}</dd></div>
+                    <div><dt>{t("about.sourcesBlocked")}</dt><dd>{nf.format(summary.sourcesBlocked || 0)}</dd></div>
+                    <div><dt>{t("about.countriesWithVerified")}</dt><dd>{nf.format(summary.countriesWithVerifiedSources || 0)}</dd></div>
+                    {stats.lastSuccessfulDailyReviewAt && (
+                      <div><dt>{t("about.lastSuccessfulSync")}</dt><dd>{df.format(new Date(stats.lastSuccessfulDailyReviewAt))}</dd></div>
+                    )}
                     <div><dt>{t("about.statLastUpdate")}</dt><dd>{stats.generatedAt ? df.format(new Date(stats.generatedAt)) : "—"}</dd></div>
                   </dl>
                   {/* Бюджетно покритие: честна база + progress лента */}
@@ -254,11 +294,66 @@ export default function AboutPage() {
                           </div>
                         </>
                       )}
-                      <p className="chart-note" style={{ marginTop: 6 }}><Icon name="info" size={13} /> {t("about.budgetTooltip")}</p>
+                      <p className="chart-note" style={{ marginTop: 6 }}><Icon name="info" size={13} /> {t("about.budgetCoverageTooltip")}</p>
                     </div>
                   )}
-                  {summary.documentCoveragePercent != null && (
-                    <p className="row-sub" style={{ marginTop: 4 }}>{t("about.docCoverage")}: {nf.format(summary.proceduresWithDocuments)} / {nf.format(summary.totalProcedures)} · {nf.format(summary.documentCoveragePercent)}%</p>
+
+                  {/* Покритие с документи + основен официален документ */}
+                  <div className="ab-budget-cov">
+                    <div className="cov-head">
+                      <span>{t("about.docCoverage")} <Hint text={t("about.docCoverageTooltip")} /></span>
+                      <b>{summary.documentCoveragePercent != null ? `${nf.format(summary.documentCoveragePercent)}%` : "—"}</b>
+                    </div>
+                    {summary.documentCoveragePercent != null && (
+                      <div className="cov-bar" role="progressbar" aria-valuenow={summary.documentCoveragePercent} aria-valuemin={0} aria-valuemax={100} aria-label={t("about.docCoverage")}>
+                        <span style={{ width: summary.documentCoveragePercent + "%" }} />
+                      </div>
+                    )}
+                    <p className="row-sub" style={{ marginTop: 4 }}>
+                      {nf.format(summary.proceduresWithDocuments)} / {nf.format(summary.totalProcedures)}
+                      {summary.primaryDocumentCoveragePercent != null && (
+                        <> · {t("about.primaryDocCoverage")}: {nf.format(summary.proceduresWithPrimaryDocument || 0)} ({nf.format(summary.primaryDocumentCoveragePercent)}%)</>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Качество на данните */}
+                  <h4 className="ab-h4">{t("about.qualityTitle")} <Hint text={t("about.qualityScoreTooltip")} /></h4>
+                  {summary.averageQualityScore == null ? (
+                    <p className="row-sub">{t("about.noQualityData")}</p>
+                  ) : (
+                    <>
+                      <div className="cov-head"><span>{t("about.qualityScore")}</span><b>{nf.format(summary.averageQualityScore)}/100</b></div>
+                      <div className="cov-bar" role="progressbar" aria-valuenow={summary.averageQualityScore} aria-valuemin={0} aria-valuemax={100} aria-label={t("about.qualityScore")}>
+                        <span style={{ width: summary.averageQualityScore + "%" }} />
+                      </div>
+                    </>
+                  )}
+                  <dl className="sys-grid" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 8 }}>
+                    <div><dt>{t("about.qualityComplete")}</dt><dd>{nf.format(summary.quality?.complete || 0)}</dd></div>
+                    <div><dt>{t("about.qualityGood")}</dt><dd>{nf.format(summary.quality?.good || 0)}</dd></div>
+                    <div><dt>{t("about.qualityPartial")}</dt><dd>{nf.format(summary.quality?.partial || 0)}</dd></div>
+                    <div><dt>{t("about.qualityIncomplete")}</dt><dd>{nf.format(summary.quality?.incomplete || 0)}</dd></div>
+                    <div><dt>{t("about.qualityPendingReview")}</dt><dd>{nf.format(summary.quality?.pending_review || 0)}</dd></div>
+                    <div><dt>{t("about.openAnomalies")}</dt><dd>{nf.format(summary.openAnomalies || 0)}</dd></div>
+                  </dl>
+                  <p className="chart-note" style={{ marginTop: 6 }}><Icon name="info" size={13} /> {t("about.qualityLegend")}</p>
+
+                  {/* Историческа дълбочина по държави */}
+                  {depthRows.length > 0 && (
+                    <>
+                      <h4 className="ab-h4">{t("about.historicalDepth")} <Hint text={t("about.historicalDepthTooltip")} /></h4>
+                      {summary.earliestProcedureSeenAt && (
+                        <p className="row-sub">{t("about.historicalDepthSince", { d: df.format(new Date(summary.earliestProcedureSeenAt)) })}</p>
+                      )}
+                      {depthRows.slice(0, 5).map((c) => (
+                        <div className="ab-top-row" key={c.code}>
+                          <FlagImg country={getCountry(c.code)} size={18} />
+                          <span className="ab-top-name">{cName(c)}</span>
+                          <span className="ab-top-n">{String(c.earliestProcedureSeenAt).slice(0, 10)}</span>
+                        </div>
+                      ))}
+                    </>
                   )}
 
                   <h4 className="ab-h4">{t("about.topByActive")}</h4>

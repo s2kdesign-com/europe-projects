@@ -325,3 +325,25 @@ a.btn-xs { color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   .disc-copy, .disc-chip { transition: none; }
 }
+
+
+/* ===================== Таб „Скенер" (v2.52.0) ===================== */
+.admin-head { margin-bottom: 12px; }
+.admin-subtabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); margin: 8px 0 12px; }
+.admin-subtabs .admin-tab { padding: 8px 12px; font-size: 13px; }
+.admin-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 0 0 12px; }
+.admin-filter { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.admin-filter > span { color: var(--faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; font-size: 10.5px; }
+.admin-filter select, .admin-filter input {
+  min-width: 150px; padding: 6px 8px; font-size: 13px; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm);
+}
+.admin-filter select:focus-visible, .admin-filter input:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.admin-detail { padding: 12px; margin: 8px 0 12px; background: var(--surface-2); border-radius: var(--r-md, 8px); }
+.admin-detail .prof-section-title { margin-top: 12px; }
+.admin-table .cell-clip { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 720px) {
+  .admin-filters { gap: 8px; }
+  .admin-filter, .admin-filter select, .admin-filter input { width: 100%; min-width: 0; }
+  .admin-table .cell-clip { max-width: 160px; }
+}

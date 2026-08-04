@@ -48,6 +48,29 @@ export async function handlePlatformStatistics(request, env) {
       budgetStatus: countryBudgetStatus(r),
       activeSources: r.active_sources,
       lastSuccessfulSyncAt: r.last_successful_sync_at,
+      // ── v2.52.0: дълбоко извличане ──────────────────────────────────────
+      documentCoveragePercent: r.total_procedures > 0
+        ? Math.round(((r.procedures_with_documents || 0) / r.total_procedures) * 1000) / 10 : null,
+      proceduresWithPrimaryDocument: r.procedures_with_primary_document,
+      primaryDocumentCoveragePercent: r.total_procedures > 0 && r.procedures_with_primary_document != null
+        ? Math.round((r.procedures_with_primary_document / r.total_procedures) * 1000) / 10 : null,
+      proceduresWithStructuredBudget: r.procedures_with_structured_budget,
+      documentsTotal: r.documents_total,
+      averageQualityScore: r.average_quality_score,
+      quality: {
+        complete: r.quality_complete || 0,
+        good: r.quality_good || 0,
+        partial: r.quality_partial || 0,
+        incomplete: r.quality_incomplete || 0,
+        pending_review: r.quality_pending_review || 0,
+      },
+      sourcesTotal: r.sources_total,
+      sourcesHealthy: r.successful_sources,
+      sourcesFailing: r.failed_sources,
+      sourcesBlocked: r.sources_blocked,
+      sourcesVerified: r.sources_verified,
+      openAnomalies: r.anomalies_open,
+      earliestProcedureSeenAt: r.earliest_procedure_seen_at,
     }));
 
     const body = {
@@ -74,7 +97,13 @@ function json(body, status, etagSeed) {
 
 // Агрегира и записва днешния snapshot (вика се от дневната процедура/при нужда).
 // Атомарно: INSERT OR REPLACE per държава; при аномалия — pending_review.
-export const SNAPSHOT_SQL = `INSERT OR REPLACE INTO country_daily_statistics (id, snapshot_date, country_code, total_procedures, active_procedures, upcoming_procedures, closed_procedures, procedures_with_documents, new_last_30_days, updated_last_30_days, published_budget_eur, budget_procedure_count, budget_text_procedures, foreign_currency_procedures, active_sources, successful_sources, failed_sources, last_successful_sync_at, coverage_status, publish_status, created_at, updated_at)
+//
+// „Известен публикуван бюджет" (published_budget_eur) включва САМО процедури с:
+//   • налична стойност в budget_amount_eur;
+//   • обхват, който НЕ е програма/приоритет/на един проект/допустими разходи
+//     (липсващият обхват се приема за процедурен, за да не изчезнат старите редове);
+//   • без открита КРИТИЧНА аномалия със статус „open".
+export const SNAPSHOT_SQL = `INSERT OR REPLACE INTO country_daily_statistics (id, snapshot_date, country_code, total_procedures, active_procedures, upcoming_procedures, closed_procedures, procedures_with_documents, new_last_30_days, updated_last_30_days, published_budget_eur, budget_procedure_count, budget_text_procedures, foreign_currency_procedures, active_sources, successful_sources, failed_sources, last_successful_sync_at, coverage_status, publish_status, created_at, updated_at, procedures_with_primary_document, procedures_with_structured_budget, average_quality_score, quality_complete, quality_good, quality_partial, quality_incomplete, quality_pending_review, sources_total, sources_blocked, sources_verified, anomalies_open, documents_total, earliest_procedure_seen_at)
 SELECT c.code || ':' || date('now'), date('now'), c.code,
  (SELECT COUNT(*) FROM projects p WHERE p.country_code=c.code),
  (SELECT COUNT(*) FROM projects p WHERE p.country_code=c.code AND p.status IN ('open','closing_soon')),
@@ -83,12 +112,34 @@ SELECT c.code || ':' || date('now'), date('now'), c.code,
  (SELECT COUNT(DISTINCT d.project_id) FROM documents d JOIN projects p ON p.id=d.project_id WHERE p.country_code=c.code),
  (SELECT COUNT(*) FROM projects p WHERE p.country_code=c.code AND p.first_seen >= date('now','-30 day')),
  (SELECT COUNT(*) FROM projects p WHERE p.country_code=c.code AND p.last_updated >= date('now','-30 day') AND p.last_updated != p.first_seen),
- (SELECT SUM(p.budget_amount_eur) FROM projects p WHERE p.country_code=c.code AND p.budget_amount_eur IS NOT NULL),
- (SELECT COUNT(*) FROM projects p WHERE p.country_code=c.code AND p.budget_amount_eur IS NOT NULL),
+ (SELECT SUM(p.budget_amount_eur) FROM projects p
+    LEFT JOIN project_budget_terms bt ON bt.project_id = p.id
+   WHERE p.country_code=c.code AND p.budget_amount_eur IS NOT NULL
+     AND (bt.budget_scope IS NULL OR bt.budget_scope='procedure')
+     AND NOT EXISTS (SELECT 1 FROM project_anomalies a WHERE a.project_id=p.id AND a.status='open' AND a.severity='critical')),
+ (SELECT COUNT(*) FROM projects p
+    LEFT JOIN project_budget_terms bt ON bt.project_id = p.id
+   WHERE p.country_code=c.code AND p.budget_amount_eur IS NOT NULL
+     AND (bt.budget_scope IS NULL OR bt.budget_scope='procedure')
+     AND NOT EXISTS (SELECT 1 FROM project_anomalies a WHERE a.project_id=p.id AND a.status='open' AND a.severity='critical')),
  (SELECT COUNT(*) FROM projects p WHERE p.country_code=c.code AND p.budget IS NOT NULL AND p.budget != ''),
  (SELECT COUNT(*) FROM projects p WHERE p.country_code=c.code AND p.budget_currency IS NOT NULL AND p.budget_currency != 'EUR'),
  (SELECT COUNT(*) FROM funding_sources f WHERE f.country_code=c.code AND f.enabled=1),
  (SELECT COUNT(*) FROM funding_sources f WHERE f.country_code=c.code AND f.source_health='healthy'),
- (SELECT COUNT(*) FROM funding_sources f WHERE f.country_code=c.code AND f.source_health IN ('failing','blocked')),
- c.last_successful_sync_at, c.coverage_status, 'published', datetime('now'), datetime('now')
+ (SELECT COUNT(*) FROM funding_sources f WHERE f.country_code=c.code AND f.source_health='failing'),
+ c.last_successful_sync_at, c.coverage_status, 'published', datetime('now'), datetime('now'),
+ (SELECT COUNT(*) FROM project_details pd WHERE pd.country_code=c.code AND pd.has_primary_document=1),
+ (SELECT COUNT(*) FROM projects p WHERE p.country_code=c.code AND p.budget_amount_eur IS NOT NULL),
+ (SELECT ROUND(AVG(pd.completeness_score),1) FROM project_details pd WHERE pd.country_code=c.code AND pd.completeness_score IS NOT NULL),
+ (SELECT COUNT(*) FROM project_details pd WHERE pd.country_code=c.code AND pd.quality_status='complete'),
+ (SELECT COUNT(*) FROM project_details pd WHERE pd.country_code=c.code AND pd.quality_status='good'),
+ (SELECT COUNT(*) FROM project_details pd WHERE pd.country_code=c.code AND pd.quality_status='partial'),
+ (SELECT COUNT(*) FROM project_details pd WHERE pd.country_code=c.code AND pd.quality_status='incomplete'),
+ (SELECT COUNT(*) FROM project_details pd WHERE pd.country_code=c.code AND pd.quality_status='pending_review'),
+ (SELECT COUNT(*) FROM funding_sources f WHERE f.country_code=c.code),
+ (SELECT COUNT(*) FROM funding_sources f WHERE f.country_code=c.code AND f.source_health='blocked'),
+ (SELECT COUNT(*) FROM funding_sources f WHERE f.country_code=c.code AND f.verified=1),
+ (SELECT COUNT(*) FROM project_anomalies a WHERE a.country_code=c.code AND a.status='open'),
+ (SELECT COUNT(*) FROM documents d JOIN projects p ON p.id=d.project_id WHERE p.country_code=c.code),
+ (SELECT MIN(COALESCE(p.first_seen_at, p.first_seen)) FROM projects p WHERE p.country_code=c.code)
 FROM countries c WHERE c.eu_member=1;`;

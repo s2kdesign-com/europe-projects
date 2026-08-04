@@ -10,6 +10,7 @@ import { handlePublicAIConfig, handleAIRunReport } from "./worker/ai/handlers.js
 import { handleAIInternal } from "./worker/ai/pipeline-handlers.js";
 import { reclaimExpiredLocks, processJobsBatch, driveJobs, createPipelineRun, enqueueProcedureJobs, nightlyAlreadyRan } from "./worker/ai/pipeline.js";
 import { handlePlatformStatistics } from "./worker/statistics.js";
+import { handleSyncRunReport } from "./worker/sync/handlers.js";
 import { COUNTRY_CODES, DEFAULT_COUNTRY, normalizeCountry } from "./app/lib/country/countries.js";
 import { APP_VERSION } from "./app/lib/version.js";
 // Слой „готовност за агенти": markdown negotiation, Link заглавки, API каталог,
@@ -308,6 +309,10 @@ async function handleRequest(request, env, url) {
       // Internal: отчет от Scheduled Task (HMAC + timestamp + idempotency).
       if (pathname === "/api/internal/ai-runs/report" && request.method === "POST") {
         return handleAIRunReport(request, env);
+      }
+      // Internal: пълен отчет за изпълнение на дневната синхронизация (HMAC).
+      if (pathname === "/api/internal/sync-runs/report" && request.method === "POST") {
+        return handleSyncRunReport(request, env);
       }
       // Internal: nightly AI pipeline (HMAC): daily-review-completed / jobs/process / nightly/start.
       if (pathname.startsWith("/api/internal/ai/") && request.method === "POST") {

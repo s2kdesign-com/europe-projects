@@ -1,5 +1,12 @@
 # Claude Scheduled Task — multi-country daily sync (замяна на BG-only задачата)
 
+> **⚠️ ОБНОВЕНО 2026-08-04 (v2.52.0):** актуалният промпт е в
+> [`scheduled-task-prompt-v2.52.md`](./scheduled-task-prompt-v2.52.md) — weighted
+> round-robin (45/30/15/10), таван 15–25 процедури на държава, ≥4 държави на run,
+> дълбоко извличане, версии на документите, история на промените, completeness score
+> и anomaly detection. Документът по-долу описва предишната версия и остава като
+> история.
+
 Дата: 2026-07-18. Статус: **приложено директно** — задачата
 `evroproekti-bulgaria-dneven-monitoring` (cron `0 8 * * *`, локално 08:00) беше
 актуализирана през scheduled-tasks API с новия prompt по-долу.

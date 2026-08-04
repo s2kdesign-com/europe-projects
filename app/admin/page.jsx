@@ -9,6 +9,7 @@ import { APP_VERSION } from "../lib/version.js";
 import AiModelsTab from "./AiModelsTab.jsx";
 import ApiAgentsTab from "./ApiAgentsTab.jsx";
 import SeoDiscoveryTab from "./SeoDiscoveryTab.jsx";
+import ScannerTab from "./ScannerTab.jsx";
 import { SUMMARY_LABELS } from "./discovery-summaries.js";
 import { useUiTranslate, UiTrContext, useUiTr } from "../lib/i18n/ui-translate.js";
 
@@ -275,6 +276,7 @@ function fmt(ts) {
 const TABS = [
   ["system", "Система", "grid"],
   ["sources", "Източници", "layers"],
+  ["scanner", "Скенер", "search"],
   ["ai", "AI модели", "sparkle"],
   ["apiAgents", "API & Agents", "layers"],
   ["seo", "SEO & Discovery", "search"],
@@ -287,6 +289,7 @@ const TABS = [
 const TAB_SUBTITLE = {
   apiAgents: "Публични API-та, машинно четимо откриване, метаданни за автентикация и съвместимост с AI агенти.",
   seo: "Видимост в търсачките, структурирани метаданни, индексируемост и диагностика на обхождащите.",
+  scanner: "Дневната синхронизация: изпълнения, cursor, backlog, аномалии, история на промените и здраве на източниците.",
 };
 
 export default function AdminPage() {
@@ -343,6 +346,7 @@ export default function AdminPage() {
 
         {tab === "system" && <SystemTab session={session} />}
         {tab === "sources" && <SourcesTab />}
+        {tab === "scanner" && <ScannerTab />}
         {tab === "ai" && <AiModelsTab />}
         {tab === "apiAgents" && <ApiAgentsTab />}
         {tab === "seo" && <SeoDiscoveryTab />}

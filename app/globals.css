@@ -298,6 +298,7 @@ main { padding-bottom: var(--s7); }
 .badge.amber { background: var(--amber-bg); color: var(--amber-ink); }
 .badge.blue { background: var(--blue-bg); color: var(--blue-ink); }
 .badge.neutral { background: var(--neutral-bg); color: var(--neutral-ink); }
+.badge.red { background: var(--red-bg); color: var(--red-ink); }
 .badge.new { background: var(--violet-bg); color: var(--violet); }
 .badge.youth { background: var(--green-bg); color: var(--green-ink); }
 

@@ -8,7 +8,7 @@ AI платформа за откриване/анализ на европейс
 > междусесийна памет е в Claude memory (`evroproekti-*` файлове). Прогрес по държави:
 > `docs/multi-country-progress.md`. Последна синхронизация на паметта: 2026-07-24.
 
-## Състояние (2026-07-26)
+## Състояние (2026-08-04)
 - Worker `evroproekti-dashboard` е деплойнат и се обновява (last modified 24.07) — старият
   open item „redeploy за admin console" изглежда решен; при съмнение провери `/admin` онлайн.
 - Multi-country: 26 държави active/partial (BG 42 процедури към 18.07; BE connector_ready,
@@ -58,6 +58,13 @@ AI платформа за откриване/анализ на европейс
   `/api/health`, динамичен robots.txt с Content-Signal; `oauth-server.js` — OAuth 2.1 AS
   само за ЧЕТЕНЕ (PKCE S256, ES256, refresh с ротация, без DCR). Bearer токен НИКОГА не
   дава писане и не стига до `/api/admin/*`. Мигр. `0022`. Тестове: `test/agent-readiness.test.mjs`.
+- **Дълбоко извличане (v2.52.0)**: `src/ingestion/core/{coverage,quality,anomalies,documents,changes,run-report}.js`
+  — weighted round-robin 45/30/15/10, таван 15–25 процедури на държава, ≥4 държави на run;
+  completeness score 0–100 + quality_status; аномалии в бюджетите (документът бие страницата,
+  БЕЗ сумиране); нормализация/версии на документите; append-only история. Migration `0025`.
+  ⚠️ `projects` е на ТАВАНА от 100 колони в D1 → новите полета отиват в `project_details`
+  и `project_budget_terms` (1:1). Админ таб „Скенер" (`/api/admin/sync/*`); новият промпт
+  на задачата е в `docs/scheduled-task-prompt-v2.52.md`.
 - JS-blocked портали (playbook от docs/multi-country-progress.md): meta tags на detail
   страници → прес/новинарски секции → съседни официални домейни → WebSearch с потвърден
   official_url.

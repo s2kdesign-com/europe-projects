@@ -4,6 +4,7 @@ import { err, isSecure, nowISO, ok, parseCookies, safeReturnTo, serializeCookie,
 import { buildAuthUrl, callbackUrl, createPkce, exchangeCode, verifyIdToken } from "./oauth.js";
 import { authenticateBearer, requiredScope, wwwAuthenticate } from "./agent/oauth-server.js";
 import { handleDiscoveryAdmin } from "./discovery/handlers.js";
+import { handleSyncAdmin } from "./sync/handlers.js";
 import { createSession, destroySessionByToken, getSession, sessionClearCookie, sessionSetCookie } from "./session.js";
 import { listChangelog, addFeedback, listFeedback } from "./changelog.js";
 import * as data from "./db.js";
@@ -220,6 +221,13 @@ export async function handleAuth(request, env, url) {
     if (pathname.startsWith("/api/admin/discovery/")) {
       const discoveryResp = await handleDiscoveryAdmin(request, env, url, userId, readJson);
       if (discoveryResp) return discoveryResp;
+      return err("not_found", 404);
+    }
+    // Дневна синхронизация: изпълнения, cursor, аномалии, история, backlog,
+    // източници, кандидати и качество (таб „Скенер").
+    if (pathname.startsWith("/api/admin/sync")) {
+      const syncResp = await handleSyncAdmin(request, env, url, userId, method);
+      if (syncResp) return syncResp;
       return err("not_found", 404);
     }
     if (pathname.startsWith("/api/admin/ai/")) {
