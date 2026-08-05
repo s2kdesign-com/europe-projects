@@ -12,6 +12,7 @@ import AppChrome from "./components/AppChrome.jsx";
 import SiteFooter from "./components/SiteFooter.jsx";
 import I18nProvider from "./components/i18n/I18nProvider.jsx";
 import CountryProvider from "./components/country/CountryProvider.jsx";
+import { WEBMCP_INIT_SCRIPT } from "./lib/webmcp.js";
 
 // No-flash: определя езика и задава <html lang/dir> ПРЕДИ хидратацията, за да не
 // мига интерфейсът от български към избрания език. Приоритет: URL ?lang → ръчен
@@ -103,6 +104,10 @@ export default function RootLayout({ children }) {
     <html lang="bg" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH }} />
+        {/* WebMCP — инструментите на страницата за агенти в браузъра. Инлайн и в
+            <head>, защото агентите (и скенерите) ги търсят на page load, преди
+            React бъндълът да се е заредил. Виж app/lib/webmcp.js. */}
+        <script id="webmcp" dangerouslySetInnerHTML={{ __html: WEBMCP_INIT_SCRIPT }} />
         {/* Google Analytics (gtag.js) + Consent Mode v2 — виж GTAG_INIT по-горе */}
         <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} />
         <script dangerouslySetInnerHTML={{ __html: GTAG_INIT }} />
