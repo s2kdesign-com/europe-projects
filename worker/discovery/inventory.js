@@ -40,6 +40,12 @@ export const ROUTES = [
   { id: "saveProcedure", method: "POST", path: "/api/saved-procedures", kind: "protected", group: "user", purposeKey: "route.savedWrite", auth: "session", contentType: "application/json", cache: "no-store", openapi: false },
   { id: "deleteAccount", method: "DELETE", path: "/api/account", kind: "protected", group: "user", purposeKey: "route.account", auth: "session", contentType: "application/json", cache: "no-store", openapi: false },
 
+  // --- MCP (Model Context Protocol) ------------------------------------------
+  // Транспортът е JSON-RPC върху POST. GET на същия път връща само указател към
+  // картата (виж worker/agent/mcp.js) — затова той е сондируемият.
+  { id: "mcpEndpoint", method: "POST", path: "/mcp", kind: "public", group: "mcp", purposeKey: "route.mcp", auth: "none", contentType: "application/json", cache: "no-store", openapi: false, probe: null },
+  { id: "mcpDescriptor", method: "GET", path: "/mcp", kind: "public", group: "mcp", purposeKey: "route.mcpDescriptor", auth: "none", contentType: "application/json", cache: "public, max-age=300", openapi: false, probe: "/mcp" },
+
   // --- OAuth протокол (публичен по спецификация) -----------------------------
   { id: "oauthAuthorize", method: "GET", path: "/oauth/authorize", kind: "public", group: "oauth", purposeKey: "route.authorize", auth: "session", contentType: "text/html", cache: "no-store", openapi: false, probe: null },
   { id: "oauthToken", method: "POST", path: "/oauth/token", kind: "public", group: "oauth", purposeKey: "route.token", auth: "pkce", contentType: "application/json", cache: "no-store", openapi: false, probe: null },
@@ -87,6 +93,8 @@ export const DISCOVERY_RESOURCES = [
   { id: "agentIndex", path: "/.well-known/agent-index.json", standard: "DNS-AID", official: false, expectType: "application/json" },
   // Agent Skills Discovery RFC v0.2.0 (Cloudflare) — също още не е стандарт.
   { id: "agentSkills", path: "/.well-known/agent-skills/index.json", standard: "Agent Skills v0.2.0", official: false, expectType: "application/json" },
+  // MCP Server Card — SEP-1649/SEP-2127 е още отворен PR, не приет стандарт.
+  { id: "mcpServerCard", path: "/.well-known/mcp/server-card.json", standard: "MCP Server Card (SEP-2127, draft)", official: false, expectType: "application/json" },
   { id: "oauthMetadata", path: "/.well-known/oauth-authorization-server", standard: "RFC 8414", official: true, expectType: "application/json" },
   { id: "openidConfiguration", path: "/.well-known/openid-configuration", standard: "OpenID Connect Discovery 1.0", official: true, expectType: "application/json" },
   { id: "protectedResource", path: "/.well-known/oauth-protected-resource", standard: "RFC 9728", official: true, expectType: "application/json" },

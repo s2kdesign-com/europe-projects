@@ -67,6 +67,7 @@ export default function ApiAgentsTab() {
   const jwks = idx.get("api.oauth.jwks");
   const protectedRes = idx.get("api.oauth.protected_resource");
   const health = idx.get("api.health");
+  const mcp = idx.get("agents.mcp_server_card");
 
   return (
     <>
@@ -111,6 +112,12 @@ export default function ApiAgentsTab() {
             value={linkHtml ? (linkHtml.safeDetails.relations || []).length : "—"} hint={linkHtml ? tl("открити релации") : null} checkedAt={idx.checkedAt("agents.link_headers.html", "agents.link_headers.targets")} />
           <SummaryCard tl={tl} titleKey="OAuth/OIDC откриване" status={idx.rollup(["api.oauth.metadata", "api.oauth.openid", "api.oauth.jwks"])}
             value={oauthMeta && oauthMeta.safeDetails.issuer ? tl("Собствен издател") : "—"} checkedAt={idx.checkedAt("api.oauth.metadata", "api.oauth.openid", "api.oauth.jwks")} />
+          {/* MCP: показва броя инструменти, които СЪРВЪРЪТ реално върна — не броя,
+              обявен в картата. Разминаването между двете е точно това, което
+              проверката търси. */}
+          <SummaryCard tl={tl} titleKey="MCP сървър" status={idx.rollup(["agents.mcp_server_card"])}
+            value={mcp && mcp.safeDetails ? (mcp.safeDetails.tools || []).length : "—"}
+            hint={mcp ? tl("работещи инструмента") : null} checkedAt={idx.checkedAt("agents.mcp_server_card")} />
           <SummaryCard tl={tl} titleKey="Страници за агенти" status={idx.rollup(["agents.markdown*"])}
             value={`${cfg.agentPages.length}`} checkedAt={idx.checkedAt("agents.markdown*")} />
           <SummaryCard tl={tl} titleKey="Последна пълна валидация"
@@ -280,6 +287,10 @@ function resourceCheck(idx, id) {
     health: "api.health", sitemap: "seo.sitemap", robots: "seo.robots", llmsTxt: "agents.llms_txt",
     oauthMetadata: "api.oauth.metadata", openidConfiguration: "api.oauth.openid",
     protectedResource: "api.oauth.protected_resource", jwks: "api.oauth.jwks",
+    // Ресурсите със собствена проверка — без тези редове таблицата показваше
+    // „няма валидация" за неща, които всъщност се проверяват.
+    agentIndex: "agents.agent_index", agentSkills: "agents.skills_index",
+    mcpServerCard: "agents.mcp_server_card", authMd: "api.auth_md",
   };
   return idx.get(map[id] || id);
 }

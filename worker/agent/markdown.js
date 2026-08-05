@@ -509,6 +509,7 @@ export async function llmsTxt(env) {
     `- [auth.md](${SITE}/auth.md): как агент да се регистрира сам (ID-JAG, потвърден имейл, анонимно)`,
     `- [Агентски индекс](${SITE}/.well-known/agent-index.json): регистърът зад DNS записа _index._agents (DNS-AID)`,
     `- [Skill-ове за агенти](${SITE}/.well-known/agent-skills/index.json): инструкции за търсене на процедури, достъп и държави`,
+    `- [MCP Server Card](${SITE}/.well-known/mcp/server-card.json): MCP сървър на \`POST ${SITE}/mcp\` — Streamable HTTP, само за четене`,
     "",
     "## Условия",
     "",

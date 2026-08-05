@@ -20,6 +20,7 @@ import { agentIndex, apiCatalog, apiDocsHtml, apiDocsMarkdown, asGetRequest, han
 import { handleOAuthServer } from "./worker/agent/oauth-server.js";
 import { handleAgentAuth } from "./worker/agent/agent-auth.js";
 import { handleAgentSkills } from "./worker/agent/skills.js";
+import { handleMcp } from "./worker/agent/mcp.js";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" };
 function json(body, status = 200) {
@@ -172,6 +173,20 @@ async function handleRequest(request, env, url) {
       if (skillsResp) return skillsResp;
     } catch (e) {
       await logError(env, { source: "server", method: request.method, path: pathname, status: 500, message: "agent-skills: " + String((e && e.message) || e), detail: String((e && e.stack) || "") }).catch(() => {});
+    }
+
+    // MCP: server card (/.well-known/mcp/server-card.json) + самият сървър (/mcp).
+    // Стои преди останалите, за да не може статиката или SPA fallback-ът да
+    // прихване /mcp — там отговорът трябва да е JSON-RPC, не HTML.
+    try {
+      const mcpResp = await handleMcp(request, env, url, APP_VERSION);
+      if (mcpResp) return mcpResp;
+    } catch (e) {
+      await logError(env, { source: "server", method: request.method, path: pathname, status: 500, message: "mcp: " + String((e && e.message) || e), detail: String((e && e.stack) || "") }).catch(() => {});
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32603, message: "Internal server error." } }), {
+        status: 500,
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+      });
     }
 
     // auth.md — манифестът /auth.md + агентската регистрация (/agent/auth*).

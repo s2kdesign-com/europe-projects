@@ -72,6 +72,9 @@ export const SUMMARY_TEMPLATES = {
   "skills.absent": "Индексът на skill-овете не е публикуван.",
   "skills.invalidJson": "Индексът на skill-овете не е валиден JSON.",
   "skills.noArray": "Индексът няма масив skills.",
+  "mcp.ok": "MCP сървърът отговаря с {tools} инструмента; {problems} несъответствия.",
+  "mcp.absent": "MCP Server Card не е публикувана на /.well-known/mcp/server-card.json.",
+  "mcp.invalidJson": "MCP Server Card не е валиден JSON.",
   "agents.llms.absent": "llms.txt не е публикуван.",
   "agents.llms.unreachable": "llms.txt не отговори.",
 

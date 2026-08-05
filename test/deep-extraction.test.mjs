@@ -13,7 +13,7 @@ import {
 } from "../src/ingestion/core/quality.js";
 import {
   reconcileBudget, detectBudgetAnomalies, detectCrossCountryDuplicateBudgets,
-  detectDateAnomalies, requiresReview,
+  detectDateAnomalies, requiresReview, isRoundAmount,
 } from "../src/ingestion/core/anomalies.js";
 import {
   normalizeUrl, classifyDocument, dedupeDocuments, classifyIncomingDocument,
@@ -308,21 +308,39 @@ t("валута, различна от националната и от EUR, с�
   const b = detectBudgetAnomalies({ budget_amount_eur: 1000, budget_currency: "PLN", country_currency: "PLN", budget_scope: "procedure" });
   assert.ok(!b.some((x) => x.anomaly_type === "currency_mismatch"));
 });
-t("еднакви бюджети в различни държави се маркират", () => {
+t("еднакви НЕкръгли бюджети в различни държави се маркират", () => {
   const a = detectCrossCountryDuplicateBudgets([
-    { project_id: "p1", country_code: "BG", budget_amount_eur: 5_000_000 },
-    { project_id: "p2", country_code: "RO", budget_amount_eur: 5_000_000 },
-    { project_id: "p3", country_code: "BG", budget_amount_eur: 7_000_000 },
+    { project_id: "p1", country_code: "BG", budget_amount_eur: 4_368_215.44 },
+    { project_id: "p2", country_code: "RO", budget_amount_eur: 4_368_215.44 },
+    { project_id: "p3", country_code: "BG", budget_amount_eur: 7_123_456.78 },
   ]);
   assert.equal(a.length, 2);
   assert.ok(a.every((x) => x.anomaly_type === "duplicate_budget"));
 });
 t("еднакви бюджети в ЕДНА държава не са аномалия", () => {
   const a = detectCrossCountryDuplicateBudgets([
-    { project_id: "p1", country_code: "BG", budget_amount_eur: 5_000_000 },
-    { project_id: "p2", country_code: "BG", budget_amount_eur: 5_000_000 },
+    { project_id: "p1", country_code: "BG", budget_amount_eur: 4_368_215.44 },
+    { project_id: "p2", country_code: "BG", budget_amount_eur: 4_368_215.44 },
   ]);
   assert.equal(a.length, 0);
+});
+t("кръгли суми НЕ се маркират — повтарят се естествено между държави", () => {
+  // Мерено срещу продукцията: 200 000 EUR се среща в 5 държави като типичен
+  // максимален размер на помощта. Праг 1 000 EUR даваше 57 фалшиви групи.
+  const round = detectCrossCountryDuplicateBudgets([
+    { project_id: "p1", country_code: "BG", budget_amount_eur: 5_000_000 },
+    { project_id: "p2", country_code: "RO", budget_amount_eur: 5_000_000 },
+  ]);
+  assert.equal(round.length, 0);
+  assert.equal(isRoundAmount(5_000_000), true);
+  assert.equal(isRoundAmount(4_368_215.44), false);
+});
+t("сумите под 1 млн EUR не влизат в проверката за дубликати", () => {
+  const small = detectCrossCountryDuplicateBudgets([
+    { project_id: "p1", country_code: "BG", budget_amount_eur: 234_567.89 },
+    { project_id: "p2", country_code: "RO", budget_amount_eur: 234_567.89 },
+  ]);
+  assert.equal(small.length, 0);
 });
 t("несъгласувани дати се откриват", () => {
   const a = detectDateAnomalies({ opening_date: "2026-05-01", deadline_date: "2026-04-01" });

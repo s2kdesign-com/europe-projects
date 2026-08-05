@@ -2,8 +2,11 @@
 // OpenAPI 3.1 описание, човешка документация, здравен endpoint и robots.txt с
 // Content Signals (contentsignals.org).
 
+import { MCP_PATH, SERVER_CARD_PATH, SUPPORTED_PROTOCOL_VERSIONS, TOOLS as MCP_TOOLS } from "./mcp.js";
+
 const SITE = "https://euro-funds.eu";
 const BRAND = "Euro-Funding";
+const MCP_TOOL_NAMES = MCP_TOOLS.map((t) => t.name);
 
 // ---------------------------------------------------------------------------
 // Link заглавки (RFC 8288) — само регистрирани relation типове (IANA).
@@ -22,6 +25,8 @@ export const AGENT_LINKS = [
   { href: "/.well-known/agent-index.json", rel: "describedby", type: "application/json" },
   // Agent Skills Discovery — инструкции, които агент зарежда преди работа.
   { href: "/.well-known/agent-skills/index.json", rel: "describedby", type: "application/json" },
+  // MCP Server Card — описва работещия MCP сървър на /mcp (SEP-1649/SEP-2127).
+  { href: "/.well-known/mcp/server-card.json", rel: "describedby", type: "application/json" },
   { href: "/sitemap.xml", rel: "sitemap", type: "application/xml" },
 ];
 
@@ -99,6 +104,7 @@ export function apiCatalog() {
           { href: `${SITE}/auth.md`, type: "text/markdown", title: "auth.md — регистрация на агент" },
           { href: `${SITE}/.well-known/agent-index.json`, type: "application/json", title: "Агентски индекс (DNS-AID)" },
           { href: `${SITE}/.well-known/agent-skills/index.json`, type: "application/json", title: "Индекс на агентските skill-ове" },
+          { href: `${SITE}/.well-known/mcp/server-card.json`, type: "application/json", title: "MCP Server Card (сървърът е на /mcp)" },
         ],
       },
     ],
@@ -127,9 +133,10 @@ export function apiCatalog() {
 // описва API действия и потоци. Агент, който очаква онзи формат, щеше да
 // прочете нашия и да се обърка.
 //
-// Честността е важна тук: euro-funds.eu НЕ пуска A2A или MCP агент. Затова
-// `agents` е празен масив с изрично обяснение, вместо да изброяваме услуги,
-// преправени да звучат като агенти. Записът в DNS сочи към ресурс ЗА агенти.
+// Честността е важна тук. До v2.52.0 `agents` беше празен масив с изрично
+// обяснение, защото домейнът беше само РЕСУРС за агенти. От v2.53.0 има истински
+// MCP сървър на `/mcp` (виж agent/mcp.js) и той е вписан тук. A2A агент все още
+// няма — не го измисляме, за да е по-дълъг списъкът.
 
 export async function agentIndex(env, version = "0.0.0") {
   let procedures = null;
@@ -160,11 +167,25 @@ export async function agentIndex(env, version = "0.0.0") {
       privacy_policy: `${SITE}/privacy`,
     },
 
-    // Нула собствени агенти — и това е казано открито, вместо да се премълчи.
-    agents: [],
+    agents: [
+      {
+        id: "euro-funding-mcp",
+        name: `${BRAND} MCP server`,
+        protocol: "mcp",
+        transport: "streamable-http",
+        endpoint: `${SITE}${MCP_PATH}`,
+        server_card: `${SITE}${SERVER_CARD_PATH}`,
+        protocol_versions: SUPPORTED_PROTOCOL_VERSIONS,
+        capabilities: ["tools"],
+        tools: MCP_TOOL_NAMES,
+        authentication: "none",
+        read_only: true,
+        description: "Read-only MCP tools over the public procedure, country, source and coverage data.",
+      },
+    ],
     agents_note:
-      "Euro-Funding does not operate A2A or MCP agents. This domain is a data resource FOR agents: " +
-      "the services below are read-only HTTPS APIs that an agent can call directly.",
+      "Euro-Funding operates one MCP server (read-only, no sessions, no write tools) and no A2A agent. " +
+      "Everything it exposes is also reachable as a plain HTTPS API — see the services below.",
 
     services: [
       {
@@ -211,6 +232,9 @@ export async function agentIndex(env, version = "0.0.0") {
     ],
 
     discovery: {
+      mcp_server_card: `${SITE}${SERVER_CARD_PATH}`,
+      mcp_endpoint: `${SITE}${MCP_PATH}`,
+      agent_skills: `${SITE}/.well-known/agent-skills/index.json`,
       api_catalog: `${SITE}/.well-known/api-catalog`,
       openapi: `${SITE}/openapi.json`,
       documentation: `${SITE}/docs/api`,
@@ -562,6 +586,7 @@ export function robotsTxt() {
 const esc = (s) => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const ENDPOINT_ROWS = [
+  ["POST /mcp", "MCP сървър (Streamable HTTP, само за четене) — карта: /.well-known/mcp/server-card.json"],
   ["GET /api/health", "Наличност, версия и обхват на данните"],
   ["GET /api/projects?country=BG", "Всички процедури за държава"],
   ["GET /api/project?id=&lt;slug&gt;", "Една процедура с документите ѝ"],
@@ -695,6 +720,19 @@ export function apiDocsMarkdown(version = "") {
     `curl -H "Accept: text/markdown" "${SITE}/procedures?country=BG"`,
     "```",
     "",
+    "## MCP сървър",
+    "",
+    "Платформата пуска MCP сървър (Model Context Protocol) на `POST /mcp` — Streamable HTTP,",
+    "**само за четене**, без сесии и без автентикация. Описанието му е в",
+    `[\`/.well-known/mcp/server-card.json\`](${SITE}${SERVER_CARD_PATH}).`,
+    "",
+    "Инструменти: " + MCP_TOOL_NAMES.map((n) => `\`${n}\``).join(", ") + ".",
+    "",
+    "```",
+    `curl -X POST "${SITE}${MCP_PATH}" -H "Content-Type: application/json" \\`,
+    `  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`,
+    "```",
+    "",
     "## Автентикация (OAuth 2.1)",
     "",
     "Публичните данни не изискват автентикация. Личните данни се достъпват с authorization code",
@@ -714,6 +752,8 @@ export function apiDocsMarkdown(version = "") {
     "## Свързани ресурси",
     "",
     `- [API каталог (RFC 9727)](${SITE}/.well-known/api-catalog)`,
+    `- [MCP Server Card](${SITE}${SERVER_CARD_PATH})`,
+    `- [Skill-ове за агенти](${SITE}/.well-known/agent-skills/index.json)`,
     `- [Карта на съдържанието](${SITE}/llms.txt)`,
     `- [Здравен статус](${SITE}/api/health)`,
     `- [Условия за ползване](${SITE}/terms)`,

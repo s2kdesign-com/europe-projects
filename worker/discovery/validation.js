@@ -28,12 +28,16 @@ const BROWSER_UA = "Mozilla/5.0 (compatible; EuroFundingAdminValidator/1.0)";
 // ---------------------------------------------------------------------------
 
 /** Едно измерено извличане. Никога не хвърля — грешките стават резултат. */
-export async function probe(url, { method = "GET", accept = null, ua = BROWSER_UA, maxBytes = 400_000, fetchImpl = fetch } = {}) {
+export async function probe(url, { method = "GET", accept = null, ua = BROWSER_UA, maxBytes = 400_000, fetchImpl = fetch, body: reqBody = null, contentType = null, extraHeaders = null } = {}) {
   const started = Date.now();
   const headers = { "user-agent": ua };
   if (accept) headers.accept = accept;
+  if (contentType) headers["content-type"] = contentType;
+  if (extraHeaders) Object.assign(headers, extraHeaders);
   try {
-    const res = await fetchImpl(url, { method, headers, redirect: "manual" });
+    const init = { method, headers, redirect: "manual" };
+    if (reqBody != null) init.body = reqBody;
+    const res = await fetchImpl(url, init);
     let body = "";
     if (method !== "HEAD") {
       const text = await res.text();
@@ -112,6 +116,7 @@ export function buildPlan(groups, context = {}) {
     add("agents.agent_index", "agents");
     add("agents.dns_aid", "agents");
     add("agents.skills_index", "agents");
+    add("agents.mcp_server_card", "agents");
     add("agents.html_default", "agents");
   }
 
@@ -568,6 +573,132 @@ H("agents.skills_index", async (c, ctx) => {
     ...fromProbe(p),
     summaryParams: { skills: skills.length, problems: problems.length },
     safeDetails: { schema: doc.$schema || null, skills: skills.map((s) => (s && s.name) || "?"), verified: checked, problems },
+  });
+});
+
+// --- MCP Server Card (SEP-2127, чернова) -----------------------------------
+//
+// Картата е УКАЗАТЕЛ. Проверка, която спре до „картата е валиден JSON", пропуска
+// точно най-вредния случай: картата обявява endpoint и инструменти, а зад тях
+// няма нищо. Затова тук се прави истинско MCP ръкостискане срещу обявения
+// endpoint и обявените инструменти се сверяват с `tools/list`.
+
+const MCP_REQUIRED_TOP = ["serverInfo", "capabilities"];
+
+function mcpEndpointOf(doc) {
+  if (doc && typeof doc.url === "string") return doc.url;
+  if (doc && doc.transport && typeof doc.transport.endpoint === "string") return doc.transport.endpoint;
+  if (doc && Array.isArray(doc.remotes) && doc.remotes[0] && typeof doc.remotes[0].url === "string") return doc.remotes[0].url;
+  return null;
+}
+
+async function mcpCall(endpoint, message, ctx) {
+  return probe(endpoint, {
+    method: "POST",
+    fetchImpl: ctx.fetchImpl,
+    ua: AGENT_UA,
+    accept: "application/json, text/event-stream",
+    contentType: "application/json",
+    body: JSON.stringify(message),
+    maxBytes: 200_000,
+  });
+}
+
+H("agents.mcp_server_card", async (c, ctx) => {
+  const cardUrl = `${ctx.origin}/.well-known/mcp/server-card.json`;
+  const p = await probe(cardUrl, { fetchImpl: ctx.fetchImpl });
+  if (p.status !== 200) return result(c.code, c.category, STATUS.FAILED, "mcp.absent", { ...fromProbe(p) });
+  let doc; try { doc = JSON.parse(p.body); } catch { return result(c.code, c.category, STATUS.FAILED, "mcp.invalidJson", { ...fromProbe(p) }); }
+
+  const problems = [];
+  if (!ctIs(p.contentType, "application/json")) problems.push("content_type");
+  for (const f of MCP_REQUIRED_TOP) if (!doc[f]) problems.push(`missing_${f}`);
+
+  const info = doc.serverInfo && typeof doc.serverInfo === "object" ? doc.serverInfo : {};
+  if (!info.name) problems.push("missing_serverInfo_name");
+  if (!info.version) problems.push("missing_serverInfo_version");
+
+  const caps = doc.capabilities && typeof doc.capabilities === "object" ? doc.capabilities : {};
+  if (!caps.tools) problems.push("missing_capabilities_tools");
+
+  const endpoint = mcpEndpointOf(doc);
+  if (!endpoint) problems.push("missing_endpoint");
+
+  let target = null;
+  if (endpoint) {
+    try { target = new URL(endpoint, ctx.origin); } catch { problems.push("bad_endpoint_url"); }
+    // Карта, която праща агента на чужд произход, е по-лоша от липсваща карта.
+    if (target && target.origin !== new URL(ctx.origin).origin) problems.push("foreign_endpoint");
+  }
+  if (detectLeakage(p.body).length) problems.push("secret_exposure");
+
+  // --- Ръкостискане ---------------------------------------------------------
+  let handshake = null;
+  let toolNames = [];
+  if (target && !problems.includes("foreign_endpoint")) {
+    const init = await mcpCall(target.href, {
+      jsonrpc: "2.0", id: 1, method: "initialize",
+      params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "EuroFundingAdminValidator", version: "1.0" } },
+    }, ctx);
+    if (init.status !== 200) problems.push("initialize_unreachable");
+    else {
+      let body = null; try { body = JSON.parse(init.body); } catch { problems.push("initialize_invalidJson"); }
+      if (body && body.error) problems.push("initialize_error");
+      const r = body && body.result;
+      if (!r) problems.push("initialize_no_result");
+      else {
+        if (!r.protocolVersion) problems.push("initialize_no_protocolVersion");
+        if (!r.serverInfo || !r.serverInfo.name) problems.push("initialize_no_serverInfo");
+        // Името в картата и името, което сървърът казва за себе си, трябва да съвпадат —
+        // иначе картата описва друг сървър.
+        if (r.serverInfo && info.name && r.serverInfo.name !== info.name) problems.push("serverInfo_name_mismatch");
+        if (r.serverInfo && info.version && r.serverInfo.version !== info.version) problems.push("serverInfo_version_mismatch");
+      }
+      handshake = { protocolVersion: (r && r.protocolVersion) || null, serverName: (r && r.serverInfo && r.serverInfo.name) || null, status: init.status };
+    }
+
+    const list = await mcpCall(target.href, { jsonrpc: "2.0", id: 2, method: "tools/list" }, ctx);
+    if (list.status !== 200) problems.push("tools_list_unreachable");
+    else {
+      let body = null; try { body = JSON.parse(list.body); } catch { problems.push("tools_list_invalidJson"); }
+      const tools = body && body.result && Array.isArray(body.result.tools) ? body.result.tools : null;
+      if (!tools) problems.push("tools_list_no_tools");
+      else {
+        if (!tools.length) problems.push("tools_list_empty");
+        toolNames = tools.map((t) => (t && t.name) || "?");
+        for (const t of tools) {
+          if (!t || !t.name) problems.push("tool_without_name");
+          else if (!t.inputSchema || t.inputSchema.type !== "object") problems.push(`tool_bad_schema:${t.name}`);
+        }
+        // Ако картата изброява инструменти, те трябва наистина да съществуват.
+        if (Array.isArray(doc.tools)) {
+          for (const t of doc.tools) {
+            const n = t && t.name;
+            if (n && !toolNames.includes(n)) problems.push(`card_tool_missing:${n}`);
+          }
+        }
+      }
+    }
+  }
+
+  const fatal = problems.some((x) =>
+    x.startsWith("missing_") || x.startsWith("initialize_") || x.startsWith("tools_list_") ||
+    x.startsWith("card_tool_missing") || x.startsWith("serverInfo_") ||
+    x === "foreign_endpoint" || x === "bad_endpoint_url" || x === "secret_exposure");
+  const status = fatal ? STATUS.FAILED : problems.length ? STATUS.WARNING : STATUS.PASSED;
+  return result(c.code, c.category, status, "mcp.ok", {
+    ...fromProbe(p),
+    summaryParams: { tools: toolNames.length, problems: problems.length },
+    safeDetails: {
+      serverName: info.name || null,
+      serverVersion: info.version || null,
+      endpoint: target ? target.href : endpoint,
+      transport: (doc.transport && doc.transport.type) || null,
+      protocolVersions: doc.supportedProtocolVersions || null,
+      handshake,
+      tools: toolNames,
+      problems,
+    },
   });
 });
 

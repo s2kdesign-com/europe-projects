@@ -56,11 +56,23 @@ t("индексът е валиден JSON с правилни заглавки"
   assert.equal(body.version, "2.50.0");
 });
 
-t("нула собствени агенти — но казано открито, не премълчано", async () => {
+// От v2.53.0 индексът вписва един истински агент — MCP сървъра на /mcp. Дотогава
+// списъкът беше празен с обяснение. Тестът пази ДВЕТЕ страни на честността: това,
+// което пускаме, е вписано, а това, което не пускаме (A2A), не се измисля.
+t("вписан е точно MCP сървърът — нито по-малко, нито измислени агенти", async () => {
   const { body } = await readIndex();
-  assert.deepEqual(body.agents, [], "не пускаме A2A/MCP агент");
-  assert.ok(body.agents_note, "празният списък трябва да е обяснен");
-  assert.match(body.agents_note, /does not operate/i);
+  assert.equal(body.agents.length, 1, "очакван точно един агент (MCP сървърът)");
+  const a = body.agents[0];
+  assert.equal(a.protocol, "mcp");
+  assert.equal(a.transport, "streamable-http");
+  assert.equal(a.endpoint, `${ORIGIN}/mcp`);
+  assert.equal(a.server_card, `${ORIGIN}/.well-known/mcp/server-card.json`);
+  assert.equal(a.read_only, true, "индексът обявява само четене");
+  assert.ok(Array.isArray(a.tools) && a.tools.length > 0);
+  assert.ok(body.agents_note, "списъкът трябва да е обяснен");
+  assert.match(body.agents_note, /no A2A agent/i, "трябва да е казано и какво НЕ пускаме");
+  assert.equal(body.discovery.mcp_server_card, `${ORIGIN}/.well-known/mcp/server-card.json`);
+  assert.equal(body.discovery.mcp_endpoint, `${ORIGIN}/mcp`);
   // Услугите пък са реални и не се представят за агенти.
   assert.ok(body.services.length >= 3);
   for (const s of body.services) {

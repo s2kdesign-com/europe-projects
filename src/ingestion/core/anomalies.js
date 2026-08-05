@@ -150,15 +150,37 @@ export function detectBudgetAnomalies(p = {}) {
   return out;
 }
 
+/** Под този праг съвпадението между държави е твърде вероятно да е случайно. */
+export const DUPLICATE_BUDGET_MIN_EUR = 1_000_000;
+/** Кратните на тази стъпка са „кръгли" суми — те се повтарят естествено. */
+export const DUPLICATE_BUDGET_ROUNDING_STEP = 100_000;
+
+/** Кръгла ли е сумата (точно кратна на стъпката)? */
+export function isRoundAmount(v, step = DUPLICATE_BUDGET_ROUNDING_STEP) {
+  const n = num(v);
+  if (n === null || step <= 0) return false;
+  return Math.abs(n % step) < 0.005;
+}
+
 /**
- * Дублирани еднакви бюджети между РАЗЛИЧНИ държави — силен сигнал за грешка
- * при копиране. rows = [{ project_id, country_code, budget_amount_eur }].
+ * Дублирани еднакви бюджети между РАЗЛИЧНИ държави — сигнал за грешка при копиране.
+ * rows = [{ project_id, country_code, budget_amount_eur }].
+ *
+ * ВАЖНО (мерено срещу продукцията): при праг 1 000 EUR правилото дава 57 групи, почти
+ * всички кръгли числа (200 000 в 5 държави е нормално — това е типичен максимален
+ * размер на помощта, а не копиран бюджет). При праг 1 млн + изключване на кръглите
+ * остават 3 групи — това е реалният сигнал. Затова прагът НЕ е общият минимум за
+ * правдоподобен бюджет.
  */
-export function detectCrossCountryDuplicateBudgets(rows = [], { minAmount = MIN_PLAUSIBLE_PROCEDURE_BUDGET_EUR } = {}) {
+export function detectCrossCountryDuplicateBudgets(rows = [], {
+  minAmount = DUPLICATE_BUDGET_MIN_EUR,
+  roundingStep = DUPLICATE_BUDGET_ROUNDING_STEP,
+} = {}) {
   const byAmount = new Map();
   for (const r of rows) {
     const v = num(r && r.budget_amount_eur);
     if (v === null || v < minAmount) continue;
+    if (isRoundAmount(v, roundingStep)) continue;   // кръглите съвпадения са очаквани
     const key = v.toFixed(2);
     if (!byAmount.has(key)) byAmount.set(key, []);
     byAmount.get(key).push(r);
@@ -211,7 +233,8 @@ export function requiresReview(anomalies = []) {
 }
 
 const anomalies = {
-  BUDGET_SCOPES, ANOMALY_TYPES, reconcileBudget, detectBudgetAnomalies,
+  BUDGET_SCOPES, ANOMALY_TYPES, DUPLICATE_BUDGET_MIN_EUR, DUPLICATE_BUDGET_ROUNDING_STEP,
+  reconcileBudget, detectBudgetAnomalies, isRoundAmount,
   detectCrossCountryDuplicateBudgets, detectDateAnomalies, detectAll, requiresReview,
 };
 export default anomalies;
