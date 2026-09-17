@@ -8,13 +8,15 @@
     "build": "next build",
     "gen-version": "node scripts/gen-version.mjs",
     "lint": "next lint",
-    "test": "vitest run",
+    "test": "vitest run && node test/seo-routes.integration.mjs",
     "test:watch": "vitest",
     "test:sitemap": "node test/sitemap.test.mjs",
     "deploy": "npm run build && wrangler deploy",
-    "deploy:only": "wrangler deploy"
+    "deploy:only": "wrangler deploy",
+    "test:seo": "node test/seo-routes.integration.mjs"
   },
   "dependencies": {
+    "fast-xml-parser": "^5.11.1",
     "i18next": "^23.16.5",
     "next": "^15.1.6",
     "react": "^19.0.0",

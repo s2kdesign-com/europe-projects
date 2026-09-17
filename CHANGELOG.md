@@ -1,3 +1,10 @@
+## 2.55.0 — 2026-09-17
+
+- Permanent unique procedure and scoped program URLs; preserve legacy winners and working drawer links.
+- Complete, validated dynamic sitemap with explicit retryable failures.
+- Crawlable country directories, corrected sources, canonical signals and structured data.
+- Regression coverage and public production SEO monitoring.
+
 # Дневник на промените (Changelog)
 
 Форматът следва [Keep a Changelog](https://keepachangelog.com/) и семантично

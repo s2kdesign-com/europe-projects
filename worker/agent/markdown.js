@@ -10,14 +10,15 @@
 // Виж https://llmstxt.org/ и
 // https://developers.cloudflare.com/fundamentals/reference/markdown-for-agents/
 
-import { codeSlug } from "../../app/lib/slug.js";
+import { procedurePath, officialSource } from "../../app/lib/public-url.js";
+import { ensurePublicRoutes, findPublicProcedure } from "../public-routes.js";
 import { agentLinkHeader } from "./discovery.js";
 
 const SITE = "https://euro-funds.eu";
 const BRAND = "Euro-Funding";
 
 const STATUS_LABEL = { open: "Отворена", closing_soon: "Изтича скоро", upcoming: "Предстояща", closed: "Приключена" };
-const STATUS_SLUG = { open: "otvoreni", closing_soon: "izticasht-srok", upcoming: "predstoyashti", closed: "priklyuchili" };
+const STATUS_SLUG = { open: "open", closing_soon: "closing-soon", upcoming: "upcoming", closed: "closed" };
 
 // ---------------------------------------------------------------------------
 // Content negotiation
@@ -160,7 +161,7 @@ async function latestStats(env) {
 
 function procedureRow(p) {
   return [
-    `[${trunc(p.name, 90)}](${SITE}/procedures/${codeSlug(p.id)})`,
+    `[${trunc(p.name, 90)}](${SITE}${procedurePath(p)})`,
     STATUS_LABEL[p.status] || p.status,
     p.program,
     p.deadline,
@@ -183,7 +184,7 @@ async function homeMarkdown(env) {
     { total: 0, active: 0, upcoming: 0 }
   );
   const soon = await env.DB.prepare(
-    `SELECT id, name, program, status, deadline, deadline_date, country_code FROM projects
+    `SELECT public_slug, program_slug, id, name, program, status, deadline, deadline_date, country_code FROM public_projects
      WHERE status IN ('open','closing_soon') AND deadline_date IS NOT NULL AND deadline_date >= date('now')
      ORDER BY deadline_date LIMIT 25`
   ).all().catch(() => ({ results: [] }));
@@ -243,8 +244,8 @@ async function homeMarkdown(env) {
 
 async function proceduresMarkdown(env, url, country) {
   const { results } = await env.DB.prepare(
-    `SELECT id, name, program, status, deadline, deadline_date, country_code, budget, eligible
-     FROM projects WHERE country_code = ?1 ORDER BY
+    `SELECT public_slug, program_slug, id, name, program, status, deadline, deadline_date, country_code, budget, eligible
+     FROM public_projects WHERE country_code = ?1 ORDER BY
        CASE status WHEN 'closing_soon' THEN 0 WHEN 'open' THEN 1 WHEN 'upcoming' THEN 2 ELSE 3 END,
        deadline_date`
   ).bind(country).all().catch(() => ({ results: [] }));
@@ -273,19 +274,13 @@ async function proceduresMarkdown(env, url, country) {
 }
 
 async function procedureDetailMarkdown(env, slug) {
-  const s = String(slug || "").toLowerCase();
-  let p = await env.DB.prepare("SELECT * FROM projects WHERE id = ?1").bind(s).first().catch(() => null);
-  if (!p) {
-    const all = await env.DB.prepare("SELECT id FROM projects").all().catch(() => ({ results: [] }));
-    const hit = (all.results || []).find((r) => codeSlug(r.id) === s);
-    if (hit) p = await env.DB.prepare("SELECT * FROM projects WHERE id = ?1").bind(hit.id).first();
-  }
+  const p = await findPublicProcedure(env, String(slug || ""));
   if (!p) return null;
 
   const docs = await env.DB.prepare(
     "SELECT title, doc_type, content, source_url FROM documents WHERE project_id = ?1 ORDER BY id"
   ).bind(p.id).all().catch(() => ({ results: [] }));
-  const canonical = `${SITE}/procedures/${codeSlug(p.id)}`;
+  const canonical = `${SITE}${procedurePath(p)}`;
 
   const out = [];
   out.push(head({
@@ -359,7 +354,7 @@ async function listLandingMarkdown(env, { title, description, url, intro, sql, b
 
 async function calendarMarkdown(env, country) {
   const { results } = await env.DB.prepare(
-    `SELECT id, name, program, status, deadline, deadline_date, country_code FROM projects
+    `SELECT public_slug, program_slug, id, name, program, status, deadline, deadline_date, country_code FROM public_projects
      WHERE country_code = ?1 AND deadline_date IS NOT NULL AND deadline_date >= date('now')
      ORDER BY deadline_date LIMIT 200`
   ).bind(country).all().catch(() => ({ results: [] }));
@@ -383,7 +378,7 @@ async function calendarMarkdown(env, country) {
     out.push(`\n## ${month} (${items.length})\n`);
     out.push(table(["Краен срок", "Процедура", "Статус", "Програма"], items.map((p) => [
       p.deadline_date,
-      `[${trunc(p.name, 90)}](${SITE}/procedures/${codeSlug(p.id)})`,
+      `[${trunc(p.name, 90)}](${SITE}${procedurePath(p)})`,
       STATUS_LABEL[p.status] || p.status,
       p.program,
     ])));
@@ -532,7 +527,7 @@ const CANDIDATE_WHERE = {
 };
 const DEADLINE_DAYS = { "next-7-days": 7, "next-30-days": 30, "next-90-days": 90 };
 
-const PROC_COLS = "id, name, program, status, deadline, deadline_date, country_code";
+const PROC_COLS = "public_slug, program_slug, id, name, program, status, deadline, deadline_date, country_code";
 
 /** Маха /bg /en /de префикса — markdown-ът е на изходния език (bg). */
 function stripLocale(pathname) {
@@ -550,7 +545,8 @@ export async function handleMarkdown(request, env, url, { defaultCountry = "BG",
   const path = stripLocale(url.pathname).replace(/\/+$/, "") || "/";
   const rawCountry = url.searchParams.get("country");
   const country = (normalizeCountry ? normalizeCountry(rawCountry) : rawCountry) || defaultCountry;
-  const canonical = `${SITE}${url.pathname}${url.search}`;
+  await ensurePublicRoutes(env);
+  const canonical = `${SITE}${path}`;
   const md = async (text, maxAge) => markdownResponse(text, { canonicalUrl: canonical, maxAge });
 
   if (path === "/") return md(await homeMarkdown(env));
@@ -562,12 +558,12 @@ export async function handleMarkdown(request, env, url, { defaultCountry = "BG",
 
   if (path === "/procedures/programs") {
     const { results } = await env.DB.prepare(
-      "SELECT program, COUNT(*) AS n FROM projects WHERE program IS NOT NULL AND program != '' GROUP BY program ORDER BY n DESC"
+      "SELECT program, program_slug, COUNT(*) AS n FROM public_projects WHERE program IS NOT NULL AND program != '' GROUP BY program_slug ORDER BY n DESC"
     ).all().catch(() => ({ results: [] }));
     const body = [
       head({ title: "Програми за европейско финансиране", description: "Оперативни програми и национални източници — брой процедури по програма.", url: `${SITE}/procedures/programs` }),
       "# Програми за финансиране\n",
-      table(["Програма", "Процедури", "Адрес"], (results || []).map((r) => [r.program, r.n, `${SITE}/procedures/programs/${codeSlug(r.program)}`])),
+      table(["Програма", "Процедури", "Адрес"], (results || []).map((r) => [r.program, r.n, `${SITE}/procedures/programs/${r.program_slug}`])),
       agentFooter(),
     ].join("\n");
     return md(body, 600);
@@ -576,8 +572,8 @@ export async function handleMarkdown(request, env, url, { defaultCountry = "BG",
   let m = /^\/procedures\/programs\/([^/]+)$/.exec(path);
   if (m) {
     const slug = decodeURIComponent(m[1]).toLowerCase();
-    const { results } = await env.DB.prepare(`SELECT ${PROC_COLS} FROM projects`).all().catch(() => ({ results: [] }));
-    const match = (results || []).filter((p) => codeSlug(p.program) === slug);
+    const { results } = await env.DB.prepare(`SELECT ${PROC_COLS} FROM public_projects`).all().catch(() => ({ results: [] }));
+    const match = (results || []).filter((p) => p.program_slug === slug);
     if (!match.length) return null;
     const program = match.find((x) => x.program) ? match.find((x) => x.program).program : slug;
     const body = [
@@ -599,7 +595,7 @@ export async function handleMarkdown(request, env, url, { defaultCountry = "BG",
       description: `Списък на процедурите със статус „${label}“.`,
       url: `${SITE}${path}`,
       intro: `Процедури със статус **${label}**.`,
-      sql: `SELECT ${PROC_COLS} FROM projects WHERE status = ?1 ORDER BY deadline_date`,
+      sql: `SELECT ${PROC_COLS} FROM public_projects WHERE status = ?1 ORDER BY deadline_date`,
       binds: [status],
     }), 600);
   }
@@ -613,7 +609,7 @@ export async function handleMarkdown(request, env, url, { defaultCountry = "BG",
       description: trunc(c.h1 + " — активни и предстоящи процедури.", 200),
       url: `${SITE}${path}`,
       intro: "Процедури, подходящи за тази група кандидати.",
-      sql: `SELECT ${PROC_COLS} FROM projects WHERE ${c.where} ORDER BY deadline_date`,
+      sql: `SELECT ${PROC_COLS} FROM public_projects WHERE ${c.where} ORDER BY deadline_date`,
     }), 600);
   }
 
@@ -626,13 +622,17 @@ export async function handleMarkdown(request, env, url, { defaultCountry = "BG",
       description: `Активни процедури, чийто краен срок изтича до ${days} дни.`,
       url: `${SITE}${path}`,
       intro: `Активни процедури с краен срок до **${days} дни**.`,
-      sql: `SELECT ${PROC_COLS} FROM projects WHERE deadline_date >= date('now') AND deadline_date <= date('now', '+${days} day') AND status IN ('open','closing_soon') ORDER BY deadline_date`,
+      sql: `SELECT ${PROC_COLS} FROM public_projects WHERE deadline_date >= date('now') AND deadline_date <= date('now', '+${days} day') AND status IN ('open','closing_soon') ORDER BY deadline_date`,
     }), 600);
   }
 
   m = /^\/procedures\/([^/]+)$/.exec(path);
   if (m) {
-    const body = await procedureDetailMarkdown(env, decodeURIComponent(m[1]));
+    const project = await findPublicProcedure(env, decodeURIComponent(m[1]));
+    if (!project) return null;
+    const canonicalPath = procedurePath(project);
+    if (url.pathname !== canonicalPath) return Response.redirect(SITE+canonicalPath,301);
+    const body = await procedureDetailMarkdown(env, project.id);
     if (!body) return null;
     return md(body);
   }

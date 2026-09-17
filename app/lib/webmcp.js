@@ -140,7 +140,7 @@ export function webmcpBootstrap(scope) {
       return {
         id: p.id,
         name: p.name,
-        url: origin + "/procedures/" + codeSlug(p.id, 60),
+        url: origin + "/procedures/" + (p.public_slug || encodeURIComponent(p.id)),
         country_code: p.country_code,
         status: p.status,
         program: p.program,
@@ -244,8 +244,8 @@ export function webmcpBootstrap(scope) {
               return get("/api/projects?country=" + encodeURIComponent(country)).then(function (body) {
                 var want = codeSlug(raw, 300);
                 var hit = (body.projects || []).filter(function (p) {
-                  var cs = codeSlug(p.id, 60);
-                  return cs && (want === cs || want.indexOf(cs + "-") === 0);
+                  var cs = p.public_slug || codeSlug(p.id, 60);
+                  return cs && want === cs;
                 })[0];
                 if (!hit) throw new Error("No procedure matches `" + raw + "` in " + country + ". Call search_procedures first.");
                 return get("/api/project?id=" + encodeURIComponent(hit.id));
@@ -333,7 +333,10 @@ export function webmcpBootstrap(scope) {
           if (!raw) throw new Error("`id` is required.");
           var slug = codeSlug(raw, 300);
           if (!slug) throw new Error("`" + raw + "` is not a usable procedure id.");
-          return "Opened " + origin + goTo(localePrefix() + "/procedures/" + slug);
+          return get("/api/project?id=" + encodeURIComponent(raw)).then(function(body) {
+            if (!body.project) throw new Error("Procedure not found");
+            return "Opened " + origin + goTo("/procedures/" + (body.project.public_slug || encodeURIComponent(body.project.id)));
+          });
         }),
       },
 

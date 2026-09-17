@@ -275,7 +275,7 @@ H("api.catalog", async (c, ctx) => {
   ).filter((href) => { try { return isNeverPublic(new URL(href).pathname); } catch { return false; } });
 
   const missing = ["service-desc", "service-doc", "status"].filter((r) => !rels[r]);
-  const status = privateAdvertised.length ? STATUS.FAILED : missing.length ? STATUS.WARNING : STATUS.PASSED;
+  const status = privateAdvertised.length ? STATUS.FAILED : (missing.length || collisions || unexpected.length) ? STATUS.FAILED : STATUS.PASSED;
   return result(c.code, c.category, status, missing.length ? "api.catalog.missingRels" : "api.catalog.ok", {
     ...fromProbe(p),
     summaryParams: { entries: doc.linkset.length, anchors: anchors.length, missing: missing.join(", ") },
@@ -936,7 +936,7 @@ H("seo.sitemap", async (c, ctx) => {
   if (a.privateUrls.length) problems.push("private_urls");
   if (a.withQuery.length) problems.push("query_urls");
   if (a.badLastmod.length) problems.push("bad_lastmod");
-  if (a.overLimit) problems.push("over_limit");
+  if (a.overLimit || a.bytesOverLimit) problems.push("over_limit");
 
   const critical = ["empty", "private_urls", "wrong_host", "namespace"];
   const status = problems.some((x) => critical.includes(x)) ? STATUS.FAILED : problems.length ? STATUS.WARNING : STATUS.PASSED;
@@ -966,16 +966,19 @@ H("seo.sitemap.coverage", async (c, ctx) => {
   const p = await probe(`${ctx.origin}/sitemap.xml`, { fetchImpl: ctx.fetchImpl, maxBytes: 3_000_000 });
   if (p.status !== 200) return result(c.code, c.category, STATUS.NOT_APPLICABLE, "sitemap.unreachable", { ...fromProbe(p) });
   const parsed = parseSitemap(p.body);
-  const inSitemap = new Set(parsed.entries.map((e) => { try { return new URL(e.loc).pathname; } catch { return ""; } }).filter((x) => /^\/procedures\/[^/]+$/.test(x)));
+  const inSitemap = new Set(parsed.entries.map((e) => { try { return new URL(e.loc).pathname; } catch { return ""; } }).filter((x) => /^\/procedures\/[^/]+$/.test(x) && x !== "/procedures/programs"));
   const rows = ctx.db ? await ctx.db.procedureSlugs() : [];
   // Sitemap-ът публикува КАНОНИЧНИЯ слъг (codeSlug), а не суровия id — иначе
   // процедури с „:" или кирилица в id-то биха изглеждали като липсващи.
-  const missing = rows.filter((r) => !inSitemap.has(`/procedures/${codeSlug(r.slug)}`));
-  const status = !rows.length ? STATUS.NOT_APPLICABLE : missing.length ? STATUS.WARNING : STATUS.PASSED;
-  return result(c.code, c.category, status, missing.length ? "sitemap.coverage.missing" : "sitemap.coverage.ok", {
+  const route = r => r.id ? r.slug : codeSlug(r.slug);
+  const missing = rows.filter((r) => !inSitemap.has(`/procedures/${route(r)}`));
+  const collisions = rows.length - new Set(rows.map(route)).size;
+  const unexpected = [...inSitemap].filter(path=>!rows.some(r=>path===`/procedures/${route(r)}`));
+  const status = !rows.length ? STATUS.NOT_APPLICABLE : (missing.length || collisions || unexpected.length) ? STATUS.FAILED : STATUS.PASSED;
+  return result(c.code, c.category, status, (missing.length || collisions || unexpected.length) ? "sitemap.coverage.missing" : "sitemap.coverage.ok", {
     resourceUrl: p.url,
     summaryParams: { total: rows.length, inSitemap: rows.length - missing.length, missing: missing.length },
-    safeDetails: { databaseProcedures: rows.length, sitemapProcedures: inSitemap.size, missing: missing.slice(0, 25).map((m) => codeSlug(m.slug)), missingCount: missing.length },
+    safeDetails: { scope: "internal_router_inventory; public edge and destination identity require release smoke check", collisions, unexpected: unexpected.slice(0,25), databaseProcedures: rows.length, sitemapProcedures: inSitemap.size, missing: missing.slice(0, 25).map((m) => codeSlug(m.slug)), missingCount: missing.length },
   });
 });
 
@@ -1265,7 +1268,7 @@ H("seo.procedures.language", async (c, ctx) => {
   const checked = [];
   for (const r of rows) {
     // Адресът е каноничният слъг, не суровият id (id-тата съдържат „:" и точки).
-    const p = await probe(`${ctx.origin}/procedures/${codeSlug(r.slug)}`, { accept: "text/html", fetchImpl: ctx.fetchImpl, maxBytes: 120_000 });
+    const p = await probe(`${ctx.origin}/procedures/${r.slug}`, { accept: "text/html", fetchImpl: ctx.fetchImpl, maxBytes: 120_000 });
     if (p.status !== 200) { checked.push({ slug: codeSlug(r.slug), expected: r.language, actual: null, status: p.status, ok: false }); continue; }
     const meta = extractMetadata(p.body);
     const actual = String(meta.lang || "").toLowerCase();

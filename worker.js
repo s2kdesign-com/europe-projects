@@ -3,7 +3,8 @@
 
 import { handleAuth } from "./worker/handlers.js";
 import { logError } from "./worker/db.js";
-import { handleProcedurePage, handleStatusLanding, handleProgramsIndex, handleProgramLanding, handleCandidateLanding, handleDeadlineLanding } from "./worker/procedure-page.js";
+import { handleProcedurePage, handleStatusLanding, handleProgramsIndex, handleProgramLanding, handleCandidateLanding, handleDeadlineLanding, handleCountryLanding } from "./worker/procedure-page.js";
+import { ensurePublicRoutes, findPublicProcedure } from "./worker/public-routes.js";
 import { generateSitemap, sitemapStylesheet } from "./worker/sitemap.js";
 import { handleLocalePage, handleRootSocial } from "./worker/i18n-pages.js";
 import { handlePublicAIConfig, handleAIRunReport } from "./worker/ai/handlers.js";
@@ -132,6 +133,7 @@ export default {
 
   // Външната обвивка добавя Link заглавките за агенти към HTML отговорите.
   async fetch(request, env) {
+    env = { ...env };
     // Валидациите в администрацията трябва да могат да „извикат" сайта. Worker,
     // който fetch-ва СОБСТВЕНИЯ си домейн, обаче получава 522 (заявката излиза
     // до edge-а и се връща в същия Worker → loop detection). Затова подаваме
@@ -248,7 +250,7 @@ async function handleRequest(request, env, url) {
 
     // Динамичен sitemap от D1.
     if (request.method === "GET" && pathname === "/sitemap.xml") {
-      try { return await generateSitemap(env); } catch { /* пада към статичния файл */ }
+      return generateSitemap(env);
     }
     // Четим browser изглед на sitemap-а (XSLT). Не минава през SPA fallback/HTML renderer.
     if (request.method === "GET" && pathname === "/sitemap.xsl") {
@@ -259,6 +261,7 @@ async function handleRequest(request, env, url) {
     if (request.method === "GET" && /^\/procedures\/[^/]+/.test(pathname)) {
       try {
         const landing =
+          (await handleCountryLanding(request, env, url)) ||
           (await handleProgramsIndex(request, env, url)) ||
           (await handleProgramLanding(request, env, url)) ||
           (await handleCandidateLanding(request, env, url)) ||
@@ -392,7 +395,8 @@ async function handleRequest(request, env, url) {
         const country = requestedCountry(url);
         if (!country) return json({ ok: false, error: "invalid_country" }, 400);
         // Задължителен country филтър (backend, не само frontend).
-        const projects = await env.DB.prepare(`SELECT ${PROJECT_COLUMNS} FROM projects WHERE country_code = ?1 ORDER BY status, deadline_date`).bind(country).all();
+        await ensurePublicRoutes(env);
+        const projects = await env.DB.prepare(`SELECT ${PROJECT_COLUMNS}, public_slug, program_slug FROM public_projects WHERE country_code = ?1 ORDER BY status, deadline_date`).bind(country).all();
         const counts = await env.DB.prepare("SELECT d.project_id AS project_id, COUNT(*) AS n FROM documents d JOIN projects p ON p.id = d.project_id WHERE p.country_code = ?1 GROUP BY d.project_id").bind(country).all();
         const countMap = new Map((counts.results || []).map((r) => [r.project_id, r.n]));
         const snapshot = await env.DB.prepare("SELECT id, run_date, summary, created_at FROM snapshots ORDER BY id DESC LIMIT 1").first();
@@ -403,9 +407,9 @@ async function handleRequest(request, env, url) {
       if (pathname === "/api/project") {
         const id = url.searchParams.get("id");
         if (!id) return json({ ok: false, error: "missing_id" }, 400);
-        const project = await env.DB.prepare(`SELECT ${PROJECT_COLUMNS} FROM projects WHERE id = ?1`).bind(id).first();
+        const project = await findPublicProcedure(env, id);
         if (!project) return json({ ok: false, error: "not_found" }, 404);
-        const docs = await env.DB.prepare("SELECT id, project_id, title, doc_type, content, source_url FROM documents WHERE project_id = ?1 ORDER BY id").bind(id).all();
+        const docs = await env.DB.prepare("SELECT id, project_id, title, doc_type, content, source_url FROM documents WHERE project_id = ?1 ORDER BY id").bind(project.id).all();
         return json({ project, documents: docs.results || [], ok: true });
       }
 

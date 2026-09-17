@@ -14,7 +14,7 @@ import { GROUPS, STATUS, buildPlan, executeCheck, probe } from "./validation.js"
 import { AGENT_PAGES, DISCOVERY_RESOURCES, ROUTES, SEO_PAGES, internalRoutes, protectedRoutes, publicRoutes } from "./inventory.js";
 import { APP_VERSION } from "../../app/lib/version.js";
 import { BUILD_ID } from "../../app/lib/build-info.js";
-import { codeSlug } from "../../app/lib/slug.js";
+import { ensurePublicRoutes } from "../public-routes.js";
 
 const NO_STORE = { "cache-control": "no-store, no-cache, must-revalidate", pragma: "no-cache" };
 const ok = (data) => json({ ok: true, ...data }, 200, NO_STORE);
@@ -54,15 +54,16 @@ export function makeFetchImpl(env, origin) {
 function makeDbAdapter(env) {
   return {
     async procedureSlugs() {
+      await ensurePublicRoutes(env);
       const { results } = await env.DB.prepare(
-        "SELECT id AS slug, country_code FROM projects ORDER BY last_updated DESC LIMIT 2000"
-      ).all().catch(() => ({ results: [] }));
+        "SELECT id, public_slug AS slug, country_code FROM public_projects ORDER BY id"
+      ).all();
       return results || [];
     },
     /** Процедури с обявен изходен език — за проверката на `html lang`. */
     async procedureLanguages(limit = 6) {
       const { results } = await env.DB.prepare(
-        "SELECT id AS slug, original_language AS language FROM projects WHERE original_language IS NOT NULL AND original_language != '' ORDER BY last_updated DESC LIMIT ?1"
+        "SELECT public_slug AS slug, original_language AS language FROM public_projects WHERE original_language IS NOT NULL AND original_language != '' ORDER BY last_updated DESC LIMIT ?1"
       ).bind(limit).all().catch(() => ({ results: [] }));
       return results || [];
     },
@@ -80,7 +81,7 @@ function makeDbAdapter(env) {
       ]);
       // Дублирани slug-ове не са възможни (id е PRIMARY KEY), но проверката се
       // прави явно, за да не се крие бъдеща регресия зад предположение.
-      const duplicateSlugs = await one("SELECT COUNT(*) FROM (SELECT id FROM projects GROUP BY id HAVING COUNT(*) > 1)");
+      const duplicateSlugs = await one("SELECT COUNT(*) FROM (SELECT public_slug FROM public_projects GROUP BY public_slug HAVING COUNT(*) > 1)");
       const withDocuments = await one("SELECT COUNT(DISTINCT project_id) FROM documents");
       return { total, withoutOfficialUrl, withoutProgram, expiredButOpen, duplicateTitles, duplicateSlugs, countries, withDocuments };
     },
@@ -97,9 +98,9 @@ function makeDbAdapter(env) {
  */
 async function sampleProcedurePaths(env, limit = 4) {
   const { results } = await env.DB.prepare(
-    "SELECT id FROM projects WHERE id IS NOT NULL ORDER BY last_updated DESC LIMIT ?1"
+    "SELECT id, public_slug FROM public_projects WHERE id IS NOT NULL ORDER BY last_updated DESC LIMIT ?1"
   ).bind(limit).all().catch(() => ({ results: [] }));
-  return (results || []).map((r) => `/procedures/${codeSlug(r.id)}`);
+  return (results || []).map((r) => `/procedures/${r.public_slug || encodeURIComponent(r.id)}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -513,9 +514,9 @@ export async function handleDiscoveryAdmin(request, env, url, userId, readJson) 
     const db = makeDbAdapter(env);
     const stats = await db.procedureSeoStats();
     const { results } = await env.DB.prepare(
-      `SELECT id, name, country_code, program, status, deadline_date, official_url, link, last_updated,
+      `SELECT public_slug, id, name, country_code, program, status, deadline_date, official_url, link, last_updated,
               (SELECT COUNT(*) FROM documents d WHERE d.project_id = p.id) AS doc_count
-       FROM projects p ORDER BY last_updated DESC LIMIT 200`
+       FROM public_projects p ORDER BY last_updated DESC LIMIT 200`
     ).all().catch(() => ({ results: [] }));
     return ok({
       stats,
@@ -525,7 +526,7 @@ export async function handleDiscoveryAdmin(request, env, url, userId, readJson) 
         lastUpdated: r.last_updated, documents: r.doc_count,
         // Каноничният адрес се гради от codeSlug — суровият id съдържа
         // двоеточия и връзката в таблицата водеше към 404.
-        canonical: `${url.origin}/procedures/${codeSlug(r.id)}`,
+        canonical: `${url.origin}/procedures/${r.public_slug || encodeURIComponent(r.id)}`,
         expiredButOpen: !!(r.deadline_date && r.deadline_date < new Date().toISOString().slice(0, 10) && ["open", "closing_soon"].includes(r.status)),
       })),
     });

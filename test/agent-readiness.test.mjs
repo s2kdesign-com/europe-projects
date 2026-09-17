@@ -722,8 +722,11 @@ const PROJECTS = [
 const DOCS = [{ title: "Условия за кандидатстване", doc_type: "Насоки", content: "## Кратко резюме\n\nБюджетът е 50 млн. лв.", source_url: "https://eufunds.bg/doc.pdf" }];
 
 function markdownEnv() {
+  for(const p of PROJECTS) p.public_slug=p.id.replaceAll(".","-");
   const q = (sql, b) => {
-    const s = sql.replace(/\s+/g, " ");
+    const s = sql.replace(/\s+/g, " ").replaceAll("FROM public_projects", "FROM projects");
+    if(s.includes("public_slug IS NULL")) return [];
+    if(s.includes("WHERE public_slug =")) return PROJECTS.find(p=>p.public_slug===b[0]) || null;
     if (s.includes("MAX(snapshot_date)")) return { d: "2026-07-25" };
     if (s.includes("FROM country_daily_statistics s JOIN countries c")) {
       return [{ country_code: "BG", total_procedures: 42, active_procedures: 18, upcoming_procedures: 5, published_budget_eur: 1234567, budget_procedure_count: 12, name_bg: "България", english_name: "Bulgaria", slug: "bulgaria" }];
@@ -773,7 +776,7 @@ t("markdown-ът на началната страница носи реални 
 
 t("детайлът на процедурата включва документите и източника", async () => {
   const { handleMarkdown } = await import("../worker/agent/markdown.js");
-  const { request, url } = mdGet("/procedures/bg16rfpr002-1.014");
+  const { request, url } = mdGet("/procedures/bg16rfpr002-1-014");
   const body = await (await handleMarkdown(request, markdownEnv(), url, { defaultCountry: "BG" })).text();
   assert.match(body, /# Подкрепа за иновации в МСП/);
   assert.match(body, /Микро, малки и средни предприятия/);

@@ -31,7 +31,7 @@ t("английски OG на бара / (ogOnly) — само социални�
   assert.match(out, /<html lang="bg"/);
   assert.match(out, /<title>Заглавие \| Европроекти<\/title>/);
   // hreflang добавен
-  assert.match(out, /hreflang="bg" href="https:\/\/euro-funds\.eu\/bg"/);
+  assert.match(out, /hreflang="bg" href="https:\/\/euro-funds\.eu\/"/);
   assert.match(out, /hreflang="x-default"/);
 });
 

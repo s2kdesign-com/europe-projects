@@ -120,6 +120,7 @@ export default function RootLayout({ children }) {
             <AppChrome />
             {children}
             <SiteFooter />
+            <section id="public-directory" suppressHydrationWarning dangerouslySetInnerHTML={{__html: ""}} />
           </CountryProvider>
         </I18nProvider>
       </body>

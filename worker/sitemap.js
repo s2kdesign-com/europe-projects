@@ -2,7 +2,7 @@
 // (loc = каноничния slug, lastmod = реалната дата на промяна) + landing страниците
 // по статус. Само canonical, публични, HTTP 200 URL-и. Без /saved, /profile и др.
 
-import { codeSlug } from "../app/lib/slug.js";
+import { ensurePublicRoutes } from "./public-routes.js";
 
 const SITE = "https://euro-funds.eu";
 
@@ -36,90 +36,36 @@ function isoDate(s) {
   return isNaN(d) ? null : d.toISOString().slice(0, 10);
 }
 
-// Пътища с езикови варианти (/en, /de) → добавяме xhtml:link алтернативи.
-const LANG_VARIANT_PATHS = new Set(["/", "/procedures", "/calendar", "/about", "/how-ai-works", "/sources"]);
-const PREFIX_LOCALES = ["en", "de"];
-
-function langAlternates(path) {
-  const loc = (l) => (l === "bg" ? SITE + path : `${SITE}/${l}${path === "/" ? "" : path}`);
-  let x = `    <xhtml:link rel="alternate" hreflang="bg" href="${loc("bg")}"/>\n`;
-  for (const l of PREFIX_LOCALES) x += `    <xhtml:link rel="alternate" hreflang="${l}" href="${loc(l)}"/>\n`;
-  x += `    <xhtml:link rel="alternate" hreflang="x-default" href="${loc("bg")}"/>\n`;
-  return x;
-}
-function urlEntryLang(path, changefreq, priority, lastmod) {
-  let x = `  <url>\n    <loc>${SITE}${path}</loc>\n${langAlternates(path)}`;
-  if (lastmod) x += `    <lastmod>${lastmod}</lastmod>\n`;
-  x += `    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>\n`;
-  return x;
-}
-
 export async function generateSitemap(env) {
-  // XML декларацията ТРЯБВА да е първото нещо (без BOM/whitespace преди нея), иначе
-  // браузърите не рендират като XML. Веднага след нея — препратка към XSL stylesheet-а
-  // за четим изглед в браузър (търсачките игнорират PI и четат чистия XML).
-  let body = `<?xml version="1.0" encoding="UTF-8"?>\n<?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n`;
-  // Google изисква уникални <loc> — различни програми/процедури могат да дадат
-  // еднакъв (или празен) slug след codeSlug → dedupe + филтър на празните.
-  const seen = new Set();
-  const emit = (chunk, loc) => { if (seen.has(loc)) return ""; seen.add(loc); return chunk; };
-
-  // Прочитаме процедурите ПЪРВО, за да знаем най-свежата дата на промяна. Тя се ползва
-  // за lastmod на ЛИСТИНГ-страниците (/, /procedures, календар, landing-ите по статус/
-  // срокове/програми) — така при добавяне на нова процедура crawler-ите виждат тези
-  // страници като обновени и ги преобхождат. При грешка → празен списък (само статични).
-  let rows = [];
   try {
-    const projects = await env.DB.prepare("SELECT id, program, last_updated, first_seen FROM projects ORDER BY last_updated DESC").all();
-    rows = projects.results || [];
-  } catch { /* fallback: само статичните URL-и */ }
-  const freshest = rows.length ? (isoDate(rows[0].last_updated) || isoDate(rows[0].first_seen)) : null;
-
-  // Кои статични пътища са листинги (отразяват новите процедури) → freshest lastmod.
-  const LISTING = new Set(["/", "/procedures", "/calendar"]);
-  for (const s of STATIC) {
-    const lm = LISTING.has(s.path) ? freshest : null;
-    if (LANG_VARIANT_PATHS.has(s.path)) body += urlEntryLang(s.path, s.changefreq, s.priority, lm);
-    else body += urlEntry(`${SITE}${s.path}`, lm, s.changefreq, s.priority);
-  }
-  // Curated landing страници (динамични листинги) → freshest lastmod.
-  body += urlEntry(`${SITE}/procedures/programs`, freshest, "weekly", "0.6");
-  for (const slug of STATUS_SLUGS) body += urlEntry(`${SITE}/procedures/status/${slug}`, freshest, "daily", "0.6");
-  for (const slug of ["business", "youth"]) body += urlEntry(`${SITE}/procedures/candidates/${slug}`, freshest, "weekly", "0.6");
-  for (const slug of ["next-7-days", "next-30-days", "next-90-days"]) body += urlEntry(`${SITE}/procedures/deadlines/${slug}`, freshest, "daily", "0.6");
-
-  // Landing по програма (уникални програми) — с freshest lastmod.
-  const programs = new Set();
-  for (const p of rows) {
-    if (p.program && !programs.has(p.program)) {
-      programs.add(p.program);
-      const pslug = codeSlug(p.program);
-      if (pslug) {
-        const loc = `${SITE}/procedures/programs/${pslug}`;
-        body += emit(urlEntry(loc, freshest, "weekly", "0.6"), loc);
-      }
+    await ensurePublicRoutes(env);
+    const {results: rows} = await env.DB.prepare("SELECT id, public_slug, program_slug, country_code, status, last_updated, first_seen FROM public_projects ORDER BY id").all();
+    const validSlug = s => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s || '');
+    if (!rows || rows.some(p=>!validSlug(p.public_slug) || (p.program_slug && !validSlug(p.program_slug)) || (p.country_code && !/^[A-Z]{2}$/.test(p.country_code))) || new Set(rows.map(p=>p.public_slug)).size !== rows.length) throw new Error('Incomplete or collided procedure route inventory');
+    const newest = items => items.map(p=>isoDate(p.last_updated)||isoDate(p.first_seen)).filter(Boolean).sort().pop();
+    let body = '<?xml version="1.0" encoding="UTF-8"?>\n<?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+    const entries = new Map();
+    const add = (path, date) => { if(entries.has(path)) throw new Error('Duplicate sitemap URL'); entries.set(path,date); };
+    for (const s of STATIC) add(s.path, ['/','/procedures','/calendar'].includes(s.path) ? newest(rows) : null);
+    add('/procedures/programs',newest(rows));
+    for (const slug of STATUS_SLUGS) add('/procedures/status/'+slug,newest(rows.filter(p=>p.status===slug.replace('-','_'))));
+    // Membership changes with time: omit a speculative lastmod on deadline directories.
+    for (const slug of ['business','youth']) add('/procedures/candidates/'+slug,null);
+    for (const slug of ['next-7-days','next-30-days','next-90-days']) add('/procedures/deadlines/'+slug,null);
+    for (const slug of new Set(rows.map(p=>p.program_slug).filter(Boolean))) add('/procedures/programs/'+slug,newest(rows.filter(p=>p.program_slug===slug)));
+    for (const country of new Set(rows.map(p=>p.country_code).filter(Boolean))) {
+      const group=rows.filter(p=>p.country_code===country);
+      for(let page=1;page<=Math.ceil(group.length/100);page++) add('/procedures/countries/'+country.toLowerCase()+(page===1?'':'/page/'+page),newest(group));
     }
+    for(const p of rows) add('/procedures/'+p.public_slug,isoDate(p.last_updated)||isoDate(p.first_seen));
+    for(const [path,date] of entries) body += urlEntry(SITE+path,date);
+    body += '</urlset>\n';
+    if(entries.size>50000 || new TextEncoder().encode(body).length>50*1024*1024) throw new Error('Sitemap requires splitting');
+    return new Response(body,{headers:{'content-type':'application/xml; charset=utf-8','x-content-type-options':'nosniff','cache-control':'public, max-age=0, s-maxage=300'}});
+  } catch(error) {
+    console.error('sitemap_generation_failed', error.message);
+    return new Response('Sitemap temporarily unavailable. Please retry.',{status:503,headers:{'content-type':'text/plain; charset=utf-8','retry-after':'300','cache-control':'no-store','x-content-type-options':'nosniff'}});
   }
-  // Всяка процедура — реален lastmod от нейната дата на промяна.
-  for (const p of rows) {
-    const slug = codeSlug(p.id);
-    if (!slug) continue;
-    const lastmod = isoDate(p.last_updated) || isoDate(p.first_seen);
-    const loc = `${SITE}/procedures/${slug}`;
-    body += emit(urlEntry(loc, lastmod, "weekly", "0.7"), loc);
-  }
-
-  body += `</urlset>\n`;
-  return new Response(body, {
-    status: 200,
-    headers: {
-      "content-type": "application/xml; charset=utf-8",
-      // Браузърът да НЕ sniff-ва към text/html; edge (Cloudflare) кеш 1 час,
-      // клиентът валидира; stale-while-revalidate за плавно опресняване.
-      "cache-control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=300",
-      "x-content-type-options": "nosniff",
-    },
-  });
 }
 
 // Четим browser изглед на sitemap-а (XSLT 1.0). Търсачките игнорират stylesheet-а и

@@ -156,7 +156,17 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
   const savedIds = saved.savedIds;
   const savedProjects = useMemo(() => projects.filter((p) => savedIds.includes(p.id)), [projects, savedIds]);
   const compareProjects = useMemo(() => (filters.compare || []).map((id) => projects.find((p) => p.id === id)).filter(Boolean), [projects, filters.compare]);
-  const selectedProject = useMemo(() => projects.find((p) => p.id === filters.selected) || null, [projects, filters.selected]);
+  const [sharedProject, setSharedProject] = useState(null);
+  const listedSelection = projects.find((p) => p.id === filters.selected);
+  useEffect(() => {
+    if (!filters.selected || listedSelection) { setSharedProject(null); return; }
+    const controller = new AbortController();
+    loadDetail(filters.selected, controller.signal).then(d => {
+      if (!controller.signal.aborted) setSharedProject(d.project || null);
+    }).catch(() => {});
+    return () => controller.abort();
+  }, [filters.selected, listedSelection, loadDetail]);
+  const selectedProject = listedSelection || (sharedProject?.id === filters.selected ? sharedProject : null);
 
   const ovProjects = useMemo(
     () => projects.filter((p) => (!overviewFilter.program || p.program === overviewFilter.program) && (!overviewFilter.target || targetGroup(p) === overviewFilter.target)),

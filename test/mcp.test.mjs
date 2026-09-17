@@ -36,6 +36,7 @@ const VERSION = "2.53.0";
 // отколкото тих `undefined` в продукцията.
 
 const PROJECT = {
+  public_slug: "bg05sfpr001-2-005",
   id: "BG05SFPR001-2.005",
   name: "Подкрепа за ученици с таланти",
   program: "ПРЧР 2021-2027",
@@ -56,7 +57,7 @@ const PROJECT = {
   last_updated: "2026-07-30",
 };
 
-const PROJECT_NO_BUDGET = { ...PROJECT, id: "BG16RFPR002-1.001", name: "Иновации в предприятията", status: "closing_soon", budget_amount_eur: null, deadline_date: null, deadline: "текущ прием", category: null };
+const PROJECT_NO_BUDGET = { ...PROJECT, public_slug: "bg16rfpr002-1-001", id: "BG16RFPR002-1.001", name: "Иновации в предприятията", status: "closing_soon", budget_amount_eur: null, deadline_date: null, deadline: "текущ прием", category: null };
 
 function mockDb(overrides = {}) {
   const log = [];
@@ -75,7 +76,9 @@ function mockDb(overrides = {}) {
 
   const run = (sql, binds) => {
     log.push({ sql, binds });
-    const s = sql.replace(/\s+/g, " ").trim();
+    const s = sql.replace(/\s+/g, " ").trim().replaceAll("FROM public_projects", "FROM projects");
+    if(s.includes("public_slug IS NULL")) return {results:[]};
+    if(s.includes("WHERE public_slug =")) return rows.projects.find(p=>p.public_slug===binds[0]) || null;
 
     if (/^SELECT COUNT\(\*\) AS n FROM projects/.test(s)) return { n: rows.projects.length };
     if (/^SELECT id FROM projects$/.test(s)) return { results: rows.projects.map((p) => ({ id: p.id })) };
@@ -460,7 +463,7 @@ t("невалиден статус се отказва вместо да вър�
 
 t("get_procedure намира процедурата и по URL slug", async () => {
   const { DB } = mockDb();
-  const data = (await callToolRpc("get_procedure", { id: "bg05sfpr001-2-005-podkrepa-za-uchenitsi" }, { DB })).structuredContent;
+  const data = (await callToolRpc("get_procedure", { id: "bg05sfpr001-2-005" }, { DB })).structuredContent;
   assert.equal(data.procedure.id, PROJECT.id);
   assert.equal(data.documents.length, 1);
   assert.match(data.note, /source_url/);

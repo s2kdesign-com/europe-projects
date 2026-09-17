@@ -1,3 +1,4 @@
+import { XMLValidator } from "fast-xml-parser";
 // Чисти парсери и редакция за SiteDiscoveryValidationService.
 // Без мрежа и без D1 — затова са напълно тестваеми (test/discovery-*.test.mjs).
 
@@ -217,6 +218,7 @@ export function groupForAgent(parsed, agent) {
 // ---------------------------------------------------------------------------
 
 export function parseSitemap(xml) {
+  if (XMLValidator.validate(String(xml)) !== true) return { entries: [], bytes: new TextEncoder().encode(String(xml)).length, hasNamespace:false, hasXmlDeclaration:false, hasStylesheet:false };
   const text = String(xml || "");
   const entries = [];
   const urlBlocks = text.match(/<url>[\s\S]*?<\/url>/g) || [];

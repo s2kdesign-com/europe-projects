@@ -9,6 +9,7 @@
 // (изходникът е bg). За бара / се пренаписват САМО социалните тагове (клиентът
 // продължава да авто-разпознава езика).
 
+import { injectDirectory } from "./public-directory.js";
 import { translateBatch } from "./translation.js";
 
 const SITE = "https://euro-funds.eu";
@@ -29,14 +30,7 @@ const SHELL_PATHS = new Set(["/", "/procedures", "/calendar", "/saved", "/change
 
 function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 
-function hreflangBlock(rest) {
-  const loc = (l) => (l === "bg" ? `${SITE}/bg${rest === "/" ? "" : rest}` : `${SITE}/${l}${rest === "/" ? "" : rest}`);
-  let out = `<link rel="alternate" hreflang="bg" href="${loc("bg")}">`;
-  out += `<link rel="alternate" hreflang="en" href="${loc("en")}">`;
-  out += `<link rel="alternate" hreflang="de" href="${loc("de")}">`;
-  out += `<link rel="alternate" hreflang="x-default" href="${SITE}${rest}">`;
-  return out;
-}
+function hreflangBlock(rest) { return `<link rel="alternate" hreflang="bg" href="${SITE}${rest}"><link rel="alternate" hreflang="x-default" href="${SITE}${rest}">`; }
 
 async function tr(env, locale, texts) {
   try {
@@ -92,7 +86,7 @@ export async function handleLocalePage(request, env, url) {
   const bgTitle = (html.match(/<title>([^<]*)<\/title>/) || [])[1] || "";
   const bgDesc = (html.match(/<meta name="description" content="([^"]*)"/) || [])[1] || "";
   const titleMain = bgTitle.split("|")[0].trim();
-  const locUrl = `${SITE}/${locale}${rest === "/" ? "" : rest}`;
+  const locUrl = `${SITE}${rest}`;
 
   let title = titleMain, desc = bgDesc, alt = OG_IMAGE_ALT_BG, brand = BRAND_BG;
   if (locale !== "bg") {
@@ -100,6 +94,11 @@ export async function handleLocalePage(request, env, url) {
     brand = BRAND_INTL;
   }
   html = applyHead(html, { title, desc, alt, locale, brand, canonicalUrl: locUrl, rest, fullPage: true });
+  if (locale !== "bg") {
+    html = html.replace(/<meta name="(?:robots|googlebot)"[^>]*>/g, "").replace("</head>", '<meta name="robots" content="noindex,follow"></head>');
+    html = html.replace(/<html lang="[^"]*"/, '<html lang="bg"');
+  }
+  if (["/", "/procedures", "/calendar"].includes(rest)) html = await injectDirectory(html, env);
   return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" } });
 }
 
@@ -122,5 +121,6 @@ export async function handleRootSocial(request, env, url) {
     [title, desc, alt] = await tr(env, "en", [bgTitle.split("|")[0].trim(), bgDesc, OG_IMAGE_ALT_BG]);
   }
   html = applyHead(html, { title, desc, alt, locale: "en", brand: BRAND_INTL, canonicalUrl: `${SITE}${rest}`, rest, fullPage: false });
+  if (["/", "/procedures", "/calendar"].includes(rest)) html = await injectDirectory(html, env);
   return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" } });
 }

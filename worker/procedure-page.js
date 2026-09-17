@@ -3,7 +3,8 @@
 // от D1. Slug-ът е стабилният id на процедурата. Ако slug-ът е стар вариант, но
 // сочи същата процедура → 301 към каноничния. Липсваща процедура → 404.
 
-import { codeSlug } from "../app/lib/slug.js";
+import { procedurePath, officialSource, safeJson } from "../app/lib/public-url.js";
+import { ensurePublicRoutes, findPublicProcedure } from "./public-routes.js";
 
 const SITE = "https://euro-funds.eu";
 const OG_IMAGE = SITE + "/og-image.png";
@@ -28,33 +29,21 @@ export function pageLanguage(project) {
 /** og:locale очаква формат `xx_XX`. */
 export function ogLocale(project) {
   const lang = pageLanguage(project);
-  const [l, r] = lang.split("-");
-  return `${l}_${(r || l).toUpperCase()}`;
+  const locales = {bg:'bg_BG', en:'en_US', de:'de_DE', cs:'cs_CZ', el:'el_GR', sv:'sv_SE', da:'da_DK', et:'et_EE', ga:'ga_IE', sl:'sl_SI', hu:'hu_HU', pt:'pt_PT', es:'es_ES', fr:'fr_FR', it:'it_IT', nl:'nl_NL', pl:'pl_PL', ro:'ro_RO', sk:'sk_SK', fi:'fi_FI', hr:'hr_HR', lt:'lt_LT', lv:'lv_LV', mt:'mt_MT'};
+  return lang.includes('-') ? lang.split('-')[0]+'_'+lang.split('-')[1].toUpperCase() : locales[lang] || 'bg_BG';
 }
 
 // BCP 47 таг за JSON-LD (`inLanguage`).
 export function contentLanguageTag(project) {
   const lang = pageLanguage(project);
-  return lang.includes("-") ? lang : `${lang}-${lang.toUpperCase()}`;
+  return lang;
 }
 
 const STATUS_LABEL = { open: "Отворена", closing_soon: "Изтича скоро", upcoming: "Предстояща", closed: "Приключена" };
 
-function canonicalSlug(p) { return codeSlug(p.id); }
+function canonicalSlug(p) { return p.public_slug || encodeURIComponent(p.id); }
 
-export async function findProcedureBySlug(env, slug) {
-  const s = String(slug || "").toLowerCase();
-  if (!s) return null;
-  // Точно съвпадение по id (най-честият случай).
-  let p = await env.DB.prepare("SELECT * FROM projects WHERE id = ?1").bind(s).first();
-  if (!p) {
-    // Съвпадение по каноничен slug на id (ако id-то не е идеално чисто).
-    const all = await env.DB.prepare("SELECT id FROM projects").all();
-    const hit = (all.results || []).find((r) => codeSlug(r.id) === s);
-    if (hit) p = await env.DB.prepare("SELECT * FROM projects WHERE id = ?1").bind(hit.id).first();
-  }
-  return p || null;
-}
+export const findProcedureBySlug = findPublicProcedure;
 
 function jsonLd(p, url) {
   const inLanguage = contentLanguageTag(p);
@@ -65,12 +54,14 @@ function jsonLd(p, url) {
     url,
     description: trunc(`${p.name}. Програма: ${p.program || "—"}. Статус: ${STATUS_LABEL[p.status] || p.status || "—"}.`, 300),
     identifier: p.id,
-    inLanguage,
+
   };
-  if (p.program) g.funder = { "@type": "Organization", name: p.program };
-  if (p.eligible) g.audience = { "@type": "Audience", audienceType: trunc(p.eligible, 120) };
-  if (p.deadline_date) g.validThrough = p.deadline_date;
-  if (p.link) g.sameAs = p.link;
+  if (p.managing_authority) g.funder = { "@type": "Organization", name: p.managing_authority };
+  const page = { "@context": "https://schema.org", "@type": "WebPage", "@id": url, url, name: p.name, inLanguage, mainEntity: {"@id": url+"#grant"} };
+  g["@id"] = url+"#grant";
+  if (p.eligible) page.audience = { "@type": "Audience", audienceType: p.eligible };
+
+  if (officialSource(p)) g.sameAs = officialSource(p);
   const crumbs = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -80,7 +71,7 @@ function jsonLd(p, url) {
       { "@type": "ListItem", position: 3, name: trunc(p.name, 80), item: url },
     ],
   };
-  return `<script type="application/ld+json">${JSON.stringify(g)}</script>\n<script type="application/ld+json">${JSON.stringify(crumbs)}</script>`;
+  return `<script type="application/ld+json">${safeJson(g)}</script><script type="application/ld+json">${safeJson(page)}</script>\n<script type="application/ld+json">${safeJson(crumbs)}</script>`;
 }
 
 function row(label, value) {
@@ -88,16 +79,16 @@ function row(label, value) {
   return `<div class="row"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`;
 }
 
-export function renderProcedureHTML(p, docs) {
+export function renderProcedureHTML(p, docs, related = []) {
   const slug = canonicalSlug(p);
   const url = `${SITE}/procedures/${slug}`;
   const statusLabel = STATUS_LABEL[p.status] || p.status || "";
-  const title = trunc(`${p.name} — срок, бюджет и документи | Euro-Funding`, 65);
+  const title = `${p.name} — ${p.id} | Euro-Funding`;
   const descParts = [p.name];
   if (p.program) descParts.push("Програма: " + p.program);
   if (p.deadline) descParts.push("Срок: " + p.deadline);
   if (p.budget) descParts.push("Бюджет: " + trunc(p.budget, 60));
-  const description = trunc(descParts.join(". ") + ".", 165);
+  const description = `${p.id}: ${trunc(descParts.join(". "), 220)}.`;
 
   const docsHtml = (docs && docs.length)
     ? `<section class="docs"><h2>Документи за кандидатстване</h2><ul>${docs.map((d) =>
@@ -123,7 +114,8 @@ export function renderProcedureHTML(p, docs) {
     </dl>
     ${p.notes ? `<section><h2>Бележки</h2><p>${esc(p.notes)}</p></section>` : ""}
     ${docsHtml}
-    ${p.link ? `<p class="source">Официален източник: <a href="${esc(p.link)}" rel="nofollow noopener" target="_blank">${esc(p.link)}</a></p>` : ""}
+    ${related.length ? `<section><h2>Още по програмата</h2><ul>${related.map(r=>`<li><a href="${procedurePath(r)}">${esc(r.name)}</a></li>`).join('')}</ul></section>` : ''}
+    ${officialSource(p) ? `<p class="source">Официален източник: <a href="${esc(officialSource(p))}" rel="noopener" target="_blank">${esc(officialSource(p))}</a></p>` : ""}
     <p class="ai">Информацията се структурира и анализира с помощта на изкуствен интелект.</p>
     <p class="disclaimer">AI анализът има информационен характер и не заменя официалната документация или професионалната експертна оценка.</p>
     <p><a class="cta" href="${SITE}/procedures">← Към всички процедури</a></p>
@@ -171,7 +163,7 @@ ${jsonLd(p, url)}
 // ---------------------------------------------------------------------------
 const STATUS_SLUG_MAP = { open: "open", "closing-soon": "closing_soon", upcoming: "upcoming", closed: "closed" };
 const STATUS_INTRO = {
-  open: "Активни (отворени) процедури за европейско и национално финансиране в България, които приемат проектни предложения в момента.",
+  open: "Активни (отворени) процедури за европейско и национално финансиране в Европейския съюз, които приемат проектни предложения в момента.",
   closing_soon: "Процедури, чийто краен срок наближава. Проверете условията и документите навреме.",
   upcoming: "Предстоящи процедури, които предстои да отворят прием на проектни предложения.",
   closed: "Приключени процедури — архив с оригиналните срокове и условия за справка.",
@@ -219,8 +211,8 @@ function renderListHTML({ title, description, canonicalPath, h1, intro, crumbLab
 <meta property="og:url" content="${url}"><meta property="og:image" content="${OG_IMAGE}"><meta property="og:locale" content="bg_BG">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(description)}"><meta name="twitter:image" content="${OG_IMAGE}">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<script type="application/ld+json">${JSON.stringify(itemList)}</script>
-<script type="application/ld+json">${JSON.stringify(crumbs)}</script>
+<script type="application/ld+json">${safeJson(itemList)}</script>
+<script type="application/ld+json">${safeJson(crumbs)}</script>
 <style>${css}</style>`;
   const body = `<header class="site"><a class="brand" href="${SITE}/">Euro-Funding</a><a href="${SITE}/procedures">Всички процедури →</a></header>
   <nav class="crumbs" aria-label="breadcrumbs"><a href="${SITE}/">Начало</a> › <a href="${SITE}/procedures">Процедури</a> › <span aria-current="page">${esc(crumbLabel)}</span></nav>
@@ -236,8 +228,9 @@ export async function handleStatusLanding(request, env, url) {
   const slug = decodeURIComponent(m[1]).toLowerCase();
   const status = STATUS_SLUG_MAP[slug];
   if (!status) return new Response(render404(), { status: 404, headers: { "content-type": "text/html; charset=utf-8" } });
+  await ensurePublicRoutes(env);
   const { results } = await env.DB.prepare(
-    "SELECT id, name, program, status, deadline FROM projects WHERE status = ?1 ORDER BY deadline_date"
+    "SELECT id, name, program, status, deadline, country_code, source_id, public_slug, program_slug FROM public_projects WHERE status = ?1 ORDER BY deadline_date"
   ).bind(status).all();
   const label = STATUS_LABEL[status] || status;
   const html = renderProcedureList({
@@ -262,17 +255,18 @@ function htmlResponse(html, status = 200, maxAge = 600) {
 // Програми: индекс със списък програми (връзки към landing на всяка програма).
 export async function handleProgramsIndex(request, env, url) {
   if (url.pathname !== "/procedures/programs" && url.pathname !== "/procedures/programs/") return null;
+  await ensurePublicRoutes(env);
   const { results } = await env.DB.prepare(
-    "SELECT program, COUNT(*) AS n FROM projects WHERE program IS NOT NULL AND program != '' GROUP BY program ORDER BY n DESC"
+    "SELECT program, program_slug, country_code, COUNT(*) AS n FROM public_projects WHERE program IS NOT NULL AND program != '' GROUP BY program_slug ORDER BY n DESC"
   ).all();
   const items = (results || []).map((r) => ({
-    href: `${SITE}/procedures/programs/${codeSlug(r.program)}`,
-    name: r.program,
+    href: `${SITE}/procedures/programs/${r.program_slug}`,
+    name: `${r.program} (${r.country_code})`,
     meta: `${r.n} процедури`,
   }));
   return htmlResponse(renderGenericList({
     title: "Програми за европейско финансиране | Euro-Funding",
-    description: "Оперативни програми и национални източници за финансиране в България — прегледайте активните процедури по програма.",
+    description: "Оперативни програми и национални източници за финансиране в Европейския съюз — прегледайте активните процедури по програма.",
     canonicalPath: "/procedures/programs", h1: "Програми за финансиране",
     intro: "Изберете програма, за да видите активните и предстоящите процедури по нея.",
     crumbLabel: "Програми", items,
@@ -283,13 +277,14 @@ export async function handleProgramLanding(request, env, url) {
   const m = /^\/procedures\/programs\/([^/]+)\/?$/.exec(url.pathname);
   if (!m) return null;
   const slug = decodeURIComponent(m[1]).toLowerCase();
-  const { results } = await env.DB.prepare("SELECT id, name, program, status, deadline FROM projects").all();
-  const match = (results || []).filter((p) => codeSlug(p.program) === slug);
+  await ensurePublicRoutes(env);
+  const { results } = await env.DB.prepare("SELECT id, name, program, status, deadline, country_code, source_id, public_slug, program_slug FROM public_projects").all();
+  const match = (results || []).filter((p) => p.program_slug === slug);
   if (!match.length) return htmlResponse(render404(), 404);
   const program = match[0].program;
   return htmlResponse(renderProcedureList({
-    title: trunc(`${program} — активни процедури и финансиране | Euro-Funding`, 65),
-    description: trunc(`Активни и предстоящи процедури по програма ${program} за България — статус, срокове и допустими кандидати.`, 165),
+    title: `${program} (${match[0].country_code}) — ${slug} | Euro-Funding`,
+    description: `${slug}: Процедури по ${program} (${match[0].country_code}) — статус, срокове и допустими кандидати.`,
     canonicalPath: `/procedures/programs/${slug}`,
     h1: `${program} — процедури за финансиране`,
     intro: `Процедури за кандидатстване по програма ${program}.`,
@@ -298,8 +293,8 @@ export async function handleProgramLanding(request, env, url) {
 }
 
 const CANDIDATE = {
-  business: { where: "category != 'youth' OR category IS NULL", h1: "Процедури за бизнес и предприятия", intro: "Процедури за европейско и национално финансиране, подходящи за фирми, МСП и предприемачи в България." },
-  youth: { where: "category = 'youth'", h1: "Процедури за младежка заетост", intro: "Процедури с фокус върху младежката заетост и подкрепа за млади хора в България." },
+  business: { where: "category != 'youth' OR category IS NULL", h1: "Процедури за бизнес и предприятия", intro: "Процедури за европейско и национално финансиране, подходящи за фирми, МСП и предприемачи в Европейския съюз." },
+  youth: { where: "category = 'youth'", h1: "Процедури за младежка заетост", intro: "Процедури с фокус върху младежката заетост и подкрепа за млади хора в Европейския съюз." },
 };
 export async function handleCandidateLanding(request, env, url) {
   const m = /^\/procedures\/candidates\/([^/]+)\/?$/.exec(url.pathname);
@@ -307,7 +302,8 @@ export async function handleCandidateLanding(request, env, url) {
   const slug = decodeURIComponent(m[1]).toLowerCase();
   const c = CANDIDATE[slug];
   if (!c) return htmlResponse(render404(), 404);
-  const { results } = await env.DB.prepare(`SELECT id, name, program, status, deadline FROM projects WHERE ${c.where} ORDER BY deadline_date`).all();
+  await ensurePublicRoutes(env);
+  const { results } = await env.DB.prepare(`SELECT id, name, program, status, deadline, country_code, source_id, public_slug, program_slug FROM public_projects WHERE ${c.where} ORDER BY deadline_date`).all();
   return htmlResponse(renderProcedureList({
     title: trunc(`${c.h1} | Euro-Funding`, 65), description: trunc(c.intro, 165),
     canonicalPath: `/procedures/candidates/${slug}`, h1: c.h1, intro: c.intro, crumbLabel: c.h1, items: results || [],
@@ -323,8 +319,9 @@ export async function handleDeadlineLanding(request, env, url) {
   if (!days) return htmlResponse(render404(), 404);
   const today = new Date(); const to = new Date(today.getTime() + days * 86400000);
   const iso = (d) => d.toISOString().slice(0, 10);
+  await ensurePublicRoutes(env);
   const { results } = await env.DB.prepare(
-    "SELECT id, name, program, status, deadline FROM projects WHERE deadline_date >= ?1 AND deadline_date <= ?2 AND status IN ('open','closing_soon') ORDER BY deadline_date"
+    "SELECT id, name, program, status, deadline, country_code, source_id, public_slug, program_slug FROM public_projects WHERE deadline_date >= ?1 AND deadline_date <= ?2 AND status IN ('open','closing_soon') ORDER BY deadline_date"
   ).bind(iso(today), iso(to)).all();
   const h1 = `Процедури с краен срок до ${days} дни`;
   const intro = `Активни процедури за европейско финансиране, чийто краен срок изтича до ${days} дни. Планирайте кандидатстването навреме.`;
@@ -335,7 +332,7 @@ export async function handleDeadlineLanding(request, env, url) {
 }
 
 // Обвивки над renderListHTML: procedure-списък (връзки към detail) и общ списък.
-function renderProcedureList(opts) {
+export function renderProcedureList(opts) {
   return renderListHTML({ ...opts, items: opts.items.map((p) => ({
     href: `${SITE}/procedures/${canonicalSlug(p)}`,
     name: p.name,
@@ -344,21 +341,38 @@ function renderProcedureList(opts) {
 }
 function renderGenericList(opts) { return renderListHTML(opts); }
 
+export async function handleCountryLanding(request, env, url) {
+  const m = /^\/procedures\/countries\/([a-z]{2})(?:\/page\/([1-9]\d*))?$/.exec(url.pathname);
+  if (!m) return null;
+  const page = Number(m[2] || 1), country = m[1].toUpperCase();
+  await ensurePublicRoutes(env);
+  const {n} = await env.DB.prepare('SELECT COUNT(*) AS n FROM public_projects WHERE country_code=?1').bind(country).first();
+  if (!n || page > Math.ceil(n/100)) return htmlResponse(render404(),404);
+  const path = `/procedures/countries/${m[1]}`;
+  if (m[2] === '1') return Response.redirect(SITE+path,301);
+  const {results} = await env.DB.prepare('SELECT id, public_slug, name, program, status, deadline FROM public_projects WHERE country_code=?1 ORDER BY id LIMIT 100 OFFSET ?2').bind(country,(page-1)*100).all();
+  let html = renderProcedureList({title:`${country} — процедури, страница ${page} | Euro-Funding`,description:`Финансиране в ${country}: ${n} процедури. Страница ${page}, статус, срокове и официални източници.`,canonicalPath:url.pathname,h1:`Процедури: ${country}`,intro:`${n} процедури · страница ${page}`,crumbLabel:country,items:results});
+  const pages = Array.from({length:Math.ceil(n/100)},(_,i)=>`<a href="${path}${i ? '/page/'+(i+1) : ''}"${page===i+1?' aria-current="page"':''}>${i+1}</a>`).join(' · ');
+  html = html.replace('</main>',`<nav aria-label="Страници">${pages}</nav></main>`);
+  return htmlResponse(html);
+}
+
 // Главен handler: връща Response за /procedures/:slug или null (не е такъв път).
 export async function handleProcedurePage(request, env, url) {
   const m = /^\/procedures\/([^/]+)\/?$/.exec(url.pathname);
   if (!m) return null;
-  const reqSlug = decodeURIComponent(m[1]).toLowerCase();
+  const reqSlug = decodeURIComponent(m[1]);
   const p = await findProcedureBySlug(env, reqSlug);
   if (!p) {
     return new Response(render404(reqSlug), { status: 404, headers: { "content-type": "text/html; charset=utf-8" } });
   }
   const canonical = canonicalSlug(p);
-  if (canonical && canonical !== reqSlug) {
+  if (canonical && url.pathname !== `/procedures/${canonical}`) {
     return Response.redirect(`${SITE}/procedures/${canonical}`, 301);
   }
   const docs = await env.DB.prepare("SELECT title, doc_type, source_url FROM documents WHERE project_id = ?1 ORDER BY id").bind(p.id).all();
-  const html = renderProcedureHTML(p, docs.results || []);
+  const related = p.program_slug ? await env.DB.prepare('SELECT id, public_slug, name FROM public_projects WHERE program_slug=?1 AND id!=?2 ORDER BY last_updated DESC LIMIT 4').bind(p.program_slug,p.id).all() : {results:[]};
+  const html = renderProcedureHTML(p, docs.results || [], related.results);
   return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" } });
 }
 

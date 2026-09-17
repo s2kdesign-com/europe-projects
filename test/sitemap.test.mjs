@@ -7,7 +7,7 @@ import { codeSlug } from "../app/lib/slug.js";
 let n = 0;
 const t = typeof it === "function" ? it : (name, fn) => { const r = fn(); if (r && r.then) return r.then(() => { n++; console.log("ok -", name); }); n++; console.log("ok -", name); return r; };
 
-const mkEnv = (rows) => ({ DB: { prepare: () => ({ all: async () => ({ results: rows }) }) } });
+const mkEnv = (rows) => ({ publicRoutesReady: Promise.resolve(), DB: { prepare: () => ({ all: async () => ({ results: rows.map(p=>({...p, public_slug:codeSlug(p.id), program_slug:codeSlug(p.program)})) }) }) } });
 const ROWS = [
   { id: "bg:eufunds:proc-a", program: "Program X", last_updated: "2026-07-20", first_seen: "2026-07-01" },
   { id: "ro:ro-x:proc-b", program: "Program X", last_updated: "2026-07-19", first_seen: "2026-07-02" },
@@ -36,11 +36,11 @@ await t("Правилен sitemap namespace", async () => {
   assert.ok(xml.includes('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'));
 });
 
-await t("Content-Type application/xml + nosniff + edge cache 1ч", async () => {
+await t("Content-Type application/xml + nosniff + edge cache 5 мин", async () => {
   const { res } = await build();
   assert.equal(res.headers.get("content-type"), "application/xml; charset=utf-8");
   assert.equal(res.headers.get("x-content-type-options"), "nosniff");
-  assert.match(res.headers.get("cache-control"), /s-maxage=3600/);
+  assert.match(res.headers.get("cache-control"), /s-maxage=300/);
   assert.equal(res.status, 200);
 });
 
@@ -54,7 +54,8 @@ await t("Всеки <url> има <loc>; всички са абсолютни htt
 });
 
 await t("Няма дублирани <loc> (дори при повтарящ се запис)", async () => {
-  const { xml } = await build([...ROWS, ROWS[0]]); // дублиран proc-a
+  const { xml, res } = await build([...ROWS, ROWS[0]]); // corrupted inventory must fail closed
+  assert.equal(res.status, 503);
   const locs = [...xml.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1]);
   assert.equal(locs.length, new Set(locs).size);
 });
@@ -111,12 +112,12 @@ await t("Под лимитите (<50000 URL, well-formed затваряне)", 
   assert.ok(xml.trim().endsWith("</urlset>"));
 });
 
-await t("При грешка в D1 → поне статичните URL-и (fallback)", async () => {
+await t("При грешка в D1 → 503 с Retry-After, без частичен sitemap", async () => {
   const env = { DB: { prepare: () => ({ all: async () => { throw new Error("d1 down"); } }) } };
-  const xml = await (await generateSitemap(env)).text();
-  assert.ok(xml.includes("<loc>https://euro-funds.eu/</loc>"));
-  assert.ok(xml.includes("<loc>https://euro-funds.eu/procedures</loc>"));
-  assert.ok(xml.trim().endsWith("</urlset>"));
+  const res = await generateSitemap(env);
+  assert.equal(res.status,503);
+  assert.equal(res.headers.get("retry-after"),"300");
+  assert.equal(res.headers.get("cache-control"),"no-store");
 });
 
 await t("sitemapStylesheet: 200, application/xml, валиден XSLT с sm namespace", async () => {

@@ -23,7 +23,8 @@
 //    `/api/admin/*`, до профили или до запазени процедури — за лични данни се минава
 //    през OAuth 2.1 (виж `oauth-server.js` и `/auth.md`), не оттук.
 
-import { codeSlug } from "../../app/lib/slug.js";
+import { procedurePath, officialSource } from "../../app/lib/public-url.js";
+import { ensurePublicRoutes, findPublicProcedure } from "../public-routes.js";
 
 const SITE = "https://euro-funds.eu";
 const BRAND = "Euro-Funding";
@@ -190,7 +191,7 @@ function likeTerm(q) {
 }
 
 const PROC_COLUMNS =
-  "id, name, program, priority, category, status, deadline, deadline_date, budget, budget_amount_eur, " +
+  "public_slug, program_slug, id, name, program, priority, category, status, deadline, deadline_date, budget, budget_amount_eur, " +
   "eligible, country_code, official_url, link, managing_authority, original_language, first_seen, last_updated";
 
 /** Един ред процедура → обект за агента, с готов адрес на страницата. */
@@ -198,7 +199,7 @@ function procedureOut(p) {
   return {
     id: p.id,
     name: p.name,
-    url: `${SITE}/procedures/${codeSlug(p.id)}`,
+    url: `${SITE}${procedurePath(p)}`,
     country_code: p.country_code,
     status: p.status,
     program: p.program,
@@ -208,7 +209,7 @@ function procedureOut(p) {
     budget: p.budget,
     budget_amount_eur: p.budget_amount_eur == null ? null : p.budget_amount_eur,
     eligible: p.eligible,
-    official_url: p.official_url || p.link || null,
+    official_url: officialSource(p),
     managing_authority: p.managing_authority,
     original_language: p.original_language,
     first_seen: p.first_seen,
@@ -220,6 +221,7 @@ const STATUS_ORDER = "CASE status WHEN 'closing_soon' THEN 0 WHEN 'open' THEN 1 
 
 async function db(env) {
   if (!env || !env.DB) throw new ToolError("The database is not reachable right now. Try again shortly; see " + SITE + "/api/health.");
+  await ensurePublicRoutes(env);
   return env.DB;
 }
 
@@ -259,10 +261,10 @@ const IMPL = {
     }
 
     const clause = where.join(" AND ");
-    const total = await DB.prepare(`SELECT COUNT(*) AS n FROM projects WHERE ${clause}`).bind(...binds).first();
+    const total = await DB.prepare(`SELECT COUNT(*) AS n FROM public_projects WHERE ${clause}`).bind(...binds).first();
     const lim = next(); binds.push(limitRaw);
     const { results } = await DB.prepare(
-      `SELECT ${PROC_COLUMNS} FROM projects WHERE ${clause} ORDER BY ${STATUS_ORDER}, deadline_date LIMIT ${lim}`
+      `SELECT ${PROC_COLUMNS} FROM public_projects WHERE ${clause} ORDER BY ${STATUS_ORDER}, deadline_date LIMIT ${lim}`
     ).bind(...binds).all();
 
     const rows = results || [];
@@ -282,19 +284,7 @@ const IMPL = {
     const raw = String(args.id == null ? "" : args.id).trim();
     if (!raw) throw new ToolError("`id` is required.");
 
-    let p = await DB.prepare(`SELECT ${PROC_COLUMNS} FROM projects WHERE id = ?1`).bind(raw).first();
-    if (!p) p = await DB.prepare(`SELECT ${PROC_COLUMNS} FROM projects WHERE id = ?1`).bind(raw.toUpperCase()).first();
-    if (!p) {
-      // Подаден е URL slug. Кодът е в началото му, а самите id-та са малко на брой —
-      // сравняваме нормализирания код, както прави и страницата на процедурата.
-      const s = raw.toLowerCase();
-      const all = await DB.prepare("SELECT id FROM projects").all();
-      const hit = (all.results || []).find((r) => {
-        const cs = codeSlug(r.id);
-        return cs && (s === cs || s.startsWith(cs + "-"));
-      });
-      if (hit) p = await DB.prepare(`SELECT ${PROC_COLUMNS} FROM projects WHERE id = ?1`).bind(hit.id).first();
-    }
+    const p = await findPublicProcedure(env, raw);
     if (!p) throw new ToolError(`No procedure matches \`${raw.slice(0, 120)}\`. Use search_procedures to find the right id.`);
 
     const docs = await DB.prepare(

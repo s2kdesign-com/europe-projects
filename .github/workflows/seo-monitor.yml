@@ -1,0 +1,25 @@
+name: Public SEO health
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '25 6 * * *'
+permissions:
+  contents: read
+jobs:
+  public-edge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: node scripts/check-public-seo.mjs --full
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-seo-report
+          path: seo-report.json
+          retention-days: 14

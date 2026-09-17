@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { procedurePath, officialSource } from "../lib/public-url.js";
 import Icon from "./Icon.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import Markdown from "./Markdown.jsx";
@@ -233,8 +234,8 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
 
           <Section id="procedure-sources" icon="external" title={tl("Официални източници")}>
             <div className="linklist">
-              {p.link ? (
-                <a href={p.link} target="_blank" rel="noreferrer"><Icon name="external" size={16} /> {tl("Официална страница на процедурата")}</a>
+              {officialSource(p) ? (
+                <a href={officialSource(p)} target="_blank" rel="noreferrer"><Icon name="external" size={16} /> {tl("Официална страница на процедурата")}</a>
               ) : (
                 <p className="drawer-empty">{tl("Няма официална връзка в проследяваните данни.")}</p>
               )}
@@ -248,6 +249,7 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
           </Section>
         </div>
 
+        <p style={{padding:"0 18px"}}><a href={procedurePath(p)}>Постоянна страница на процедурата</a></p>
         {/* Sticky footer действия */}
         <div className="drawer-actions">
           <button className={"btn" + (isSaved ? " btn-primary" : "")} onClick={() => onToggleSave(p.id)} aria-pressed={isSaved}>
@@ -261,8 +263,8 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
               <Icon name="calendar" size={16} /> {tl("Календар (.ics)")}
             </button>
           )}
-          {p.link && (
-            <a className="btn" href={p.link} target="_blank" rel="noreferrer">
+          {officialSource(p) && (
+            <a className="btn" href={officialSource(p)} target="_blank" rel="noreferrer">
               <Icon name="external" size={16} /> {tl("Официална страница")}
             </a>
           )}

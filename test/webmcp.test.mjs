@@ -17,13 +17,13 @@ const t = (name, fn) => tests.push([name, fn]);
 
 const PROJECTS = [
   {
-    id: "BG05SFPR001-2.005", name: "Подкрепа за ученици с таланти", program: "Образование", priority: "П2",
+    public_slug: "bg05sfpr001-2-005", id: "BG05SFPR001-2.005", name: "Подкрепа за ученици с таланти", program: "Образование", priority: "П2",
     status: "open", deadline: "31.10.2026", deadline_date: "2026-10-31", budget: "10 000 000 лв.",
     budget_amount_eur: 5112919, eligible: "училища", country_code: "BG", official_url: "https://eufunds.bg/x",
     link: null, managing_authority: "УО Образование", last_updated: "2026-08-01",
   },
   {
-    id: "BG16RFPR002-1.014", name: "Иновации в предприятията", program: "Конкурентоспособност", priority: "П1",
+    public_slug: "bg16rfpr002-1-014", id: "BG16RFPR002-1.014", name: "Иновации в предприятията", program: "Конкурентоспособност", priority: "П1",
     status: "closed", deadline: null, deadline_date: null, budget: null, budget_amount_eur: null,
     eligible: "МСП", country_code: "BG", official_url: null, link: "https://opic.bg/y",
     managing_authority: "УО ПКИП", last_updated: "2026-07-20",
@@ -76,7 +76,7 @@ function makeScope({ surface = "navigator", store = null, pathname = "/" } = {})
     fetch(url, init) {
       const path = String(url).replace("https://euro-funds.eu", "");
       calls.push({ path, init });
-      const body = ROUTES[path];
+      const body = ROUTES[path] || (path === "/api/project?id=bg05sfpr001-2-005" ? ROUTES["/api/project?id=BG05SFPR001-2.005"] : null);
       if (!body) return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ ok: false, error: "not_found" }) });
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
     },
@@ -239,9 +239,9 @@ t("get_procedure намира процедурата и по slug, не само
   assert.equal(direct.documents[0].source_url, "https://eufunds.bg/doc.pdf");
 
   calls.length = 0;
-  const bySlug = data(await call("get_procedure", { id: "bg05sfpr001-2-005-podkrepa-za-uchenitsi" }));
+  const bySlug = data(await call("get_procedure", { id: "bg05sfpr001-2-005" }));
   assert.equal(bySlug.procedure.id, "BG05SFPR001-2.005");
-  assert.equal(calls.length, 3); // неуспешен опит по id → списък → четене по намерения id
+  assert.equal(calls.length, 1); // неуспешен опит по id → списък → четене по намерения id
 });
 
 t("get_procedure дава смислена грешка, а не изключение", async () => {
@@ -301,7 +301,7 @@ t("навигацията пази езиковия префикс", async () =>
   await call("open_procedure", { id: "BG05SFPR001-2.005" });
   await call("navigate_site", { section: "overview" });
   await call("navigate_site", { section: "calendar" });
-  assert.deepEqual(navigated, ["/en/procedures/bg05sfpr001-2-005", "/en", "/en/calendar"]);
+  assert.deepEqual(navigated, ["/procedures/bg05sfpr001-2-005", "/en", "/en/calendar"]);
 });
 
 t("navigate_site подава търсенето към /procedures", async () => {

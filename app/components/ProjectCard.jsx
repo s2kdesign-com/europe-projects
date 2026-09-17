@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
+import { procedurePath } from "../lib/public-url.js";
 import Icon from "./Icon.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import { daysLeft, countdownLabel, formatDate, isNovel, targetGroup } from "../lib/project-utils.js";
@@ -53,7 +54,7 @@ export default function ProjectCard({ p, now, isSaved, inCompare, onOpen, onTogg
       {translated && <div className="card-translated" title={t("card.autoTranslated")}>✦ {t("card.autoTranslated")}</div>}
 
       <div className="card-actions">
-        <a className="details" href={"/procedures/" + p.id} style={{ marginRight: 0 }} onClick={(e) => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) { e.preventDefault(); onOpen(p.id, "overview"); } }} aria-haspopup="dialog">
+        <a className="details" href={procedurePath(p)} style={{ marginRight: 0 }} onClick={(e) => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) { e.preventDefault(); onOpen(p.id, "overview"); } }} aria-haspopup="dialog">
           <Icon name="arrowRight" size={16} /> {t("card.details")}
         </a>
         <button

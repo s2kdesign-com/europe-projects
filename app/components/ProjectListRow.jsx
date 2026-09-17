@@ -1,5 +1,6 @@
 "use client";
 
+import { procedurePath } from "../lib/public-url.js";
 import Icon from "./Icon.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import { daysLeft, countdownLabel, formatDate, isNovel } from "../lib/project-utils.js";
@@ -16,9 +17,10 @@ export default function ProjectListRow({ p, now, isSaved, inCompare, onOpen, onT
   return (
     <div className="row">
       <StatusBadge status={p.status} />
-      <button
+      <a
+        href={procedurePath(p)}
         className="row-main"
-        onClick={() => onOpen(p.id)}
+        onClick={(e) => { if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && e.button === 0) { e.preventDefault(); onOpen(p.id); } }}
         aria-haspopup="dialog"
         style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer", padding: 0 }}
       >
@@ -29,7 +31,7 @@ export default function ProjectListRow({ p, now, isSaved, inCompare, onOpen, onT
           {p.program}
           {p.deadline_date ? " · " + formatDate(p.deadline_date) : p.deadline ? " · " + p.deadline : ""}
         </div>
-      </button>
+      </a>
       <div className="row-side">
         {showCd && (
           <span className={"countdown" + (dl <= URGENT_DAYS ? " hot" : "") + (dl < 0 ? " passed" : "")}>
