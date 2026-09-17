@@ -24,3 +24,11 @@ Rollback of application code does not require dropping the additive registry. Ke
 The existing 612 tests and seven SQLite integration checks passed before release. Integration cases include more than 2,000 records, collision ownership, reserved names, exact mixed-case IDs, XML parsing, outage handling, pagination, structured-data escaping and the previously misleading coverage check.
 
 No implementation can guarantee rankings or indexing of every submitted URL. Field Core Web Vitals require sufficient real-user data; a successful build or lab test is not field evidence.
+
+## Production verification (17 September 2026)
+
+- Full public-edge crawl: 2,114 sitemap URLs checked; 1,443 distinct procedure identities; all 1,443 reachable through initial HTML links from the homepage. No HTTP, canonical, noindex, identity, duplicate-title or duplicate-description errors. Crawl completed at 04:37:08 UTC.
+- The original Bulgarian query-share link and an Italian query-share link while the viewer retained Bulgarian country selection both opened the correct drawer. The injected catalog remained present after React hydration.
+- Mobile PageSpeed homepage: SEO 100, performance 70, accessibility 92, best practices 96; LCP 4.2 s, CLS 0.197. The reported shift concerns the translated overview summary. An anonymous profile-country request produces a 401 console entry. These are measured remaining dashboard improvements, not sitemap failures. Report: https://pagespeed.web.dev/analysis/https-euro-funds-eu/oltpn5rjb9?form_factor=mobile
+- Mobile procedure template: SEO 100, performance 100, accessibility 95, best practices 100; LCP 0.8 s, CLS 0. No field CrUX data available for either tested template.
+- Search Console accepted sitemap resubmission. It still displayed “Sitemap could not be read” with date 17 September and zero discovered pages during verification. This external acceptance gate remains open; a successful submission is not a successful read. Existing Cloudflare sitemap skip rules were inspected, not weakened.

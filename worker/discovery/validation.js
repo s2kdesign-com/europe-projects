@@ -1213,7 +1213,10 @@ H("seo.hreflang.locale_pages", async (c, ctx) => {
   for (const loc of ["bg", "en", "de"]) {
     const r = await probe(`${ctx.origin}/${loc}`, { accept: "text/html", fetchImpl: ctx.fetchImpl, maxBytes: 200_000 });
     const m = r.status === 200 ? extractMetadata(r.body) : null;
-    rows.push({ locale: loc, status: r.status, htmlLang: m ? m.lang : null, title: m ? m.title : null, canonical: m ? m.canonical : null, langMatches: m ? m.lang === loc : false });
+    // Client-translated aliases intentionally are not advertised as indexable
+    // translations. Accept only an explicit noindex + default canonical policy.
+    const clientAlias = loc !== "bg" && /<meta name="robots" content="[^"]*noindex/.test(r.body) && m?.canonical === ctx.origin + "/";
+    rows.push({ locale: loc, status: r.status, htmlLang: m ? m.lang : null, title: m ? m.title : null, canonical: m ? m.canonical : null, clientAlias, langMatches: m ? (m.lang === loc || clientAlias) : false });
   }
   const missing = rows.filter((r) => r.status !== 200);
   const mismatched = rows.filter((r) => r.status === 200 && !r.langMatches);
