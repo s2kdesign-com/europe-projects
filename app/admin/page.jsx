@@ -10,6 +10,7 @@ import AiModelsTab from "./AiModelsTab.jsx";
 import ApiAgentsTab from "./ApiAgentsTab.jsx";
 import SeoDiscoveryTab from "./SeoDiscoveryTab.jsx";
 import ScannerTab from "./ScannerTab.jsx";
+import PaymentsTab from './PaymentsTab.jsx';
 import { SUMMARY_LABELS } from "./discovery-summaries.js";
 import { useUiTranslate, UiTrContext, useUiTr } from "../lib/i18n/ui-translate.js";
 
@@ -156,6 +157,7 @@ const DISCOVERY_LABELS = [
 ];
 
 const ADMIN_LABELS = [
+  'Плащания','Premium достъп','Абонамент','План','Край на периода','Последна фактура','От администратор','Чрез абонамент',
   "Настройки · Администрация", "Системни настройки, потребители, журнал на грешките и сигнали.",
   "Система", "Източници", "AI модели", "Потребители", "Exceptions", "Сигнали", "Раздели",
   "Зареждане…", "Обнови", "Добави", "Редакция", "Изчисти", "Търсене…",
@@ -281,6 +283,7 @@ const TABS = [
   ["apiAgents", "API & Agents", "layers"],
   ["seo", "SEO & Discovery", "search"],
   ["users", "Потребители", "users"],
+  ["payments", "Плащания", "euro"],
   ["errors", "Exceptions", "alert"],
   ["feedback", "Сигнали", "document"],
 ];
@@ -351,6 +354,7 @@ export default function AdminPage() {
         {tab === "apiAgents" && <ApiAgentsTab />}
         {tab === "seo" && <SeoDiscoveryTab />}
         {tab === "users" && <UsersTab />}
+        {tab === "payments" && <PaymentsTab />}
         {tab === "errors" && <ErrorsTab />}
         {tab === "feedback" && <FeedbackTab />}
       </main>
@@ -654,7 +658,7 @@ function UsersTab() {
       <div className="ov-section-head"><h2 className="prof-section-title" style={{ margin: 0 }}>{tl("Потребители")}</h2><span className="count-dot">{users.length}</span>{msg && <span className="save-ok" role="status"><Icon name="check" size={14} /> {msg}</span>}</div>
       <div className="table-scroll">
         <table className="admin-table">
-          <thead><tr><th>{tl("Потребител")}</th><th>{tl("Имейл")}</th><th>{tl("Роля")}</th><th>{tl("Регистриран")}</th><th>{tl("Последен вход")}</th></tr></thead>
+          <thead><tr><th>{tl("Потребител")}</th><th>{tl("Имейл")}</th><th>{tl("Роля")}</th><th>{tl('Premium достъп')}</th><th>{tl('Абонамент')}</th><th>{tl('План')}</th><th>{tl('Край на периода')}</th><th>{tl('Последна фактура')}</th><th>{tl("Регистриран")}</th><th>{tl("Последен вход")}</th></tr></thead>
           <tbody>
             {users.map((u) => (
               <tr key={u.id}>
@@ -665,6 +669,8 @@ function UsersTab() {
                     {ROLES.map((r) => <option key={r.key} value={r.key}>{tl(r.label)}</option>)}
                   </select>
                 </td>
+                <td>{u.premium_source?tl(u.premium_source==='administrator'?'От администратор':'Чрез абонамент'):'—'}</td>
+                <td>{u.subscription_status||'—'}</td><td>{u.plan_id||'—'}</td><td>{fmt(u.current_period_end)}</td><td>{u.last_invoice_status||'—'}</td>
                 <td>{fmt(u.created_at)}</td>
                 <td>{fmt(u.last_login_at)}</td>
               </tr>

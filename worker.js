@@ -24,6 +24,9 @@ import { handleAgentSkills } from "./worker/agent/skills.js";
 import { handleMcp } from "./worker/agent/mcp.js";
 import { handleNotifications } from './worker/notifications/handlers.js';
 import { runPushNotifications } from './worker/notifications/service.js';
+import { handleBilling } from './worker/billing/handlers.js';
+import { runDailyReports } from './worker/billing/reports.js';
+import { checkBillingConfiguration } from './worker/billing/configuration.js';
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" };
 function json(body, status = 200) {
@@ -98,6 +101,8 @@ export default {
   // report от daily review не е получен — cron стартира nightly-я; иначе само
   // обработва чакащи jobs на малки batch-ове.
   async scheduled(event, env, ctx) {
+    ctx.waitUntil(checkBillingConfiguration(env).catch(() => console.error('billing_configuration_check_failed')));
+    ctx.waitUntil(runDailyReports(env).catch(() => console.error('premium_report_dispatch_failed')));
     ctx.waitUntil(runPushNotifications(env).catch(() => console.error('push_dispatch_failed')));
     ctx.waitUntil((async () => {
       try {
@@ -171,6 +176,8 @@ async function handleRequest(request, env, url) {
     const legacy = legacyRedirect(url);
     if (legacy) return legacy;
 
+    const billingResponse = await handleBilling(request,env,url);
+    if (billingResponse) return billingResponse;
     const notificationResponse = await handleNotifications(request,env,url);
     if (notificationResponse) return notificationResponse;
     if (request.method === 'GET' && pathname === '/sw.js') {

@@ -35,6 +35,7 @@ function fixture() {
     INSERT INTO projects(id,name,status,public_slug) VALUES('p1','Saved call','open','saved-call');
     INSERT INTO saved_procedures(id,user_id,procedure_id) VALUES('saved1','u1','p1');`);
   db.exec(fs.readFileSync(new URL('../migrations/0029_web_push.sql',import.meta.url),'utf8'));
+  db.exec(fs.readFileSync(new URL('../migrations/0031_premium_billing.sql',import.meta.url),'utf8'));
   const prepare=sql=>{
     let values=[];
     const stmt={bind(...v){values=v;return stmt;},async all(){const args=[];const q=sql.replace(/\?(\d+)/g,(_,i)=>{args.push(values[Number(i)-1]);return '?';});return {results:db.prepare(q).all(...args)};},async first(){return (await stmt.all()).results[0]||null;},async run(){return stmt.all();}};return stmt;

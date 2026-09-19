@@ -6,5 +6,10 @@ seo-report.json
 .wrangler/
 .dev.vars
 .env*.local
+.env
+.env.*
+.dev.vars.*
+!.env.example
+!.dev.vars.example
 npm-debug.log*
 .DS_Store

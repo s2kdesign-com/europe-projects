@@ -2,6 +2,8 @@
 
 import { nowISO, uuid } from "./util.js";
 import { redactSecrets } from "./ai/crypto.js";
+import { audit } from './billing/common.js';
+import { paidAccessSql } from './billing/entitlement.js';
 
 const PROFILE_ARRAYS = ["additional_sectors", "preferred_programs", "applicant_types", "preferred_activities", "preferred_regions"];
 const PROFILE_BOOLS = ["youth_employment_interest", "innovation_interest", "digitalization_interest", "green_transition_interest", "research_interest", "training_interest"];
@@ -112,7 +114,7 @@ export async function putProfile(env, userId, body) {
 export async function getPreferences(env, userId) {
   const row = await env.DB.prepare("SELECT * FROM user_preferences WHERE user_id=?1").bind(userId).first();
   if (!row) return null;
-  for (const k of ["email_notifications_enabled", "deadline_notifications_enabled", "change_notifications_enabled"]) row[k] = !!row[k];
+  for (const k of ["email_notifications_enabled", "deadline_notifications_enabled", "change_notifications_enabled", "daily_report_notifications_enabled"]) row[k] = !!row[k];
   return row;
 }
 export async function putPreferences(env, userId, body) {
@@ -120,11 +122,12 @@ export async function putPreferences(env, userId, body) {
   const language = ["bg", "en"].includes(body.language) ? body.language : "bg";
   const days = Number(body.notification_days_before);
   await env.DB.prepare(
-    `UPDATE user_preferences SET language=?1, default_view=?2, preferred_period=?3, email_notifications_enabled=?4, deadline_notifications_enabled=?5, change_notifications_enabled=?6, notification_days_before=?7, updated_at=?8 WHERE user_id=?9`
+    `UPDATE user_preferences SET language=?1, default_view=?2, preferred_period=?3, email_notifications_enabled=?4, deadline_notifications_enabled=?5, change_notifications_enabled=?6, notification_days_before=?7, updated_at=?8, daily_report_notifications_enabled=COALESCE(?10,daily_report_notifications_enabled) WHERE user_id=?9`
   ).bind(
     language, body.default_view ? String(body.default_view).slice(0, 20) : null, body.preferred_period ? String(body.preferred_period).slice(0, 20) : null,
     body.email_notifications_enabled ? 1 : 0, body.deadline_notifications_enabled ? 1 : 0, body.change_notifications_enabled ? 1 : 0,
-    Number.isFinite(days) && days >= 0 && days <= 60 ? Math.floor(days) : 7, now, userId
+    Number.isFinite(days) && days >= 0 && days <= 60 ? Math.floor(days) : 7, now, userId,
+    body.daily_report_notifications_enabled==null?null:body.daily_report_notifications_enabled?1:0
   ).run();
 }
 
@@ -181,6 +184,9 @@ export async function importLocal(env, userId, ids) {
 }
 
 export async function deleteAccount(env, userId) {
+  // Financial history is retained with an anonymized owner. A live subscription
+  // must first be cancelled through Stripe so account deletion cannot hide billing.
+  if(await env.DB.prepare("SELECT 1 FROM billing_subscriptions WHERE user_id=?1 AND status NOT IN ('canceled','incomplete_expired') LIMIT 1").bind(userId).first())return {error:'cancel_subscription_before_deleting',status:409};
   for (const t of ["saved_procedures", "user_preferences", "user_profiles", "oauth_accounts", "sessions"]) {
     await env.DB.prepare(`DELETE FROM ${t} WHERE user_id=?1`).bind(userId).run();
   }
@@ -190,16 +196,22 @@ export async function deleteAccount(env, userId) {
 
 // ---- Администрация ----
 export async function listUsers(env) {
-  const { results } = await env.DB.prepare("SELECT id, email, display_name, avatar_url, role, created_at, last_login_at FROM users ORDER BY created_at DESC").all();
+  const { results } = await env.DB.prepare(`SELECT u.id,u.email,u.display_name,u.avatar_url,u.role,u.created_at,u.last_login_at,
+    s.status AS subscription_status,s.plan_id,s.started_at AS subscription_started,s.current_period_end,s.stripe_customer_id,s.last_invoice_status,
+    CASE WHEN u.role IN ('premium','admin') THEN 'administrator' WHEN EXISTS(SELECT 1 FROM billing_subscriptions p WHERE p.user_id=u.id
+      AND ${paidAccessSql('p','unixepoch()*1000')}) THEN 'subscription' ELSE NULL END AS premium_source
+    FROM users u LEFT JOIN billing_subscriptions s ON s.id=(SELECT b.id FROM billing_subscriptions b WHERE b.user_id=u.id ORDER BY b.updated_at DESC LIMIT 1)
+    ORDER BY u.created_at DESC`).all();
   return results || [];
 }
-export async function setUserRole(env, targetUserId, role) {
+export async function setUserRole(env, targetUserId, role, adminId=null) {
   if (!ROLES.includes(role)) return { error: "invalid_role", status: 400 };
-  const u = await env.DB.prepare("SELECT id, email FROM users WHERE id=?1").bind(targetUserId).first();
+  const u = await env.DB.prepare("SELECT id, email, role FROM users WHERE id=?1").bind(targetUserId).first();
   if (!u) return { error: "not_found", status: 404 };
   // Пазим bootstrap администратора да не бъде понижен.
   if (ADMIN_EMAILS.includes(String(u.email).toLowerCase()) && role !== "admin") return { error: "cannot_demote_root_admin", status: 400 };
   await env.DB.prepare("UPDATE users SET role=?1, updated_at=?2 WHERE id=?3").bind(role, nowISO(), targetUserId).run();
+  if(adminId)await audit(env,adminId,'manual_role_updated',targetUserId,{role:u.role},{role});
   return { ok: true };
 }
 export async function listErrors(env, limit = 100) {

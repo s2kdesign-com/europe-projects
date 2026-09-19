@@ -1,6 +1,7 @@
 import webPush from 'web-push';
 import { randomToken, sha256hex, uuid } from '../util.js';
 import { notificationPayload, pushError, readVapid, validateEndpoint, validateSubscription } from './security.js';
+import { entitlement } from '../billing/entitlement.js';
 
 export const DAY = 86400000;
 const ACTIVE = "s.expiration_time IS NULL OR s.expiration_time > ?1";
@@ -61,7 +62,7 @@ export function deadlineDue(row, now=Date.now()) {
   return days>=0 && days<=reminderDays(row);
 }
 
-export async function createNotification(env, {userId,savedId=null,type,key,payload,subscriptionId=null}, now=Date.now()) {
+export async function createNotification(env, {userId,savedId=null,reportId=null,type,key,payload,subscriptionId=null}, now=Date.now()) {
   const id=uuid();
   const {results}=await env.DB.prepare(`SELECT s.id FROM push_subscriptions s JOIN sessions sess ON sess.id=s.session_id
     WHERE s.user_id=?2 AND sess.user_id=s.user_id AND julianday(sess.expires_at)>julianday('now') AND (${ACTIVE})
@@ -70,6 +71,7 @@ export async function createNotification(env, {userId,savedId=null,type,key,payl
   const statements=[env.DB.prepare(`INSERT OR IGNORE INTO push_notifications(id,user_id,saved_id,type,dedupe_key,payload,created_at,expires_at)
     VALUES(?1,?2,?3,?4,?5,?6,?7,?8)`)
     .bind(id,userId,savedId,type,key,JSON.stringify(payload),now,now+(type==='test'||payload.isTest?300000:DAY))];
+  if(reportId)statements.push(env.DB.prepare('UPDATE push_notifications SET report_id=?2 WHERE id=?1').bind(id,reportId));
   for (const sub of results || []) {
     const deliveryId=uuid();
     statements.push(env.DB.prepare('INSERT OR IGNORE INTO push_deliveries(id,notification_id,subscription_id) SELECT ?1,?2,?3 WHERE EXISTS(SELECT 1 FROM push_notifications WHERE id=?2)').bind(deliveryId,id,sub.id));
@@ -83,6 +85,11 @@ export async function createNotification(env, {userId,savedId=null,type,key,payl
 
 async function allowedNow(env, row, now) {
   if (row.expires_at<=now) return false;
+  if(row.report_id){
+    if(!(await entitlement(env,row.user_id,now)).premium)return false;
+    return !!await env.DB.prepare(`SELECT 1 FROM daily_ai_reports r JOIN user_preferences p ON p.user_id=r.user_id
+      WHERE r.id=?1 AND r.user_id=?2 AND r.status='ready' AND p.daily_report_notifications_enabled=1`).bind(row.report_id,row.user_id).first();
+  }
   if (row.type==='test') return true;
   const saved=await env.DB.prepare(SAVED_SELECT+' WHERE sp.id=?1 AND sp.user_id=?2').bind(row.saved_id,row.user_id).first();
   if (!saved || saved.archived_at) return false;
@@ -96,7 +103,7 @@ export async function sendDelivery(env, deliveryId, config, {fetchImpl=fetch,now
     WHERE id=?1 AND attempts<3 AND ((state='pending' AND next_attempt_at<=?3) OR (state='sending' AND lease_until<=?3)) RETURNING attempts`)
     .bind(deliveryId,now+60000,now).first();
   if (!claim) return 'unavailable';
-  const row=await env.DB.prepare(`SELECT d.*,n.user_id,n.saved_id,n.type,n.payload,n.expires_at,n.id AS notification_id,
+  const row=await env.DB.prepare(`SELECT d.*,n.user_id,n.saved_id,n.report_id,n.type,n.payload,n.expires_at,n.id AS notification_id,
     s.endpoint,s.p256dh,s.auth,s.vapid_fingerprint,s.expiration_time,s.id AS subscription_id
     FROM push_deliveries d JOIN push_notifications n ON n.id=d.notification_id
     JOIN push_subscriptions s ON s.id=d.subscription_id JOIN sessions sess ON sess.id=s.session_id
@@ -198,7 +205,7 @@ export async function runPushNotifications(env) {
 
 export async function receiveReceipt(env, session, body) {
   if (!body || !['received','displayed','clicked'].includes(body.phase) || !/^[a-f0-9-]{36}$/.test(body.deliveryId || '') || !/^[A-Za-z0-9_-]{43}$/.test(body.token || '')) throw pushError('invalid_receipt');
-  const row=await env.DB.prepare(`SELECT d.id,n.user_id,n.saved_id,n.type,n.payload,n.expires_at FROM push_deliveries d
+  const row=await env.DB.prepare(`SELECT d.id,n.user_id,n.saved_id,n.report_id,n.type,n.payload,n.expires_at FROM push_deliveries d
     JOIN push_notifications n ON n.id=d.notification_id JOIN push_subscriptions s ON s.id=d.subscription_id
     WHERE d.id=?1 AND n.user_id=?2 AND s.user_id=?2 AND s.session_id=?3 AND d.receipt_hash=?4`)
     .bind(body.deliveryId,session.user.id,session.session.id,await sha256hex(body.token)).first();

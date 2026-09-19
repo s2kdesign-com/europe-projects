@@ -1,3 +1,9 @@
+## 2.57.0 — 2026-09-19
+
+- Added database-managed monthly/annual Stripe subscriptions, secure checkout and customer portal.
+- Added verified lifecycle webhooks, immutable price history, payment records and admin Payments controls.
+- Added server-authorized Premium daily AI reports, owned history and report notifications; preserved manual Premium and free alerts.
+
 # 2.56.0 — 2026-09-19
 
 Opt-in browser push with real server tests, session-bound subscriptions, saved-procedure change and deadline notifications, preference enforcement, and welcome/scroll/24-hour onboarding. See docs/web-push.md for security and deployment.

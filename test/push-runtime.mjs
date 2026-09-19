@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createECDH, randomBytes } from 'node:crypto';
+import { createECDH, randomBytes, createHmac } from 'node:crypto';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -36,6 +36,13 @@ try {
     }
   }
   console.log('ok - workerd sender accepts 201 and rejects redirects for JWK and scalar configuration (6 cases; no external delivery)');
+  const secret=randomBytes(32).toString('hex'),body=JSON.stringify({id:'evt_workerd',type:'invoice.paid',data:{object:{}}}),timestamp=Math.floor(Date.now()/1000);
+  const signature=createHmac('sha256',secret).update(timestamp+'.'+body).digest('hex');
+  for(const [payload,status] of [[body,200],[body+' ',400]]){
+    const response=await runtime.dispatchFetch('http://localhost/stripe',{method:'POST',headers:{'x-fixture-secret':secret,'stripe-signature':`t=${timestamp},v1=${signature}`},body:payload});
+    assert.equal(response.status,status);
+  }
+  console.log('ok - workerd Stripe SDK verifies raw signatures and rejects changed payloads (2 cases)');
 } finally {
   await runtime?.dispose();
   // Only remove the exact temporary directory created above.

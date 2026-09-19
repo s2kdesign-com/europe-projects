@@ -1,10 +1,15 @@
 import { readVapid } from '../../worker/notifications/security.js';
 import { sendDelivery } from '../../worker/notifications/service.js';
+import { verifiedEvent } from '../../worker/billing/stripe.js';
 
 // Local workerd regression fixture. Uses generated keys and a controlled provider;
 // it is never deployed and cannot send an external notification.
 export default {
   async fetch(request) {
+    if(new URL(request.url).pathname==='/stripe'){
+      try{const event=await verifiedEvent(request,{STRIPE_SECRET_KEY:'runtime-placeholder',STRIPE_WEBHOOK_SECRET:request.headers.get('x-fixture-secret')});return Response.json({id:event.id});}
+      catch{return Response.json({error:'invalid_signature'},{status:400});}
+    }
     const input = await request.json();
     const config = await readVapid(input.env);
     const row = {

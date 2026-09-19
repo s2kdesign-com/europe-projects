@@ -6,6 +6,7 @@ import Icon from "../components/Icon.jsx";
 import { GoogleG } from "../components/UserMenu.jsx";
 import LanguageRegionSection from "../components/LanguageRegionSection.jsx";
 import PushControls from '../components/PushControls.jsx';
+import PremiumPanel from '../components/PremiumPanel.jsx';
 import { useSession } from "../hooks/useSession.js";
 import { downloadTextFile } from "../lib/browser.js";
 import { ORGANIZATION_TYPES, ORG_SIZES, EMPLOYEE_RANGES, revenueRanges, SECTORS, APPLICANT_TYPES, INTERESTS } from "../lib/profile-taxonomy.js";
@@ -20,6 +21,7 @@ const TAXONOMY_LABELS = [
   ...SECTORS, ...APPLICANT_TYPES.map((x) => x.label), ...INTERESTS.map((x) => x.label),
 ];
 const STRUCT_LABELS = [
+  'Известие за дневния AI отчет (Premium)', 'Първо прекратете абонамента и изчакайте края на платения период.', 'Изтриването не бе успешно. Опитайте отново.',
   "Моят профил", "Използва се за препоръки и филтриране. Данните се пазят в акаунта ви.",
   "потвърден", "Попълненост:", "Имейлът и името идват от Google и не се редактират тук.",
   "Организация", "Име на организацията", "Тип организация", "Регион", "Община", "Размер",
@@ -53,7 +55,7 @@ const EMPTY_PROFILE = {
   youth_employment_interest: false, innovation_interest: false, digitalization_interest: false,
   green_transition_interest: false, research_interest: false, training_interest: false,
 };
-const EMPTY_PREFS = { change_notifications_enabled: true, deadline_notifications_enabled: true, email_notifications_enabled: false, notification_days_before: 7, language: "bg" };
+const EMPTY_PREFS = { change_notifications_enabled: true, deadline_notifications_enabled: true, daily_report_notifications_enabled: true, email_notifications_enabled: false, notification_days_before: 7, language: "bg" };
 
 export default function ProfilePage() {
   const session = useSession();
@@ -194,8 +196,11 @@ export default function ProfilePage() {
   };
 
   const doDelete = async () => {
-    await fetch("/api/account", { method: "DELETE", credentials: "same-origin", headers: { "X-Requested-With": "fetch" } });
-    window.location.href = "/";
+    try {
+      const response=await fetch("/api/account", { method: "DELETE", credentials: "same-origin", headers: { "X-Requested-With": "fetch" } });
+      if(!response.ok){const data=await response.json();setFormError(data.error==='cancel_subscription_before_deleting'?'Първо прекратете абонамента и изчакайте края на платения период.':'Изтриването не бе успешно. Опитайте отново.');return;}
+      window.location.href = "/";
+    }catch{setFormError('Изтриването не бе успешно. Опитайте отново.');}
   };
 
   const tl = useUiTranslate([...ALL_PROFILE_LABELS, ...dynamicLabels]);
@@ -234,6 +239,7 @@ export default function ProfilePage() {
           </div>
         )}
 
+        <PremiumPanel userId={u.id} />
         {/* 1. Обобщение */}
         <section className="prof-card">
           <div className="prof-summary">
@@ -295,6 +301,7 @@ export default function ProfilePage() {
             <label className="check"><input type="checkbox" checked={!!prefs.change_notifications_enabled} onChange={(e) => setPref("change_notifications_enabled", e.target.checked)} /><span>{tl("Промени по запазени процедури")}</span></label>
             <label className="check"><input type="checkbox" checked={!!prefs.deadline_notifications_enabled} onChange={(e) => setPref("deadline_notifications_enabled", e.target.checked)} /><span>{tl("Наближаващи срокове")}</span></label>
             <label className="check"><input type="checkbox" checked={!!prefs.email_notifications_enabled} onChange={(e) => setPref("email_notifications_enabled", e.target.checked)} /><span>{tl("Имейл известия")}</span></label>
+            <label className="check"><input type="checkbox" checked={!!prefs.daily_report_notifications_enabled} onChange={(e) => setPref("daily_report_notifications_enabled", e.target.checked)} /><span>{tl("Известие за дневния AI отчет (Premium)")}</span></label>
           </div>
           <Field label="Напомняне (дни преди срок)"><input className="inp inp-sm" type="number" min="0" max="60" value={prefs.notification_days_before} onChange={(e) => setPref("notification_days_before", e.target.value)} /></Field>
           <p className="chart-note"><Icon name="info" size={13} /> {tl("Предпочитанията се запазват, но изпращането на имейли изисква бъдеща имейл инфраструктура и все още не е активно.")}</p>

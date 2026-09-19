@@ -242,7 +242,7 @@ export async function handleAuth(request, env, url) {
     if (pathname.startsWith("/api/admin/users/") && method === "PATCH") {
       const id = decodeURIComponent(pathname.slice("/api/admin/users/".length));
       const body = (await readJson(request)) || {};
-      const r = await data.setUserRole(env, id, String(body.role || ""));
+      const r = await data.setUserRole(env, id, String(body.role || ""),s.user.id);
       if (r.error) return err(r.error, r.status || 400);
       return ok({});
     }
@@ -397,7 +397,8 @@ export async function handleAuth(request, env, url) {
     if (method === "DELETE") return ok(await data.deleteSaved(env, userId, pid));
   }
   if (pathname === "/api/account" && method === "DELETE") {
-    await data.deleteAccount(env, userId);
+    const removed=await data.deleteAccount(env, userId);
+    if(removed.error)return err(removed.error,removed.status||409);
     return ok({}, { "set-cookie": sessionClearCookie(isSecure(url)) });
   }
 
