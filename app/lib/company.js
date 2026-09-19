@@ -13,9 +13,9 @@ export const COMPANY = {
   address: "гр. Пловдив, България",
   serviceName: "Euro-Funding",
   operator: "S2K Design ЕООД",
-  legalDocumentVersion: "1.1",
+  legalDocumentVersion: "1.2",
   legalEffectiveDate: "17.07.2026",
-  legalLastUpdated: "19.07.2026",
+  legalLastUpdated: "19.09.2026",
   // Технически логове за грешки — задавай реалната стойност само ако кодът я спазва.
   logRetention: "90 дни",
 };

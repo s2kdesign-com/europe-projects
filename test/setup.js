@@ -6,7 +6,7 @@ import { cleanup } from "@testing-library/react";
 afterEach(() => cleanup());
 
 // jsdom няма matchMedia — добавяме прост стъб.
-if (!window.matchMedia) {
+if (typeof window !== 'undefined' && !window.matchMedia) {
   window.matchMedia = (query) => ({
     matches: false,
     media: query,

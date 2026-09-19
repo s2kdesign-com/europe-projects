@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { unsubscribeOnLogout } from '../services/push-client.js';
 
 // Клиентско състояние на сесията. Изтегля /api/auth/me. При липса на сървър
 // (локален преглед) третираме потребителя като нелогнат — приложението работи.
@@ -32,6 +33,10 @@ export function useSession() {
   }, []);
 
   const logout = useCallback(async () => {
+    // A stalled browser push service must never prevent server-side logout.
+    let pushTimer;
+    try { await Promise.race([unsubscribeOnLogout(),new Promise(resolve=>{pushTimer=setTimeout(resolve,2000);})]); }
+    finally { clearTimeout(pushTimer); }
     try {
       await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin", headers: { "X-Requested-With": "fetch" } });
     } catch { /* ignore */ }

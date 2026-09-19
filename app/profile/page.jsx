@@ -5,6 +5,7 @@ import AccountHeader from "../components/AccountHeader.jsx";
 import Icon from "../components/Icon.jsx";
 import { GoogleG } from "../components/UserMenu.jsx";
 import LanguageRegionSection from "../components/LanguageRegionSection.jsx";
+import PushControls from '../components/PushControls.jsx';
 import { useSession } from "../hooks/useSession.js";
 import { downloadTextFile } from "../lib/browser.js";
 import { ORGANIZATION_TYPES, ORG_SIZES, EMPLOYEE_RANGES, revenueRanges, SECTORS, APPLICANT_TYPES, INTERESTS } from "../lib/profile-taxonomy.js";
@@ -59,6 +60,7 @@ export default function ProfilePage() {
   const [ready, setReady] = useState(false);
   const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [prefs, setPrefs] = useState(EMPTY_PREFS);
+  const [prefsBaseline,setPrefsBaseline] = useState(JSON.stringify(EMPTY_PREFS));
   const [completion, setCompletion] = useState(0);
   const [programs, setPrograms] = useState([]);
   // Country-aware профилни опции: региони, програми и валута за избраната държава
@@ -115,7 +117,7 @@ export default function ProfilePage() {
           setBaseline(JSON.stringify(loaded));
           setCompletion(p.profile.profile_completion_percentage || 0);
         }
-        if (pr.preferences) setPrefs({ ...EMPTY_PREFS, ...pr.preferences });
+        if (pr.preferences) { const loadedPrefs={...EMPTY_PREFS,...pr.preferences};setPrefs(loadedPrefs);setPrefsBaseline(JSON.stringify(loadedPrefs)); }
         setPrograms([...new Set((proj.projects || []).map((x) => x.program).filter(Boolean))].sort((a, b) => a.localeCompare(b, "bg"))); // fallback; профилът ползва copts.programmes
       } finally {
         if (alive) setReady(true);
@@ -152,7 +154,7 @@ export default function ProfilePage() {
     ...revenueRanges(copts.currency).map((x) => x.label),
   ], [regionOptions, programmeOptions, adminL, copts.currency]);
 
-  const dirty = useMemo(() => JSON.stringify(profile) !== baseline, [profile, baseline]);
+  const dirty = useMemo(() => JSON.stringify(profile) !== baseline || JSON.stringify(prefs)!==prefsBaseline, [profile, baseline,prefs,prefsBaseline]);
 
   const budgetInvalid = useMemo(() => {
     const mn = Number(profile.minimum_project_budget), mx = Number(profile.maximum_project_budget);
@@ -173,7 +175,9 @@ export default function ProfilePage() {
       const dp = await rp.json();
       if (!rp.ok) { setFormError(dp.error === "budget_range_invalid" ? "Невалиден бюджетен диапазон." : "Профилът не можа да бъде запазен."); setSaving(false); return; }
       if (dp.profile) setCompletion(dp.profile.profile_completion_percentage || 0);
-      await fetch("/api/preferences", { method: "PUT", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(prefs) });
+      const savedPrefs = await fetch("/api/preferences", { method: "PUT", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(prefs) });
+      if (!savedPrefs.ok) throw new Error('preferences_save_failed');
+      setPrefsBaseline(JSON.stringify(prefs));
       setBaseline(JSON.stringify(profile));
       setMsg("Профилът е запазен."); setTimeout(() => setMsg(null), 2500);
       if (onboarding) window.location.href = "/";
@@ -294,6 +298,7 @@ export default function ProfilePage() {
           </div>
           <Field label="Напомняне (дни преди срок)"><input className="inp inp-sm" type="number" min="0" max="60" value={prefs.notification_days_before} onChange={(e) => setPref("notification_days_before", e.target.value)} /></Field>
           <p className="chart-note"><Icon name="info" size={13} /> {tl("Предпочитанията се запазват, но изпращането на имейли изисква бъдеща имейл инфраструктура и все още не е активно.")}</p>
+          <PushControls />
         </Section>
 
         {/* 5b. Език и регион */}

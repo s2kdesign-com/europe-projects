@@ -22,6 +22,8 @@ import { handleOAuthServer } from "./worker/agent/oauth-server.js";
 import { handleAgentAuth } from "./worker/agent/agent-auth.js";
 import { handleAgentSkills } from "./worker/agent/skills.js";
 import { handleMcp } from "./worker/agent/mcp.js";
+import { handleNotifications } from './worker/notifications/handlers.js';
+import { runPushNotifications } from './worker/notifications/service.js';
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" };
 function json(body, status = 200) {
@@ -96,6 +98,7 @@ export default {
   // report от daily review не е получен — cron стартира nightly-я; иначе само
   // обработва чакащи jobs на малки batch-ове.
   async scheduled(event, env, ctx) {
+    ctx.waitUntil(runPushNotifications(env).catch(() => console.error('push_dispatch_failed')));
     ctx.waitUntil((async () => {
       try {
         await reclaimExpiredLocks(env);
@@ -167,6 +170,16 @@ async function handleRequest(request, env, url) {
     // Legacy ?tab= / ?page= → чисти маршрути (301).
     const legacy = legacyRedirect(url);
     if (legacy) return legacy;
+
+    const notificationResponse = await handleNotifications(request,env,url);
+    if (notificationResponse) return notificationResponse;
+    if (request.method === 'GET' && pathname === '/sw.js') {
+      const asset = await env.ASSETS.fetch(request);
+      const headers = new Headers(asset.headers);
+      headers.set('cache-control','no-cache');
+      headers.set('service-worker-allowed','/');
+      return new Response(asset.body,{status:asset.status,headers});
+    }
 
     // ---- Слой за агенти -----------------------------------------------------
     // Agent Skills Discovery — индекс + самите SKILL.md файлове.

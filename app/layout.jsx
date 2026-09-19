@@ -12,6 +12,7 @@ import AppChrome from "./components/AppChrome.jsx";
 import SiteFooter from "./components/SiteFooter.jsx";
 import I18nProvider from "./components/i18n/I18nProvider.jsx";
 import CountryProvider from "./components/country/CountryProvider.jsx";
+import PushNotificationsProvider from './components/PushNotificationsProvider.jsx';
 import { WEBMCP_INIT_SCRIPT } from "./lib/webmcp.js";
 
 // No-flash: определя езика и задава <html lang/dir> ПРЕДИ хидратацията, за да не
@@ -116,11 +117,13 @@ export default function RootLayout({ children }) {
       <body>
         <I18nProvider>
           <CountryProvider>
+            <PushNotificationsProvider>
             <ErrorReporter />
             <AppChrome />
             {children}
             <SiteFooter />
             <section id="public-directory" suppressHydrationWarning dangerouslySetInnerHTML={{__html: ""}} />
+            </PushNotificationsProvider>
           </CountryProvider>
         </I18nProvider>
       </body>

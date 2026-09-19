@@ -1,3 +1,7 @@
+# 2.56.0 — 2026-09-19
+
+Opt-in browser push with real server tests, session-bound subscriptions, saved-procedure change and deadline notifications, preference enforcement, and welcome/scroll/24-hour onboarding. See docs/web-push.md for security and deployment.
+
 ## 2.55.1 — 2026-09-19
 
 - Show the latest completed audit per category without counting retired historical samples as current failures.

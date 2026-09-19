@@ -4,6 +4,7 @@ main = "worker.js"
 account_id = "9c3fcd4952bcf0c295532e9884377d37"
 compatibility_date = "2025-05-05"
 compatibility_flags = ["nodejs_compat"]
+keep_vars = true # Preserve dashboard-managed public VAPID configuration; private JWK remains a Worker secret.
 
 # Билд на статичния сайт преди деплой (важно за Cloudflare Git деплой / Workers Builds).
 [build]

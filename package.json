@@ -8,7 +8,7 @@
     "build": "next build",
     "gen-version": "node scripts/gen-version.mjs",
     "lint": "next lint",
-    "test": "vitest run && node test/seo-routes.integration.mjs",
+    "test": "vitest run && node test/seo-routes.integration.mjs && node test/push.integration.mjs && node test/push-runtime.mjs",
     "test:watch": "vitest",
     "test:sitemap": "node test/sitemap.test.mjs",
     "deploy": "npm run build && wrangler deploy",
@@ -21,7 +21,8 @@
     "next": "^15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-i18next": "^15.1.3"
+    "react-i18next": "^15.1.3",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",

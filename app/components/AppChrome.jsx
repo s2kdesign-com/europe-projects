@@ -6,6 +6,7 @@ import CookieConsentBanner from "./CookieConsentBanner.jsx";
 import FeedbackModal from "./FeedbackModal.jsx";
 import AppUpdateNotification from "./AppUpdateNotification.jsx";
 import RouteSwipe from "./RouteSwipe.jsx";
+import PushActivationPrompt from './PushActivationPrompt.jsx';
 import { useSession } from "../hooks/useSession.js";
 import { useAppUpdate } from "../hooks/useAppUpdate.js";
 import { trackUpdate } from "../services/versionService.js";
@@ -24,6 +25,8 @@ export default function AppChrome() {
   const [cookieMode, setCookieMode] = useState(null); // null | "banner" | "settings"
   const [consent, setConsent] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [welcomeComplete,setWelcomeComplete] = useState(false);
+  const [pushOpen,setPushOpen] = useState(false);
 
   const introSeenRef = useRef(false);
   const introReadyRef = useRef(false);   // изтекли ли са 5-те секунди
@@ -40,6 +43,7 @@ export default function AppChrome() {
 
   useEffect(() => {
     introSeenRef.current = !!lsGet(SYSTEM_INTRO_KEY);
+    setWelcomeComplete(introSeenRef.current);
 
     // Наличен ли е вече cookie избор?
     const raw = lsGet(CONSENT_KEY);
@@ -72,7 +76,7 @@ export default function AppChrome() {
   }, [maybeOpenIntro]);
 
   // Записваме „видян" ЕДВА при реално затваряне от потребителя (X / без регистрация / вход).
-  const closeWelcome = () => { lsSet(SYSTEM_INTRO_KEY, "1"); introSeenRef.current = true; setShowWelcome(false); };
+  const closeWelcome = () => { lsSet(SYSTEM_INTRO_KEY, "1"); introSeenRef.current = true; setWelcomeComplete(true); setShowWelcome(false); };
 
   const saveConsent = (obj) => {
     const c = { version: CONSENT_VERSION, necessary: true, analytics: !!obj.analytics, updatedAt: new Date().toISOString() };
@@ -93,7 +97,7 @@ export default function AppChrome() {
   };
 
   // Заключване на скрола на body само докато има активен МОДАЛ (не и за банера).
-  const modalOpen = showWelcome || cookieMode === "settings" || showFeedback;
+  const modalOpen = showWelcome || cookieMode === "settings" || showFeedback || pushOpen;
   useEffect(() => {
     if (!modalOpen) return;
     const sw = window.innerWidth - document.documentElement.clientWidth;
@@ -125,6 +129,7 @@ export default function AppChrome() {
       )}
 
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
+      <PushActivationPrompt welcomeComplete={welcomeComplete} blocked={showWelcome || !!cookieMode || !consent || showFeedback} onOpenChange={setPushOpen} />
 
       {/* Известие за нова версия — само когато cookie изборът е направен и няма
           отворен модал/банер (не се припокрива с тях). */}

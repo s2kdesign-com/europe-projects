@@ -5,6 +5,8 @@ import Icon from "../components/Icon.jsx";
 import { COMPANY } from "../lib/company.js";
 
 const COOKIES = [
+  { name: "evroproekti_push_prompt_last_shown", provider: COMPANY.name, purpose: "Ограничава поканата за известия до веднъж за 24 часа", type: "localStorage", life: "До изтриване; проверява се интервал от 24 часа", need: "Функционална", when: "След показана покана" },
+  { name: "evroproekti_push_disabled:<профил>", provider: COMPANY.name, purpose: "Запомня изключването на известията за този браузър", type: "localStorage", life: "До промяна или изтриване", need: "Функционална", when: "При управление на известията" },
   { name: "evp_session", provider: COMPANY.name, purpose: "Поддържане на вход и сесия", type: "HttpOnly бисквитка", life: "30 дни", need: "Необходима", when: "При вход с Google" },
   { name: "evp_oauth", provider: COMPANY.name, purpose: "Временно състояние и сигурност по време на вход (OAuth)", type: "HttpOnly бисквитка", life: "≈ 10 минути", need: "Необходима", when: "По време на вход с Google" },
   { name: "evroproekti_cookie_consent", provider: COMPANY.name, purpose: "Запомня избора ви за бисквитки", type: "localStorage", life: "До изтриване", need: "Необходима", when: "След избор в банера" },
@@ -45,6 +47,7 @@ export default function CookiesPage() {
     { id: "necessary", h: "3. Необходими бисквитки", body: "Винаги активни. Осигуряват вход (сесия), сигурност, състояние на приложението и запазване на избора ви за бисквитки. Без тях услугата не може да работи коректно." },
     { id: "analytics", h: "4. Аналитични бисквитки", body: "Изключени по подразбиране чрез Google Consent Mode v2 (analytics_storage='denied'). Използваме Google Analytics 4 (идентификатор G-EDMN8Q86T6) за анонимна статистика на посещенията (с анонимизиран IP) — само след изрично съгласие през банера. До съгласие Google tag е зареден, но не пише бисквитки и не събира данни; при оттегляне на съгласието събирането спира." },
     { id: "marketing", h: "5. Маркетингови бисквитки", body: "Не използваме маркетингови или проследяващи бисквитки." },
+    { id: "push", h: "Известия в браузъра", body: "Web Push се активира само след ваше действие и разрешение от браузъра. Използва service worker и браузърен абонамент за доставка на известия, без кеширане или прихващане на страниците. Разрешението за известия е отделно от избора за аналитични бисквитки и се управлява от профила и настройките на браузъра." },
     {
       id: "manage", h: "6. Управление на съгласието",
       body: "Можете да промените или оттеглите съгласието си по всяко време.",
