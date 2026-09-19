@@ -949,7 +949,7 @@ H("seo.sitemap", async (c, ctx) => {
       invalid: a.invalid.slice(0, 20), invalidCount: a.invalid.length,
       wrongHost: a.wrongHost.slice(0, 20), privateUrls: a.privateUrls.slice(0, 20),
       withQuery: a.withQuery.slice(0, 20), badLastmod: a.badLastmod.slice(0, 20),
-      hasStylesheet: parsed.hasStylesheet, bytes: parsed.bytes, contentType: p.contentType, problems,
+      hasStylesheet: parsed.hasStylesheet, bytes: parsed.bytes, contentType: p.contentType, cacheControl: p.headers['cache-control'] || null, problems,
     },
   });
 });
@@ -1069,7 +1069,8 @@ H("seo.metadata", async (c, ctx) => {
   if (!meta) return result(c.code, c.category, STATUS.FAILED, "metadata.unreachable", { ...fromProbe(p) });
   const problems = [];
   if (!meta.title || meta.title.length < 10) problems.push("title");
-  if (meta.title && meta.title.length > 70) problems.push("title_long");
+  // Editorial advisory, not a Google indexing limit. Preserve useful call codes.
+  if (meta.title && meta.title.length > 120) problems.push("title_long");
   if (!meta.description || meta.description.length < 50) problems.push("description");
   if (meta.description && meta.description.length > 300) problems.push("description_long");
   if (meta.canonicalCount !== 1) problems.push(meta.canonicalCount === 0 ? "canonical_missing" : "canonical_multiple");
@@ -1290,7 +1291,8 @@ H("seo.procedures.coverage", async (c, ctx) => {
   const stats = await ctx.db.procedureSeoStats();
   const problems = [];
   if (stats.duplicateSlugs > 0) problems.push("duplicate_slugs");
-  if (stats.duplicateTitles > 0) problems.push("duplicate_titles");
+  // Repeated source names are not repeated HTML titles. The metadata audit
+  // checks the rendered titles; retain the raw-name count as data context.
   if (stats.withoutOfficialUrl > 0) problems.push("missing_official_url");
   if (stats.expiredButOpen > 0) problems.push("expired_open");
   const status = stats.duplicateSlugs > 0 ? STATUS.FAILED : problems.length ? STATUS.WARNING : STATUS.PASSED;

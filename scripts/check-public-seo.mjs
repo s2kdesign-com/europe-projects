@@ -17,6 +17,12 @@ const xml=new XMLParser().parse(sm.text);
 const entries=Array.isArray(xml.urlset?.url)?xml.urlset.url:[xml.urlset?.url].filter(Boolean);
 if(!entries.length) throw Error('Sitemap contains no URLs');
 const urls=entries.map(e=>e.loc), unique=new Set(urls);
+const plain=await get('/sitemap.txt');
+const plainUrls=plain.text.trim().split(/\r?\n/);
+if(plain.response.status!==200||!/^text\/plain/.test(plain.response.headers.get('content-type')))fail('Plain-text sitemap unavailable');
+if(plainUrls.length!==urls.length||plainUrls.some(url=>!unique.has(url))||new Set(plainUrls).size!==unique.size)fail('XML and plain-text sitemap inventories differ');
+const plainHead=await get('/sitemap.txt',{method:'HEAD'});
+if(plainHead.response.status!==200||!/^text\/plain/.test(plainHead.response.headers.get('content-type')))fail('HEAD plain-text sitemap failed');
 if(urls.length!==unique.size) fail('Duplicate sitemap locs');
 for(const url of urls){const u=new URL(url);if(u.origin!==origin||u.search||/^\/(admin|login|profile|saved|api)(\/|$)/.test(u.pathname)) fail('Invalid sitemap URL '+url);}
 const countries=JSON.parse((await get('/api/countries')).text).countries;

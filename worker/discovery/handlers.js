@@ -15,6 +15,7 @@ import { AGENT_PAGES, DISCOVERY_RESOURCES, ROUTES, SEO_PAGES, internalRoutes, pr
 import { APP_VERSION } from "../../app/lib/version.js";
 import { BUILD_ID } from "../../app/lib/build-info.js";
 import { ensurePublicRoutes } from "../public-routes.js";
+import { officialSource } from '../../app/lib/public-url.js';
 
 const NO_STORE = { "cache-control": "no-store, no-cache, must-revalidate", pragma: "no-cache" };
 const ok = (data) => json({ ok: true, ...data }, 200, NO_STORE);
@@ -71,14 +72,15 @@ function makeDbAdapter(env) {
       const one = async (sql) => {
         try { const r = await env.DB.prepare(sql).first(); return r ? Number(Object.values(r)[0]) || 0 : 0; } catch { return 0; }
       };
-      const [total, withoutOfficialUrl, withoutProgram, expiredButOpen, duplicateTitles, countries] = await Promise.all([
+      const [total, withoutProgram, expiredButOpen, duplicateTitles, countries] = await Promise.all([
         one("SELECT COUNT(*) FROM projects"),
-        one("SELECT COUNT(*) FROM projects WHERE official_url IS NULL OR official_url = ''"),
         one("SELECT COUNT(*) FROM projects WHERE program IS NULL OR program = ''"),
         one("SELECT COUNT(*) FROM projects WHERE deadline_date IS NOT NULL AND deadline_date < date('now') AND status IN ('open','closing_soon')"),
         one("SELECT COUNT(*) FROM (SELECT name FROM projects GROUP BY name HAVING COUNT(*) > 1)"),
         one("SELECT COUNT(DISTINCT country_code) FROM projects"),
       ]);
+      const { results: sources } = await env.DB.prepare('SELECT official_url, link FROM projects').all();
+      const withoutOfficialUrl = (sources || []).filter(p => !officialSource(p)).length;
       // Дублирани slug-ове не са възможни (id е PRIMARY KEY), но проверката се
       // прави явно, за да не се крие бъдеща регресия зад предположение.
       const duplicateSlugs = await one("SELECT COUNT(*) FROM (SELECT public_slug FROM public_projects GROUP BY public_slug HAVING COUNT(*) > 1)");
@@ -314,14 +316,28 @@ export function runInScope(row, groups) {
   return Array.isArray(g) && g.some((x) => groups.includes(x));
 }
 
+// Each completed category audit replaces its old sample set. Partial audits of
+// other categories cannot erase these results; incomplete runs cannot turn the
+// current dashboard green. Historical checks remain available in run history.
+export const CURRENT_CHECKS_SQL = `WITH category_runs AS (
+  SELECT DISTINCT c.category, r.id, r.started_at, r.rowid AS run_order
+  FROM agent_readiness_check_results c JOIN agent_readiness_runs r ON r.id=c.run_id
+  WHERE r.status='completed'
+), ranked AS (
+  SELECT *, ROW_NUMBER() OVER (PARTITION BY category ORDER BY started_at DESC, run_order DESC) AS position
+  FROM category_runs
+)
+SELECT c.* FROM agent_readiness_check_results c
+JOIN ranked r ON r.id=c.run_id AND r.category=c.category AND r.position=1
+WHERE c.status<>'pending' ORDER BY c.sequence`;
+
 /**
  * Бърз преглед за първоначално зареждане на таба: конфигурация (от кода) +
  * реалните резултати от D1. Без мрежови заявки — страницата се отваря веднага.
  *
- * Показваме НЕ „проверките от последния одит", а ПОСЛЕДНИЯ РЕЗУЛТАТ ЗА ВСЯКА
- * проверка. Иначе частична валидация (напр. само „sitemap") би оставила всички
- * останали карти на „Няма валидация", въпреки че са проверявани преди минута.
- * Всяка карта носи собствената си дата на проверка.
+ * Показваме последния завършен набор за всяка категория. Частичен одит на
+ * sitemap не изтрива метаданните, а сменените примерни URL-и не оставят стари
+ * грешки в текущото здраве. Историята запазва всички предишни резултати.
  */
 async function overview(env, url, scope) {
   const groups = SCOPE_GROUPS[scope] || null;
@@ -334,20 +350,11 @@ async function overview(env, url, scope) {
   const last = scoped.find((r) => r.status === "completed") || null;
   const active = scoped.find((r) => r.status === "running") || null;
 
-  // Последният завършил резултат за всяка двойка (код на проверка, ресурс).
-  // MAX(id) е коректно „най-новото", защото id е AUTOINCREMENT.
   const placeholders = groups ? groups.map((_, i) => `?${i + 1}`).join(",") : null;
-  const scopeSql = groups ? ` AND category IN (${placeholders})` : "";
-  const stmt = env.DB.prepare(
-    `SELECT * FROM agent_readiness_check_results WHERE id IN (
-       SELECT MAX(id) FROM agent_readiness_check_results
-       WHERE status <> 'pending'${scopeSql}
-       GROUP BY check_code, COALESCE(resource_url, '')
-     ) ORDER BY sequence`
-  );
-  const { results: checkRows } = await (groups ? stmt.bind(...groups) : stmt)
+  const { results: checkRows } = await env.DB.prepare(CURRENT_CHECKS_SQL)
     .all().catch(() => ({ results: [] }));
-  const checks = (checkRows || []).map(checkRow);
+  const checks = (checkRows || []).filter(r => !groups || groups.includes(r.category)).map(checkRow);
+  const currentProblems = new Set(checks.filter(c => ['failed','warning'].includes(c.status)).map(c => `${c.code}|${c.resourceUrl || ''}`));
 
   const history = scoped.slice(0, 20);
   const sigStmt = env.DB.prepare(
@@ -394,7 +401,7 @@ async function overview(env, url, scope) {
     activeRun: active ? runRow(active) : null,
     checks,
     history: (history || []).map(runRow),
-    signals: (signals || []).map((s) => ({
+    signals: (signals || []).filter(s => currentProblems.has(`${s.check_code}|${s.resource_url || ''}`)).map((s) => ({
       id: s.id, key: s.signal_key, category: s.category, checkCode: s.check_code,
       resourceUrl: s.resource_url, severity: s.severity, state: s.state,
       summaryKey: s.summary_key, summaryParams: safeJson(s.summary_params_json, {}),

@@ -36,7 +36,7 @@ function isoDate(s) {
   return isNaN(d) ? null : d.toISOString().slice(0, 10);
 }
 
-export async function generateSitemap(env) {
+export async function generateSitemap(env, format = 'xml') {
   try {
     await ensurePublicRoutes(env);
     const {results: rows} = await env.DB.prepare("SELECT id, public_slug, program_slug, country_code, status, last_updated, first_seen FROM public_projects ORDER BY id").all();
@@ -61,6 +61,9 @@ export async function generateSitemap(env) {
     for(const [path,date] of entries) body += urlEntry(SITE+path,date);
     body += '</urlset>\n';
     if(entries.size>50000 || new TextEncoder().encode(body).length>50*1024*1024) throw new Error('Sitemap requires splitting');
+    // Google's supported plain-text format provides an independent submission
+    // without changing canonical addresses or relaxing delivery checks.
+    if (format === 'text') return new Response([...entries.keys()].map(path => SITE+path).join('\n')+'\n', {headers:{'content-type':'text/plain; charset=utf-8','cache-control':'public, max-age=0, s-maxage=300','x-content-type-options':'nosniff'}});
     return new Response(body,{headers:{'content-type':'application/xml; charset=utf-8','x-content-type-options':'nosniff','cache-control':'public, max-age=0, s-maxage=300'}});
   } catch(error) {
     console.error('sitemap_generation_failed', error.message);
@@ -126,7 +129,7 @@ footer{margin-top:18px;color:var(--muted);font-size:12px}
 <xsl:choose>
 <xsl:when test="$u='https://euro-funds.eu/'"><span class="type t-home">Начало</span></xsl:when>
 <xsl:when test="contains($u,'/terms') or contains($u,'/privacy') or contains($u,'/cookies')"><span class="type t-legal">Правна</span></xsl:when>
-<xsl:when test="contains($u,'/procedures/status/') or contains($u,'/procedures/deadlines/') or contains($u,'/procedures/candidates/') or contains($u,'/procedures/programs')"><span class="type t-list">Листинг</span></xsl:when>
+<xsl:when test="contains($u,'/procedures/status/') or contains($u,'/procedures/deadlines/') or contains($u,'/procedures/candidates/') or contains($u,'/procedures/programs') or contains($u,'/procedures/countries/')"><span class="type t-list">Листинг</span></xsl:when>
 <xsl:when test="contains($u,'/procedures/')"><span class="type t-proc">Процедура</span></xsl:when>
 <xsl:when test="contains($u,'/procedures')"><span class="type t-list">Процедури</span></xsl:when>
 <xsl:when test="contains($u,'/about') or contains($u,'/sources') or contains($u,'/calendar') or contains($u,'/how-ai-works') or contains($u,'/changelog')"><span class="type t-info">Инфо</span></xsl:when>

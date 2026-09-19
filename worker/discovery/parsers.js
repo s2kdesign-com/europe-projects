@@ -297,6 +297,7 @@ export function classifySitemapPath(p) {
   if (/^\/procedures\/status\/.+/.test(p)) return "statusLanding";
   if (/^\/procedures\/candidates\/.+/.test(p)) return "candidateLanding";
   if (/^\/procedures\/deadlines\/.+/.test(p)) return "deadlineLanding";
+  if (/^\/procedures\/countries\/[a-z]{2}(?:\/page\/\d+)?\/?$/.test(p)) return "countryLanding";
   if (/^\/procedures\/.+/.test(p)) return "procedure";
   if (/^\/(bg|en|de)(\/|$)/.test(p)) return "locale";
   return "static";

@@ -1,3 +1,10 @@
+## 2.55.1 — 2026-09-19
+
+- Show the latest completed audit per category without counting retired historical samples as current failures.
+- Correct procedure counts, measured sitemap cache and official-source fallback validation.
+- Use concise, distinct page metadata and flag elapsed deadlines without inventing closure dates.
+- Add Google's supported plain-text sitemap with the same validated inventory as XML, plus parity monitoring.
+
 ## 2.55.0 — 2026-09-17
 
 - Permanent unique procedure and scoped program URLs; preserve legacy winners and working drawer links.

@@ -16,7 +16,7 @@ export default function ProjectListRow({ p, now, isSaved, inCompare, onOpen, onT
 
   return (
     <div className="row">
-      <StatusBadge status={p.status} />
+      <StatusBadge status={p.status} deadlineDate={p.deadline_date} />
       <a
         href={procedurePath(p)}
         className="row-main"

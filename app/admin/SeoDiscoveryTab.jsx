@@ -74,8 +74,12 @@ export default function SeoDiscoveryTab() {
   const perf = idx.get("seo.performance.compression");
   const sm = (sitemap && sitemap.safeDetails) || {};
 
-  const withCanonical = metaChecks.filter((c) => (c.safeDetails || {}).canonicalCount === 1).length;
-  const withStructured = metaChecks.filter((c) => ((c.safeDetails || {}).structuredDataTypes || []).length).length;
+  const withCanonical = metaChecks.filter((c) => {
+    const details = c.safeDetails || {};
+    return details.canonicalCount === 1 && !(details.problems || []).some(p => p.startsWith('canonical_'));
+  }).length;
+  const indexable = metaChecks.filter(c => c.responseStatus === 200 && !/noindex/i.test((c.safeDetails || {}).robots || '')).length;
+  const withStructured = sdChecks.filter(c => c.status === 'passed' && (c.safeDetails || {}).blocks > 0).length;
   const validMeta = metaChecks.filter((c) => c.status === "passed").length;
   const warnings = seoChecks.filter((c) => c.status === "warning").length;
   const critical = seoChecks.filter((c) => c.status === "failed").length;
@@ -108,9 +112,9 @@ export default function SeoDiscoveryTab() {
               („само sitemap") не бива да състарява останалите карти. */}
           <SummaryCard tl={tl} titleKey="Адреси в sitemap" status={idx.status("seo.sitemap")} value={sm.total == null ? "—" : sm.total} checkedAt={idx.checkedAt("seo.sitemap")} />
           <SummaryCard tl={tl} titleKey="Адреси на процедури" status={idx.status("seo.sitemap.coverage")} value={(sm.byType && sm.byType.procedure) || "—"} checkedAt={idx.checkedAt("seo.sitemap.coverage")} />
-          <SummaryCard tl={tl} titleKey="Индексируеми публични страници" status={idx.rollup(["seo.metadata:*"])} value={metaChecks.length ? metaChecks.filter((c) => !/noindex/i.test((c.safeDetails || {}).robots || "")).length : "—"} checkedAt={idx.checkedAt("seo.metadata:*")} />
-          <SummaryCard tl={tl} titleKey="Страници с валиден каноничен адрес" status={idx.status("seo.canonical_host")} value={metaChecks.length ? `${withCanonical}/${metaChecks.length}` : "—"} checkedAt={idx.checkedAt("seo.canonical_host")} />
-          <SummaryCard tl={tl} titleKey="Страници със структурирани данни" status={idx.rollup(["seo.structured_data:*"])} value={metaChecks.length ? `${withStructured}/${metaChecks.length}` : "—"} checkedAt={idx.checkedAt("seo.structured_data:*")} />
+          <SummaryCard tl={tl} titleKey="Проверени индексируеми страници" status={!metaChecks.length ? "unknown" : indexable === metaChecks.length ? "passed" : "failed"} value={metaChecks.length ? `${indexable}/${metaChecks.length}` : "—"} checkedAt={idx.checkedAt("seo.metadata:*")} />
+          <SummaryCard tl={tl} titleKey="Страници с валиден каноничен адрес" status={!metaChecks.length ? "unknown" : withCanonical === metaChecks.length ? "passed" : "failed"} value={metaChecks.length ? `${withCanonical}/${metaChecks.length}` : "—"} checkedAt={idx.checkedAt("seo.metadata:*")} />
+          <SummaryCard tl={tl} titleKey="Проверени страници със структурирани данни" status={idx.rollup(["seo.structured_data:*"])} value={sdChecks.length ? `${withStructured}/${sdChecks.length}` : "—"} checkedAt={idx.checkedAt("seo.structured_data:*")} />
           <SummaryCard tl={tl} titleKey="Страници с пълни метаданни" status={idx.rollup(["seo.metadata:*"])} value={metaChecks.length ? `${validMeta}/${metaChecks.length}` : "—"} checkedAt={idx.checkedAt("seo.metadata:*")} />
           <SummaryCard tl={tl} titleKey="Предупреждения" status={warnings ? "warning" : seoChecks.length ? "passed" : "unknown"} value={seoChecks.length ? warnings : "—"} />
           <SummaryCard tl={tl} titleKey="Критични проблеми" status={critical ? "failed" : seoChecks.length ? "passed" : "unknown"} value={seoChecks.length ? critical : "—"} />
@@ -131,12 +135,13 @@ export default function SeoDiscoveryTab() {
               ["Адрес", <UrlValue href={cfg.sitemapUrl} key="u" />],
               ["Начин на генериране", tl("Динамично от Worker-а")],
               ["Източник на данни", tl("Cloudflare D1 (процедури + програмни страници)")],
-              ["Кеш", "s-maxage=3600"],
+              ["Кеш", sm.cacheControl || "—"],
               ["Тип съдържание", sitemap.responseContentType, true],
               ["Общо адреси", sm.total],
               ["Уникални адреси", sm.unique],
               ["Адреси на процедури", (sm.byType || {}).procedure || 0],
               ["Програмни страници", (sm.byType || {}).programLanding || 0],
+              ["Каталози по държава", (sm.byType || {}).countryLanding || 0],
               ["Статични адреси", (sm.byType || {}).static || 0],
               ["С lastmod", sm.withLastmod],
               ["Най-нов lastmod", sm.newestLastmod],
@@ -257,7 +262,7 @@ export default function SeoDiscoveryTab() {
           <>
             <InfoGrid tl={tl} rows={[
               ["Езици на интерфейса", "25 + bg"],
-              ["Индексируеми езици", "bg, en, de"],
+              ["Индексируеми езици", "bg"],
               ["hreflang връзки на началната страница", ((hreflang.safeDetails || {}).alternates || []).length],
               ["x-default", (hreflang.safeDetails || {}).hasDefault ? tl("да") : tl("не")],
               ["Невалидни езикови кодове", ((hreflang.safeDetails || {}).invalidCodes || []).join(", ") || tl("няма")],

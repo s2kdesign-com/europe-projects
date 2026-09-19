@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { procedurePath, officialSource } from "../lib/public-url.js";
 import Icon from "./Icon.jsx";
 import StatusBadge from "./StatusBadge.jsx";
+import { needsDeadlineReview, DEADLINE_REVIEW_NOTICE } from '../lib/deadline-review.js';
 import Markdown from "./Markdown.jsx";
 import { useFocusTrap } from "../hooks/useFocusTrap.js";
 import { useUiTranslate } from "../lib/i18n/ui-translate.js";
@@ -145,7 +146,7 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
         <div className="drawer-head">
           <div className="drawer-head-main">
             <div className="drawer-badges">
-              <StatusBadge status={p.status} />
+              <StatusBadge status={p.status} deadlineDate={p.deadline_date} />
               {isNovel(p) && <span className="badge new"><Icon name="sparkle" size={14} /> {tl("Ново")}</span>}
               {targetGroup(p) === "youth" && <span className="badge youth"><Icon name="users" size={14} /> {tl("Младежи")}</span>}
             </div>
@@ -186,6 +187,7 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
           </Section>
 
           <Section id="procedure-deadlines" icon="clock" title={tl("Срокове")}>
+            {needsDeadlineReview(p) && <p role="note">{tl(DEADLINE_REVIEW_NOTICE)}</p>}
             <dl className="def"><dt>{tl("Краен срок")}</dt><dd>
               {p.deadline_date ? <time dateTime={p.deadline_date}>{formatDate(p.deadline_date)}</time>
                 : (p.deadline ? td(p.deadline) : tl("Няма обявен срок"))}

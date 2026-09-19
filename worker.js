@@ -252,6 +252,9 @@ async function handleRequest(request, env, url) {
     if (request.method === "GET" && pathname === "/sitemap.xml") {
       return generateSitemap(env);
     }
+    if (request.method === "GET" && pathname === "/sitemap.txt") {
+      return generateSitemap(env, 'text');
+    }
     // Четим browser изглед на sitemap-а (XSLT). Не минава през SPA fallback/HTML renderer.
     if (request.method === "GET" && pathname === "/sitemap.xsl") {
       return sitemapStylesheet();

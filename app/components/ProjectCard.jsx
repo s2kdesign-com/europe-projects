@@ -26,7 +26,7 @@ export default function ProjectCard({ p, now, isSaved, inCompare, onOpen, onTogg
   return (
     <article className="card" aria-label={name}>
       <div className="card-top">
-        <StatusBadge status={p.status} />
+        <StatusBadge status={p.status} deadlineDate={p.deadline_date} />
         {novel && (<span className="badge new"><Icon name="sparkle" size={14} /> {t("card.new")}</span>)}
         {youth && (<span className="badge youth"><Icon name="users" size={14} /> {t("card.youth")}</span>)}
         {showCd && (

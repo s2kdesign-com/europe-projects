@@ -8,6 +8,10 @@ import { renderProcedureHTML, handleProcedurePage, handleCountryLanding } from '
 import { procedurePath, officialSource } from '../app/lib/public-url.js';
 import { directoryHtml } from '../worker/public-directory.js';
 import { executeCheck } from '../worker/discovery/validation.js';
+import { CURRENT_CHECKS_SQL } from '../worker/discovery/handlers.js';
+import { classifySitemapPath } from '../worker/discovery/parsers.js';
+import { procedureMetadata, programMetadata } from '../worker/seo-metadata.js';
+import { needsDeadlineReview } from '../app/lib/deadline-review.js';
 
 const test = typeof it === 'function' ? it : async(name,fn)=>{await fn();console.log('ok - '+name);};
 function fixture(rows) {
@@ -24,6 +28,45 @@ function fixture(rows) {
 }
 const common={country_code:'BG',source_id:'source',program:'Programme',name:'Same call title',status:'open',last_updated:'2026-09-17',original_language:'en',official_url:'https://example.org/call'};
 const rows=[{...common,id:'x'.repeat(60)+'AAA'},{...common,id:'x'.repeat(60)+'BBB'},{...common,id:'BG:MixedCase:Call'},{...common,id:'programs'}];
+
+await test('Current audit replaces retired samples and retains other categories after partial runs',()=>{
+  const db=new DatabaseSync(':memory:');
+  db.exec(`CREATE TABLE agent_readiness_runs(id TEXT PRIMARY KEY, status TEXT, started_at TEXT);
+    CREATE TABLE agent_readiness_check_results(id INTEGER PRIMARY KEY,run_id TEXT,category TEXT,check_code TEXT,resource_url TEXT,status TEXT,sequence INTEGER);
+    INSERT INTO agent_readiness_runs VALUES ('old','completed','2026-07-01'),('full','completed','2026-09-01'),('partial','completed','2026-09-02'),('active','running','2026-09-03');
+    INSERT INTO agent_readiness_check_results VALUES
+    (1,'old','metadata','metadata:/retired','/retired','failed',1),
+    (2,'old','social','social.image',NULL,'failed',2),
+    (3,'full','metadata','metadata:/current','/current','passed',1),
+    (4,'full','social','social.image','/og-image.png','passed',2),
+    (5,'full','sitemap','sitemap','/sitemap.xml','passed',3),
+    (6,'partial','sitemap','sitemap','/sitemap.xml','failed',1),
+    (7,'active','metadata','metadata:/current','/current','passed',1);`);
+  assert.deepEqual(db.prepare(CURRENT_CHECKS_SQL).all().map(r=>r.id).sort(),[3,4,6]);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM agent_readiness_check_results').get().n,7);
+  db.close();
+});
+await test('Country pagination is never counted as a procedure',()=>{
+  for(const path of ['/procedures/countries/bg','/procedures/countries/lt/page/2'])assert.equal(classifySitemapPath(path),'countryLanding');
+  assert.equal(classifySitemapPath('/procedures/real-call'),'procedure');
+});
+await test('Concise metadata keeps editions and distinguishes duplicates and page types',()=>{
+  const peers=rows.map((r,i)=>({...r,name:'Same lengthy introductory words '.repeat(7)+' edition '+(i<2?'2026':i)}));
+  const meta=peers.map(p=>procedureMetadata(p,peers));
+  assert.equal(new Set(meta.map(m=>m.title)).size,peers.length);
+  for(const m of meta){assert.ok(m.title.length<=120);assert.ok(m.description.length<=210);assert.ok(!m.title.includes('x'.repeat(60)));}
+  const p={...common,name:'LIFE',program:'LIFE',program_slug:'life'};
+  assert.notEqual(procedureMetadata(p).title,programMetadata(p,[p]).title);
+  assert.match(meta[0].title,/2026/);
+});
+await test('Elapsed deadline warns without declaring rolling or multi-window calls closed',()=>{
+  const p={status:'open',deadline_date:'2026-09-14',deadline:'First window September; second March 2027'};
+  assert.equal(needsDeadlineReview(p,new Date('2026-09-19')),true);
+  assert.equal(p.status,'open');
+  assert.equal(needsDeadlineReview({...p,deadline_date:'2026-09-19'},new Date('2026-09-19')),false);
+  assert.equal(needsDeadlineReview({...p,deadline_date:'2026-02-30'}),false);
+  assert.equal(needsDeadlineReview({...p,status:'closed'}),false);
+});
 
 await test('Registry preserves the old winner and permanently separates collisions and reserved routes',async()=>{
   const old=new Map([['procedure:'+'x'.repeat(60),rows[1].id]]);
@@ -47,10 +90,15 @@ await test('Sitemap has strict XML, unique routes and more than 2000 records wit
   const locs=[...doc.querySelectorAll('loc')].map(n=>n.textContent);
   assert.equal(locs.length,new Set(locs).size);
   for(const r of (await env.DB.prepare('SELECT * FROM public_projects').all()).results) assert.ok(locs.includes('https://euro-funds.eu'+procedurePath(r)));
-  assert.equal(doc.querySelectorAll('parsererror').length,0);db.close();
+  assert.equal(doc.querySelectorAll('parsererror').length,0);
+  const plain = await generateSitemap(env, 'text');
+  assert.equal(plain.status,200);assert.match(plain.headers.get('content-type'),/^text\/plain/);
+  assert.deepEqual((await plain.text()).trim().split('\n'),locs);
+  db.close();
 });
 await test('Database failure returns retryable 503 and never an incomplete 200 sitemap',async()=>{
   const res=await generateSitemap({DB:{prepare(){throw Error('outage')}}});assert.equal(res.status,503);assert.equal(res.headers.get('cache-control'),'no-store');assert.equal(res.headers.get('retry-after'),'300');
+  assert.equal((await generateSitemap({DB:{prepare(){throw Error('outage')}}},'text')).status,503);
 });
 await test('Sources, JSON-LD semantics, language and hostile script text are handled truthfully',()=>{
   const p={...rows[0],public_slug:'call',name:'A </script><script>alert(1)</script>',eligible:'SMEs',deadline_date:'2026-10-01'};

@@ -13,6 +13,7 @@
 import { procedurePath, officialSource } from "../../app/lib/public-url.js";
 import { ensurePublicRoutes, findPublicProcedure } from "../public-routes.js";
 import { agentLinkHeader } from "./discovery.js";
+import { needsDeadlineReview, DEADLINE_REVIEW_NOTICE } from '../../app/lib/deadline-review.js';
 
 const SITE = "https://euro-funds.eu";
 const BRAND = "Euro-Funding";
@@ -314,6 +315,7 @@ async function procedureDetailMarkdown(env, slug) {
     ["Последна промяна", p.last_updated],
   ].filter(([, v]) => v != null && String(v).trim() !== "");
   out.push(table(["Поле", "Стойност"], facts));
+  if (needsDeadlineReview(p)) out.push(`\n> ${DEADLINE_REVIEW_NOTICE}\n`);
 
   if (p.notes) out.push(`\n## Бележки\n\n${clean(p.notes)}\n`);
 
