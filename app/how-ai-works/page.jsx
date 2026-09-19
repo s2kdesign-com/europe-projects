@@ -1,10 +1,11 @@
+import Link from "next/link";
 import AutoTranslateRegion from "../components/i18n/AutoTranslateRegion.jsx";
 
 export default function HowAiWorksPage() {
   return (
     <AutoTranslateRegion as="main" id="main" className="container page prose-page">
       <nav className="crumbs" aria-label="breadcrumbs">
-        <a href="/">Начало</a> › <span aria-current="page">Как работи AI</span>
+        <Link href="/">Начало</Link> › <span aria-current="page">Как работи AI</span>
       </nav>
       <h1>Как работи изкуственият интелект в Euro-Funding</h1>
       <p>

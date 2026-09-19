@@ -40,7 +40,7 @@ export default function LanguageRegionSection() {
     } catch { setStatus({ type: "err" }); }
   }, [lang, setLanguage, session.authenticated]);
 
-  const useDevice = useCallback(async () => {
+  const resetDeviceLanguage = useCallback(async () => {
     setStatus({ type: "saving" });
     try {
       resetToDevice(); // маха ръчния избор + разпознава наново
@@ -51,9 +51,9 @@ export default function LanguageRegionSection() {
   }, [resetToDevice, session.authenticated]);
 
   const onToggleAuto = useCallback((checked) => {
-    if (checked) useDevice();
+    if (checked) resetDeviceLanguage();
     else saveManual();
-  }, [useDevice, saveManual]);
+  }, [resetDeviceLanguage, saveManual]);
 
   return (
     <section className="prof-card" id="language">
@@ -75,7 +75,7 @@ export default function LanguageRegionSection() {
           <button type="button" className="btn btn-primary" onClick={saveManual} disabled={status?.type === "saving"}>
             {t("language.save")}
           </button>
-          <button type="button" className="btn" onClick={useDevice} disabled={status?.type === "saving"}>
+          <button type="button" className="btn" onClick={resetDeviceLanguage} disabled={status?.type === "saving"}>
             {t("language.useDeviceLanguage")}
           </button>
           <span className="lang-region-status" role="status" aria-live="polite">

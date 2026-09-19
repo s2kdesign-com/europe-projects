@@ -5,7 +5,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Icon from "../components/Icon.jsx";
-import { priceLabel, useForLabel, AI_PRICING_DATE, estimateCost, costLabel } from "../lib/ai-pricing.js";
+import { priceLabel, useForLabel as modelUseLabel, AI_PRICING_DATE, estimateCost, costLabel } from "../lib/ai-pricing.js";
 import { useUiTr } from "../lib/i18n/ui-translate.js";
 
 // Само chat-подходящи модели за системния анализ (без audio/tts/image/и т.н.).
@@ -639,13 +639,13 @@ function ActiveModels({ data, onChanged, flash }) {
           <input className="inp" value={displayName} placeholder={tl("напр. GPT-5.6")} onChange={(e) => setDisplayName(e.target.value)} />
         </label>
       </div>
-      {modelId && (priceLabel(modelId) || useForLabel(modelId)) && (
+      {modelId && (priceLabel(modelId) || modelUseLabel(modelId)) && (
         <div className="ov-since" style={{ margin: "8px 0" }}>
           <Icon name="info" size={16} />
           <p>
             <strong>{modelId}</strong>
             {priceLabel(modelId) ? <> · ~{priceLabel(modelId)} ({tl("вход/изход")})</> : null}
-            {useForLabel(modelId) ? <><br />{tl(useForLabel(modelId))}</> : null}
+            {modelUseLabel(modelId) ? <><br />{tl(modelUseLabel(modelId))}</> : null}
           </p>
         </div>
       )}

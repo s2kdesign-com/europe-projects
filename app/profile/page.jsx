@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import AccountHeader from "../components/AccountHeader.jsx";
@@ -6,6 +7,7 @@ import Icon from "../components/Icon.jsx";
 import { GoogleG } from "../components/UserMenu.jsx";
 import LanguageRegionSection from "../components/LanguageRegionSection.jsx";
 import PushControls from '../components/PushControls.jsx';
+import DailyNotificationTime from '../components/DailyNotificationTime.jsx';
 import PremiumPanel from '../components/PremiumPanel.jsx';
 import { useSession } from "../hooks/useSession.js";
 import { downloadTextFile } from "../lib/browser.js";
@@ -55,7 +57,7 @@ const EMPTY_PROFILE = {
   youth_employment_interest: false, innovation_interest: false, digitalization_interest: false,
   green_transition_interest: false, research_interest: false, training_interest: false,
 };
-const EMPTY_PREFS = { change_notifications_enabled: true, deadline_notifications_enabled: true, daily_report_notifications_enabled: true, email_notifications_enabled: false, notification_days_before: 7, language: "bg" };
+const EMPTY_PREFS = { daily_notification_hour: 10, change_notifications_enabled: true, deadline_notifications_enabled: true, daily_report_notifications_enabled: true, email_notifications_enabled: false, notification_days_before: 7, language: "bg" };
 
 export default function ProfilePage() {
   const session = useSession();
@@ -217,7 +219,7 @@ export default function ProfilePage() {
             <h1>{tl("Вход е необходим")}</h1>
             <p className="auth-desc">{tl("Влезте, за да управлявате своя профил и предпочитания.")}</p>
             <button className="btn btn-google btn-google-lg" onClick={() => session.login("/profile")}><GoogleG size={20} /> {tl("Продължи с Google")}</button>
-            <a className="auth-secondary" href="/">{tl("Към таблото")}</a>
+            <Link className="auth-secondary" href="/">{tl("Към таблото")}</Link>
           </section>
         </main>
       </>
@@ -305,6 +307,7 @@ export default function ProfilePage() {
           </div>
           <Field label="Напомняне (дни преди срок)"><input className="inp inp-sm" type="number" min="0" max="60" value={prefs.notification_days_before} onChange={(e) => setPref("notification_days_before", e.target.value)} /></Field>
           <p className="chart-note"><Icon name="info" size={13} /> {tl("Предпочитанията се запазват, но изпращането на имейли изисква бъдеща имейл инфраструктура и все още не е активно.")}</p>
+          <DailyNotificationTime value={prefs.daily_notification_hour} country={selectedCountry} onChange={value=>setPref('daily_notification_hour',value)} />
           <PushControls dailyLimit={prefs.premium_notification_daily_limit??null} onDailyLimitChange={value=>setPref('premium_notification_daily_limit',value)} />
         </Section>
 

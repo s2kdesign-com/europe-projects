@@ -3,6 +3,7 @@ import { randomToken, sha256hex, uuid } from '../util.js';
 import { notificationPayload, pushError, readVapid, validateEndpoint, validateSubscription } from './security.js';
 import { entitlement } from '../billing/entitlement.js';
 import { scanCountries } from './public.js';
+import { localNotificationTime } from '../../app/lib/notification-time.js';
 
 export const DAY = 86400000;
 const ACTIVE = "s.expiration_time IS NULL OR s.expiration_time > ?1";
@@ -132,6 +133,12 @@ export async function sendDelivery(env, deliveryId, config, {fetchImpl=fetch,now
   };
   if (!row || (row.expiration_time && row.expiration_time<=now) || !await allowedNow(env,row,now)) return finish('cancelled');
   if (row.vapid_fingerprint!==config.fingerprint) return finish('failed','subscription_needs_renewal');
+  if(row.report_id){
+    const schedule=await env.DB.prepare('SELECT p.daily_notification_hour,up.preferred_country FROM user_preferences p LEFT JOIN user_profiles up ON up.user_id=p.user_id WHERE p.user_id=?1').bind(row.user_id).first();
+    if(!localNotificationTime(now,schedule?.preferred_country,schedule?.daily_notification_hour).due){
+      await env.DB.prepare("UPDATE push_deliveries SET state='pending',attempts=attempts-1,lease_until=0,next_attempt_at=?2 WHERE id=?1").bind(deliveryId,now+120000).run();return 'pending';
+    }
+  }
   if(!await allowNotificationVolume(env,row,now)){
     await env.DB.prepare("UPDATE push_deliveries SET state='pending',attempts=attempts-1,lease_until=0,next_attempt_at=?2 WHERE id=?1").bind(deliveryId,Math.floor(now/DAY)*DAY+DAY).run();return 'pending';
   }

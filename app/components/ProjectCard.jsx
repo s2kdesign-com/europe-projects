@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { procedurePath } from "../lib/public-url.js";
+import ProjectActions from "./ProjectActions.jsx";
 import Icon from "./Icon.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import { daysLeft, countdownLabel, formatDate, isNovel, targetGroup } from "../lib/project-utils.js";
@@ -15,7 +15,6 @@ export default function ProjectCard({ p, now, isSaved, inCompare, onOpen, onTogg
   const showCd = dl != null && (p.status === "open" || p.status === "closing_soon");
   const novel = isNovel(p);
   const youth = targetGroup(p) === "youth";
-  const docCount = p.doc_count || 0;
 
   const name = (tp && tp.name) || p.name;
   const budget = (tp && tp.budget) || p.budget;
@@ -53,37 +52,7 @@ export default function ProjectCard({ p, now, isSaved, inCompare, onOpen, onTogg
 
       {translated && <div className="card-translated" title={t("card.autoTranslated")}>✦ {t("card.autoTranslated")}</div>}
 
-      <div className="card-actions">
-        <a className="details" href={procedurePath(p)} style={{ marginRight: 0 }} onClick={(e) => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) { e.preventDefault(); onOpen(p.id, "overview"); } }} aria-haspopup="dialog">
-          <Icon name="arrowRight" size={16} /> {t("card.details")}
-        </a>
-        <button
-          className="details"
-          onClick={() => onOpen(p.id, "documents")}
-          disabled={docCount === 0}
-          title={docCount === 0 ? t("card.noDocuments") : undefined}
-          aria-haspopup="dialog"
-          aria-disabled={docCount === 0}
-          style={docCount === 0 ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
-        >
-          <Icon name="document" size={16} /> {t("card.documents")} ({docCount})
-        </button>
-        <button
-          className={"iconbtn" + (isSaved ? " saved" : "")}
-          aria-pressed={isSaved}
-          aria-label={isSaved ? t("card.removeSaved") : t("card.saveProcedure")}
-          title={isSaved ? t("card.removeSaved") : t("card.save")}
-          onClick={() => onToggleSave(p.id)}
-        >
-          <Icon name={isSaved ? "bookmarkFilled" : "bookmark"} size={18} />
-        </button>
-        <button className="iconbtn" aria-pressed={inCompare} aria-label={inCompare ? t("card.removeCompare") : t("card.addCompare")} title={t("card.compare")} onClick={() => onToggleCompare(p.id)}>
-          <Icon name="compare" size={18} />
-        </button>
-        <button className="iconbtn" aria-label={t("card.copyLink")} title={t("card.copyLink")} onClick={() => onCopyLink(p)}>
-          <Icon name="link" size={18} />
-        </button>
-      </div>
+      <ProjectActions p={p} isSaved={isSaved} inCompare={inCompare} onOpen={onOpen} onToggleSave={onToggleSave} onToggleCompare={onToggleCompare} onCopyLink={onCopyLink} />
 
       <div className="mrow" style={{ marginTop: 4, fontSize: 12, color: "var(--faint)" }}>
         {p.last_updated && <span>{t("card.updatedLabel")} {formatDate(p.last_updated)}</span>}

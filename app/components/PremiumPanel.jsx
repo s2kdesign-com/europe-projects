@@ -1,10 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from 'react';
-import { billingApi, BILLING_ERRORS, formatMoney } from '../lib/billing.js';
+import { billingApi, BILLING_ERRORS, formatMoney, annualSavings } from '../lib/billing.js';
 import { useUiTranslate } from '../lib/i18n/ui-translate.js';
 import Icon from './Icon.jsx';
+import { useTranslation } from 'react-i18next';
 
-const LABELS=['Premium','Premium е активен','Персонализирани дневни препоръки за европейско финансиране, история на отчетите и известия.',
+const LABELS=['Предимства на Premium','Персонални препоръки','Premium известия','История на отчетите','Изберете план','Годишно плащане','Месечно плащане','Спестявате','на година спрямо месечния план','Отстъпка спрямо месечния план','Избран план','Premium','Premium е активен','Персонализирани дневни препоръки за европейско финансиране, история на отчетите и известия.',
   'Абонирай се','Управление на абонамента','Месечен','Годишен','на месец','на година','Продължи към плащане','Затвори',
   'Плановете още не са активирани. Опитайте отново по-късно.','Достъп, предоставен от администратор','Следващо плащане / край на периода',
   'Абонаментът приключва в края на периода','Статус','Обнови','Дневни AI отчети','Отключи с Premium',
@@ -16,10 +17,13 @@ const LABELS=['Premium','Premium е активен','Персонализира�
   'Готов','Подготвя се','Неуспешен опит','Отменен',...Object.values(BILLING_ERRORS)];
 const date=value=>value?new Date(value).toLocaleDateString('bg-BG'):'—';
 export default function PremiumPanel({userId}) {
-  const tl=useUiTranslate(LABELS);
+  const { i18n }=useTranslation();
+  const locale=i18n.resolvedLanguage||i18n.language||'bg';
   const [checkoutPending,setCheckoutPending]=useState(false);
-  const [status,setStatus]=useState(null),[plans,setPlans]=useState([]),[choose,setChoose]=useState(false),[selected,setSelected]=useState('');
+  const [status,setStatus]=useState(null),[plans,setPlans]=useState([]),[choose,setChoose]=useState(true),[selected,setSelected]=useState('');
   const [reports,setReports]=useState([]),[next,setNext]=useState(null),[report,setReport]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(null);
+  const tl=useUiTranslate([...LABELS,...plans.flatMap(p=>[p.display_name,p.description])]);
+  const money=(amount,currency)=>formatMoney(amount,currency,locale);
   const refresh=useCallback(async()=>{
     const [state,pricing]=await Promise.all([billingApi('/api/billing/status'),billingApi('/api/billing/plans')]);
     setStatus(state);setPlans(pricing.configured?pricing.plans:[]);
@@ -39,21 +43,32 @@ export default function PremiumPanel({userId}) {
   const openReport=id=>run(async()=>{const data=await billingApi('/api/premium/reports/'+encodeURIComponent(id));setReport(data.report);const url=new URL(window.location.href);url.searchParams.set('report',id);url.hash='daily-reports';history.replaceState(null,'',url);});
   const purchase=()=>run(async()=>{const result=await billingApi('/api/billing/checkout',{planId:selected},'POST');window.location.assign(result.url);});
   return <div className="premium-section" aria-busy={busy}>
-    <section id="premium" className={'prof-card premium-card '+(status&&!access?'premium-card-pulse':'')}>
+    <section id="premium" className="prof-card premium-card">
       <div className="ov-section-head"><h2 className="prof-section-title"><Icon name="sparkle" size={20}/> {tl('Premium')} {access?'✓':''}</h2>
         <button className="btn btn-ghost" disabled={busy} onClick={()=>run(refresh)}>{tl('Обнови')}</button></div>
       {access?<><p>{tl('Premium е активен')}</p>{status.entitlement.source==='administrator'&&<p>{tl('Достъп, предоставен от администратор')}</p>}
-        {status.subscription&&<div className="premium-facts"><span>{status.subscription.display_name}: {formatMoney(status.subscription.amount,status.subscription.currency)}</span>
+        {status.subscription&&<div className="premium-facts"><span>{status.subscription.display_name}: {money(status.subscription.amount,status.subscription.currency)}</span>
           <span>{tl('Статус')}: {status.subscription.status}</span><span>{tl('Следващо плащане / край на периода')}: {date(status.subscription.current_period_end)}</span>
           {!!status.subscription.cancel_at_period_end&&<span>{tl('Абонаментът приключва в края на периода')}</span>}</div>}
       </>:<><p>{tl('Персонализирани дневни препоръки за европейско финансиране, история на отчетите и известия.')}</p>
-        {status&&<button className="btn btn-primary" onClick={()=>setChoose(true)}>{tl('Абонирай се')}</button>}</>}
+        {status&&!choose&&<button className="btn btn-primary" onClick={()=>setChoose(true)}>{tl('Абонирай се')}</button>}</>}
       {status?.canManage&&<button className="btn" disabled={busy} onClick={()=>run(async()=>{const data=await billingApi('/api/billing/portal',{},'POST');window.location.assign(data.url);})}>{tl('Управление на абонамента')}</button>}
-      {choose&&!access&&<div className="premium-checkout" role="group" aria-label={tl('Абонирай се')}>
-        <div className="premium-plans">{plans.map(plan=><label key={plan.id} className={'premium-plan '+(selected===plan.id?'selected':'')}>
-          <input type="radio" name="premium-plan" value={plan.id} checked={selected===plan.id} onChange={()=>setSelected(plan.id)}/>
-          <strong>{plan.display_name}</strong><span className="premium-price">{formatMoney(plan.amount,plan.currency)}</span>
-          <span>{tl(plan.billing_interval==='year'?'на година':'на месец')}</span><p>{plan.description}</p></label>)}</div>
+      {status&&!access&&<ul className="premium-benefits" aria-label={tl('Предимства на Premium')}>{['Дневни AI отчети','Персонални препоръки','Premium известия','История на отчетите'].map(label=><li key={label}><Icon name="check" size={16}/><span>{tl(label)}</span></li>)}</ul>}
+      {status&&choose&&!access&&<div className="premium-checkout" role="group" aria-label={tl('Абонирай се')}>
+        {!!plans.length&&<fieldset className="premium-plan-options"><legend>{tl('Изберете план')}</legend>
+          <div className="premium-plans">{plans.map(plan=>{
+            const savings=annualSavings(plans,plan),annual=plan.billing_interval==='year';
+            return <label key={plan.id} className={'premium-plan '+(selected===plan.id?'selected ':'')+(savings?'annual-value':'')}>
+              <span className="premium-plan-head"><input type="radio" name="premium-plan" value={plan.id} checked={selected===plan.id} onChange={()=>setSelected(plan.id)}/>
+                <strong>{tl(annual?'Годишен':'Месечен')}</strong>{selected===plan.id&&<span className="premium-selected">✓ {tl('Избран план')}</span>}</span>
+              <span className="premium-plan-name">{tl(plan.display_name)}</span>
+              <span className="premium-price">{money(plan.amount,plan.currency)} <small>{tl(annual?'на година':'на месец')}</small></span>
+              <span className="chart-note">{tl(annual?'Годишно плащане':'Месечно плащане')}</span>
+              {savings&&<div className="premium-saving"><strong>{tl('Спестявате')} {money(savings.amount,savings.currency)} {tl('на година спрямо месечния план')}</strong>
+                <span>{tl('Отстъпка спрямо месечния план')}: {new Intl.NumberFormat(locale,{maximumFractionDigits:1}).format(savings.percent)}%</span></div>}
+              {plan.description&&<p>{tl(plan.description)}</p>}
+            </label>;
+          })}</div></fieldset>}
         {!plans.length&&<p>{tl('Плановете още не са активирани. Опитайте отново по-късно.')}</p>}
         <div className="push-actions"><button className="btn btn-primary" disabled={busy||!plans.some(p=>p.id===selected)} onClick={purchase}>{tl('Продължи към плащане')}</button>
           <button className="btn btn-ghost" onClick={()=>setChoose(false)}>{tl('Затвори')}</button></div>

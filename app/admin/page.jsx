@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useCallback, useEffect, useState } from "react";
 import AccountHeader from "../components/AccountHeader.jsx";
@@ -312,7 +313,7 @@ export default function AdminPage() {
             <h1>{tl("Вход е необходим")}</h1>
             <p className="auth-desc">{tl("Настройките са достъпни само за администратори.")}</p>
             <button className="btn btn-google btn-google-lg" onClick={() => session.login("/admin")}><GoogleG size={20} /> {tl("Продължи с Google")}</button>
-            <a className="auth-secondary" href="/">{tl("Към таблото")}</a>
+            <Link className="auth-secondary" href="/">{tl("Към таблото")}</Link>
           </section>
         </main>
       </>
@@ -327,7 +328,7 @@ export default function AdminPage() {
             <span className="auth-mark" aria-hidden="true" style={{ background: "linear-gradient(135deg,var(--red),#8a1420)" }}><Icon name="alert" size={26} /></span>
             <h1>{tl("Няма достъп")}</h1>
             <p className="auth-desc">{tl("Тази страница е само за администратори. Ако смятате, че това е грешка, свържете се с администратор.")}</p>
-            <a className="btn btn-primary" href="/">{tl("Към таблото")}</a>
+            <Link className="btn btn-primary" href="/">{tl("Към таблото")}</Link>
           </section>
         </main>
       </>

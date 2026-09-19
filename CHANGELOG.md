@@ -1,3 +1,10 @@
+## 2.59.0 — 2026-09-20
+
+- Country-local daily notification hour with a 10:00 default, DST handling, and persisted preferences.
+- Configured Premium plan selector, truthful annual savings, and all supported UI translations.
+- Shared responsive procedure actions, paired Save/Compare, and constrained translated cards/drawers.
+- Resolve existing lint errors in navigation and helper naming.
+
 ## 2.58.0 — 2026-09-20
 
 - Fixed direct notification activation and optional Google onboarding return context.

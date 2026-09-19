@@ -1,10 +1,12 @@
-import { AIExecutionService, resolveAIModel } from '../ai/providers.js';
+import { AIExecutionService } from '../ai/providers.js';
 import { sanitizeRecommendationProfile } from '../ai/pipeline.js';
 import { getProfile } from '../db.js';
 import { recommend } from '../../app/lib/recommend.js';
 import { entitlement, PAID_ACCESS_SQL } from './entitlement.js';
 import { createNotification } from '../notifications/service.js';
 import { fail } from './common.js';
+import { COUNTRIES } from '../../app/lib/country/countries.js';
+import { localNotificationTime } from '../../app/lib/notification-time.js';
 
 export function reportDate(now,timezone='Europe/Sofia') {
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(now));
@@ -74,26 +76,43 @@ export async function generateReport(env,id,{generate=AIExecutionService,now=Dat
     console.error('premium_report_failed',code);
   }
 }
-export async function notifyReport(env,row) {
-  if(!(await entitlement(env,row.user_id)).premium)return;
-  const pref=await env.DB.prepare('SELECT daily_report_notifications_enabled FROM user_preferences WHERE user_id=?1').bind(row.user_id).first();
+export async function notifyReport(env,row,now=Date.now()) {
+  if(!(await entitlement(env,row.user_id,now)).premium)return;
+  const pref=await env.DB.prepare(`SELECT p.daily_report_notifications_enabled,p.daily_notification_hour,up.preferred_country,r.report_date
+    FROM user_preferences p LEFT JOIN user_profiles up ON up.user_id=p.user_id
+    JOIN daily_ai_reports r ON r.user_id=p.user_id AND r.id=?2 AND r.status='ready' WHERE p.user_id=?1`).bind(row.user_id,row.id).first();
   if(!pref?.daily_report_notifications_enabled)return;
+  const clock=localNotificationTime(now,pref.preferred_country,pref.daily_notification_hour);
+  if(!clock.due||pref.report_date!==clock.day)return;
   await createNotification(env,{userId:row.user_id,type:'change',reportId:row.id,key:'daily-report:'+row.id,
-    payload:{title:'Дневният AI отчет на Euro-Funds е готов',body:'Вашите персонализирани препоръки за финансиране са налични.',url:'/profile?report='+encodeURIComponent(row.id)+'#daily-reports'}});
-  await env.DB.prepare('UPDATE daily_ai_reports SET notified_at=?2 WHERE id=?1 AND status=\'ready\'').bind(row.id,Date.now()).run();
+    payload:{title:'Дневният AI отчет на Euro-Funds е готов',body:'Вашите персонализирани препоръки за финансиране са налични.',url:'/profile?report='+encodeURIComponent(row.id)+'#daily-reports'}},now);
+  await env.DB.prepare("UPDATE daily_ai_reports SET notified_at=?2 WHERE id=?1 AND status='ready'").bind(row.id,now).run();
 }
-export async function runDailyReports(env) {
-  const {primary}=await resolveAIModel(env,'recommendation');
-  const timezone=primary?.timezone||'Europe/Sofia',now=Date.now();
-  let day;try{day=reportDate(now,timezone);}catch{console.error('premium_report_failed','invalid_timezone');return;}
-  const {results:users}=await env.DB.prepare(`SELECT u.id FROM users u WHERE (u.role IN ('premium','admin') OR EXISTS
-    (SELECT 1 FROM billing_subscriptions s WHERE s.user_id=u.id AND ${PAID_ACCESS_SQL})) AND NOT EXISTS
-    (SELECT 1 FROM daily_ai_reports r WHERE r.user_id=u.id AND r.report_date=?2) ORDER BY u.id LIMIT 50`).bind(now,day).all();
-  if(users?.length)await env.DB.batch(users.map(user=>env.DB.prepare('INSERT OR IGNORE INTO daily_ai_reports(id,user_id,report_date,timezone,created_at,updated_at) VALUES(?1,?2,?3,?4,?5,?5)').bind(crypto.randomUUID(),user.id,day,timezone,now)));
-  // One bounded model job per two-minute cron; unique day + lease prevents duplication.
-  const job=await env.DB.prepare(`SELECT id FROM daily_ai_reports WHERE report_date=?1 AND attempts<3 AND next_attempt_at<=?2
-    AND (status IN ('pending','failed') OR status='generating' AND lease_until<=?2) ORDER BY created_at LIMIT 1`).bind(day,now).first();
-  if(job)await generateReport(env,job.id);
-  const {results:ready}=await env.DB.prepare("SELECT id,user_id FROM daily_ai_reports WHERE report_date=?1 AND status='ready' AND notified_at IS NULL LIMIT 20").bind(day).all();
-  for(const row of ready||[])await notifyReport(env,row);
+// A bounded country-clock relation lets SQL select eligible users without
+// starving later timezones behind users whose local notification hour is not due.
+export function reportClocks(now) {
+  const values=COUNTRIES.map(country=>{
+    const clock=localNotificationTime(now,country.code);
+    return "('"+[country.code,clock.timezone,clock.day,clock.hour].join("','")+"')";
+  });
+  return 'WITH clocks(code,timezone,day,hour) AS (VALUES '+values.join(',')+') ';
+}
+const CLOCK_JOIN=` LEFT JOIN user_profiles up ON up.user_id=u.id JOIN clocks c ON c.code=
+  CASE WHEN UPPER(up.preferred_country) IN (SELECT code FROM clocks) THEN UPPER(up.preferred_country) ELSE 'BG' END `;
+export async function runDailyReports(env,{now=Date.now(),generate=generateReport}={}) {
+  const clocks=reportClocks(now);
+  const {results:users}=await env.DB.prepare(clocks+`SELECT u.id,c.day,c.timezone FROM users u`+CLOCK_JOIN+`WHERE
+    (u.role IN ('premium','admin') OR EXISTS (SELECT 1 FROM billing_subscriptions s WHERE s.user_id=u.id AND ${PAID_ACCESS_SQL}))
+    AND NOT EXISTS (SELECT 1 FROM daily_ai_reports r WHERE r.user_id=u.id AND r.report_date=c.day) ORDER BY u.id LIMIT 50`).bind(now).all();
+  if(users?.length)await env.DB.batch(users.map(user=>env.DB.prepare('INSERT OR IGNORE INTO daily_ai_reports(id,user_id,report_date,timezone,created_at,updated_at) VALUES(?1,?2,?3,?4,?5,?5)').bind(crypto.randomUUID(),user.id,user.day,user.timezone,now)));
+  // Same two-minute cron and model-job lease; reports prepare ahead of delivery.
+  const job=await env.DB.prepare(clocks+`SELECT r.id FROM daily_ai_reports r JOIN users u ON u.id=r.user_id`+CLOCK_JOIN+`WHERE r.report_date=c.day
+    AND r.attempts<3 AND r.next_attempt_at<=?1 AND (r.status IN ('pending','failed') OR r.status='generating' AND r.lease_until<=?1)
+    ORDER BY r.created_at,r.id LIMIT 1`).bind(now).first();
+  if(job)await generate(env,job.id,{now});
+  const {results:ready}=await env.DB.prepare(clocks+`SELECT r.id,r.user_id FROM daily_ai_reports r JOIN users u ON u.id=r.user_id`+CLOCK_JOIN+`
+    JOIN user_preferences p ON p.user_id=u.id WHERE r.report_date=c.day AND r.status='ready' AND r.notified_at IS NULL
+    AND p.daily_report_notifications_enabled=1 AND CAST(c.hour AS INTEGER)>=CASE WHEN p.daily_notification_hour BETWEEN 0 AND 23 THEN p.daily_notification_hour ELSE 10 END
+    ORDER BY r.created_at,r.id LIMIT 20`).all();
+  for(const row of ready||[])await notifyReport(env,row,now);
 }

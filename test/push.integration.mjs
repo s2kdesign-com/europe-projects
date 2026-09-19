@@ -38,6 +38,7 @@ function fixture(migratePublic=true) {
     INSERT INTO saved_procedures(id,user_id,procedure_id) VALUES('saved1','u1','p1');`);
   db.exec(fs.readFileSync(new URL('../migrations/0029_web_push.sql',import.meta.url),'utf8'));
   db.exec(fs.readFileSync(new URL('../migrations/0031_premium_billing.sql',import.meta.url),'utf8'));
+  db.exec(fs.readFileSync(new URL('../migrations/0035_notification_hour.sql',import.meta.url),'utf8'));
   if(migratePublic)db.exec(fs.readFileSync(new URL('../migrations/0033_public_country_push.sql',import.meta.url),'utf8'));
   const prepare=sql=>{
     let values=[];

@@ -13,6 +13,16 @@ export function formatMoney(amount,currency,locale='bg-BG') {
   if(amount==null||!currency)return '—';
   try{return new Intl.NumberFormat(locale,{style:'currency',currency:String(currency).toUpperCase()}).format(amount/10**currencyDigits(currency));}catch{return '—';}
 }
+// Compare the same configured Premium product in the same currency, in minor
+// units. Missing, ambiguous, equal, or more expensive annual prices get no badge.
+export function annualSavings(plans, annual) {
+  if(!/^[a-z]{3}$/i.test(annual?.currency||'')||annual?.billing_interval!=='year'||!Number.isSafeInteger(annual.amount)||annual.amount<=0)return null;
+  const monthly=plans.filter(p=>p.billing_interval==='month'&&p.currency?.toLowerCase()===annual.currency?.toLowerCase()
+    &&Number.isSafeInteger(p.amount)&&p.amount>0);
+  if(monthly.length!==1)return null;
+  const baseline=monthly[0].amount*12,saved=baseline-annual.amount;
+  return Number.isSafeInteger(baseline)&&saved>0?{amount:saved,percent:saved/baseline*100,currency:annual.currency}:null;
+}
 export const BILLING_ERRORS={
   billing_not_configured:'Плащанията още не са конфигурирани.',plan_unavailable:'Този план временно не е достъпен.',
   subscription_exists:'Вече имате абонамент. Използвайте „Управление на абонамента“.',payment_sync_pending:'Плащането се потвърждава. Обновете статуса след малко.',

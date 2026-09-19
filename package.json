@@ -13,7 +13,8 @@
     "test:sitemap": "node test/sitemap.test.mjs",
     "deploy": "npm run build && wrangler deploy",
     "deploy:only": "wrangler deploy",
-    "test:seo": "node test/seo-routes.integration.mjs"
+    "test:seo": "node test/seo-routes.integration.mjs",
+    "test:layout": "node test/profile-layout.mjs"
   },
   "dependencies": {
     "fast-xml-parser": "^5.11.1",
@@ -30,9 +31,11 @@
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",
     "@vitejs/plugin-react": "^4.3.4",
+    "esbuild": "0.28.1",
     "eslint": "^8.57.1",
     "eslint-config-next": "^15.1.6",
     "jsdom": "^25.0.1",
+    "playwright": "1.63.0",
     "vitest": "^2.1.9",
     "wrangler": "^4.0.0"
   }

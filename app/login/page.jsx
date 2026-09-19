@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useEffect, useRef, useState } from "react";
 import AccountHeader from "../components/AccountHeader.jsx";
@@ -76,7 +77,7 @@ export default function LoginPage() {
             <GoogleG size={20} /> {submitting ? tl("Пренасочване…") : tl("Продължи с Google")}
           </button>
 
-          <a className="auth-secondary" href="/">{tl("Разгледай без вход")}</a>
+          <Link className="auth-secondary" href="/">{tl("Разгледай без вход")}</Link>
 
           <p className="auth-privacy">
             <Icon name="info" size={14} /> {tl("Google ни предоставя само основна информация (име, имейл, снимка). Не получаваме вашата парола. Повече в")} <a href="/profile#privacy">{tl("поверителност")}</a>.

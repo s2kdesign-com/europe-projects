@@ -121,16 +121,19 @@ export async function putPreferences(env, userId, body) {
   const now = nowISO();
   const language = ["bg", "en"].includes(body.language) ? body.language : "bg";
   const days = Number(body.notification_days_before);
+  const hasHour=Object.prototype.hasOwnProperty.call(body,'daily_notification_hour');
+  const hour=body.daily_notification_hour;
+  if(hasHour&&(!Number.isInteger(hour)||hour<0||hour>23))return {error:'invalid_notification_hour',status:400};
   const hasLimit=Object.prototype.hasOwnProperty.call(body,'premium_notification_daily_limit');
   const limit=body.premium_notification_daily_limit;
   if(hasLimit&&limit!==null&&![1,3,10].includes(limit))return {error:'invalid_notification_limit',status:400};
   await env.DB.prepare(
-    `UPDATE user_preferences SET language=?1, default_view=?2, preferred_period=?3, email_notifications_enabled=?4, deadline_notifications_enabled=?5, change_notifications_enabled=?6, notification_days_before=?7, updated_at=?8, daily_report_notifications_enabled=COALESCE(?10,daily_report_notifications_enabled),premium_notification_daily_limit=CASE WHEN ?11=1 THEN ?12 ELSE premium_notification_daily_limit END WHERE user_id=?9`
+    `UPDATE user_preferences SET language=?1, default_view=?2, preferred_period=?3, email_notifications_enabled=?4, deadline_notifications_enabled=?5, change_notifications_enabled=?6, notification_days_before=?7, updated_at=?8, daily_report_notifications_enabled=COALESCE(?10,daily_report_notifications_enabled),premium_notification_daily_limit=CASE WHEN ?11=1 THEN ?12 ELSE premium_notification_daily_limit END,daily_notification_hour=CASE WHEN ?13=1 THEN ?14 ELSE daily_notification_hour END WHERE user_id=?9`
   ).bind(
     language, body.default_view ? String(body.default_view).slice(0, 20) : null, body.preferred_period ? String(body.preferred_period).slice(0, 20) : null,
     body.email_notifications_enabled ? 1 : 0, body.deadline_notifications_enabled ? 1 : 0, body.change_notifications_enabled ? 1 : 0,
     Number.isFinite(days) && days >= 0 && days <= 60 ? Math.floor(days) : 7, now, userId,
-    body.daily_report_notifications_enabled==null?null:body.daily_report_notifications_enabled?1:0,hasLimit?1:0,limit??null
+    body.daily_report_notifications_enabled==null?null:body.daily_report_notifications_enabled?1:0,hasLimit?1:0,limit??null,hasHour?1:0,hour??10
   ).run();
 }
 

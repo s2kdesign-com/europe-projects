@@ -11,7 +11,7 @@ const plans=[{id:'monthly',display_name:'Monthly fixture',billing_interval:'mont
 beforeEach(()=>{vi.clearAllMocks();window.history.replaceState(null,'','/profile');});
 test('free users see dynamic plans and Premium report CTA without fetching reports',async()=>{
   billingApi.mockImplementation(async path=>path.endsWith('/plans')?{configured:true,plans}:{entitlement:{premium:false},canManage:false});
-  render(<PremiumPanel userId="fixture"/>);fireEvent.click(await screen.findByText('Абонирай се'));
+  render(<PremiumPanel userId="fixture"/>);await screen.findByText('Monthly fixture');
   expect(screen.getByText('Monthly fixture')).toBeInTheDocument();expect(screen.getByText('Annual fixture')).toBeInTheDocument();
   expect(screen.getByText('Продължи към плащане')).toBeDisabled();fireEvent.click(screen.getAllByRole('radio')[1]);
   expect(screen.getByText('Продължи към плащане')).toBeEnabled();expect(screen.getByText('Отключи с Premium')).toBeInTheDocument();
@@ -19,14 +19,14 @@ test('free users see dynamic plans and Premium report CTA without fetching repor
 });
 test('checkout submits only selected plan and displays safe server error',async()=>{
   billingApi.mockImplementation(async path=>{if(path.endsWith('/checkout'))throw {code:'plan_changed'};return path.endsWith('/plans')?{configured:true,plans}:{entitlement:{premium:false}};});
-  render(<PremiumPanel userId="fixture"/>);fireEvent.click(await screen.findByText('Абонирай се'));fireEvent.click(screen.getAllByRole('radio')[0]);
+  render(<PremiumPanel userId="fixture"/>);await screen.findByText('Monthly fixture');fireEvent.click(screen.getAllByRole('radio')[0]);
   fireEvent.click(screen.getByText('Продължи към плащане'));await screen.findByRole('alert');
   expect(billingApi).toHaveBeenCalledWith('/api/billing/checkout',{planId:'monthly'},'POST');
 });
 test('success query does not grant Premium or unlock report history',async()=>{
   window.history.replaceState(null,'','/profile?checkout=success');
   billingApi.mockResolvedValue({entitlement:{premium:false},configured:true,plans});
-  const v=render(<PremiumPanel userId="fixture"/>);await screen.findByText('Абонирай се');expect(screen.queryByText('Premium е активен')).toBeNull();v.unmount();
+  const v=render(<PremiumPanel userId="fixture"/>);await screen.findByText('Monthly fixture');expect(screen.queryByText('Premium е активен')).toBeNull();v.unmount();
 });
 test('Premium user opens owned history and renders text without executing report markup',async()=>{
   billingApi.mockImplementation(async path=>path.endsWith('/status')?{entitlement:{premium:true,source:'administrator'}}:path.endsWith('/plans')?{configured:true,plans}:path.endsWith('/reports')?{reports:[{id:'owned',report_date:'2026-01-02',status:'ready'}]}:{report:{status:'ready',report_date:'2026-01-02',content:{summary:'<img src=x onerror=alert(1)>',recommendations:[{procedureId:'p',title:'Actual procedure',url:'/procedures/actual',reason:'Profile match',action:'Read documents'}],changes:[],deadlines:[]}}});
@@ -38,4 +38,22 @@ test('Payments loads server pagination and plan controls from admin endpoints',a
   billingApi.mockImplementation(async path=>path.includes('/plans')?{plans,configured:{secret:true,webhook:true}}:path.includes('/overview')?{payments:{total:0,successful:0,failed:0},subscriptions:{active:0,cancelled:0},revenue:[],recurring:[]}:{rows:[],total:0,page:1,limit:25});
   render(<PaymentsTab/>);await waitFor(()=>expect(screen.getByDisplayValue('Monthly fixture')).toBeInTheDocument());
   expect(screen.getByDisplayValue('Annual fixture')).toBeInTheDocument();expect(billingApi.mock.calls.every(([path])=>path.startsWith('/api/admin/payments/'))).toBe(true);
+});
+
+test('missing plans are safe and equal annual cost has no discount',async()=>{
+  let configured=false;
+  billingApi.mockImplementation(async path=>path.endsWith('/plans')?{configured,plans:configured?[plans[0],{...plans[1],amount:plans[0].amount*12}]:[]}:{entitlement:{premium:false}});
+  render(<PremiumPanel userId="fixture"/>);
+  expect(await screen.findByText('Плановете още не са активирани. Опитайте отново по-късно.')).toBeInTheDocument();
+  expect(screen.getByText('Продължи към плащане')).toBeDisabled();
+  configured=true;fireEvent.click(screen.getByText('Обнови'));await screen.findByText('Annual fixture');
+  expect(document.querySelector('.premium-saving')).toBeNull();
+});
+test('annual savings and prices update from refreshed administrator configuration',async()=>{
+  let amount=plans[1].amount;
+  billingApi.mockImplementation(async path=>path.endsWith('/plans')?{configured:true,plans:[plans[0],{...plans[1],amount}]}:{entitlement:{premium:false}});
+  render(<PremiumPanel userId="fixture"/>);await screen.findByText('Annual fixture');
+  expect(document.querySelector('.premium-saving')).not.toBeNull();const previous=document.querySelector('.premium-saving').textContent;
+  amount-=1000;fireEvent.click(screen.getByText('Обнови'));
+  await waitFor(()=>expect(document.querySelector('.premium-saving').textContent).not.toBe(previous));
 });

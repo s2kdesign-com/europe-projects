@@ -8,9 +8,9 @@ import { checkout, portal } from '../worker/billing/checkout.js';
 import { entitlement } from '../worker/billing/entitlement.js';
 import { processEvent } from '../worker/billing/webhook.js';
 import { verifiedEvent } from '../worker/billing/stripe.js';
-import { generateReport, notifyReport, reportDate, validateReport } from '../worker/billing/reports.js';
+import { generateReport, notifyReport, reportDate, validateReport, runDailyReports } from '../worker/billing/reports.js';
 import { adminRows, overview } from '../worker/billing/admin.js';
-import { receiveReceipt } from '../worker/notifications/service.js';
+import { receiveReceipt, sendDelivery } from '../worker/notifications/service.js';
 import { sha256hex } from '../worker/util.js';
 import { parseAmount, formatMoney } from '../app/lib/billing.js';
 import { listUsers, putPreferences, deleteAccount, setUserRole } from '../worker/db.js';
@@ -19,7 +19,7 @@ const now=Date.now(),epoch=Math.floor(now/1000),later=epoch+864000;
 const migration=name=>fs.readFileSync(new URL('../migrations/'+name,import.meta.url),'utf8');
 function fixture(){
   const db=new DatabaseSync(':memory:');db.exec('PRAGMA foreign_keys=ON;');
-  db.exec(migration('0002_auth.sql'));db.exec(migration('0003_admin.sql'));db.exec(migration('0029_web_push.sql'));db.exec(migration('0031_premium_billing.sql'));db.exec(migration('0033_public_country_push.sql'));
+  db.exec(migration('0002_auth.sql'));db.exec(migration('0003_admin.sql'));db.exec(migration('0029_web_push.sql'));db.exec(migration('0031_premium_billing.sql'));db.exec(migration('0033_public_country_push.sql'));db.exec(migration('0035_notification_hour.sql'));
   db.exec(`ALTER TABLE user_profiles ADD COLUMN preferred_country TEXT;
     CREATE TABLE projects(id TEXT PRIMARY KEY,name TEXT,program TEXT,status TEXT,deadline_date TEXT,budget TEXT,eligible TEXT,notes TEXT,public_slug TEXT,last_updated TEXT,country_code TEXT);
     CREATE VIEW public_projects AS SELECT * FROM projects;
@@ -148,7 +148,7 @@ await test('Report failures retry safely; revocation during generation prevents 
   assert.equal(f.db.prepare('SELECT status FROM daily_ai_reports').get().status,'cancelled');assert.equal(f.db.prepare('SELECT content FROM daily_ai_reports').get().content,null);
 });
 await test('Premium report notifications respect current entitlement, preferences and receipt ownership',async()=>{
-  const f=fixture(),id='report-notify';f.db.prepare('INSERT INTO daily_ai_reports(id,user_id,report_date,timezone,status,content,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(id,'manual',reportDate(now),'Europe/Sofia','ready','{}',now,now);
+  const f=fixture(),id='report-notify';f.db.exec('UPDATE user_preferences SET daily_notification_hour=0');f.db.prepare('INSERT INTO daily_ai_reports(id,user_id,report_date,timezone,status,content,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(id,'manual',reportDate(now),'Europe/Sofia','ready','{}',now,now);
   f.db.prepare('INSERT INTO push_subscriptions(id,user_id,session_id,endpoint_hash,endpoint,p256dh,auth,vapid_fingerprint,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run('sub-push','manual','session-manual','fixturehash','https://fcm.googleapis.com/fcm/send/fixture','fixture','fixture','fixture',now,now);
   await notifyReport(f.env,{id,user_id:'manual'});await notifyReport(f.env,{id,user_id:'manual'});assert.equal(f.db.prepare('SELECT COUNT(*) n FROM push_notifications').get().n,1);
   const delivery=f.db.prepare('SELECT id FROM push_deliveries').get().id,token=randomBytes(32).toString('base64url');f.db.prepare('UPDATE push_deliveries SET receipt_hash=?').run(await sha256hex(token));
@@ -172,4 +172,55 @@ await test('Minor units and timezone boundaries are deterministic; rate limits r
   assert.equal(reportDate(Date.parse('2026-09-19T22:30:00Z'),'Europe/Sofia'),'2026-09-20');
   const f=fixture(),stripe=fakeStripe();for(let i=0;i<5;i++)await call(f.env,stripe,'/api/billing/checkout',{body:{planId:'invalid'}});
   assert.equal((await call(f.env,stripe,'/api/billing/checkout',{body:{planId:'invalid'}})).status,429);
+});
+
+await test('Notification hour migration defaults existing users, validates writes and preserves omitted preferences',async()=>{
+  const {db,env}=fixture();const hour=()=>db.prepare("SELECT daily_notification_hour FROM user_preferences WHERE user_id='manual'").get().daily_notification_hour;
+  assert.equal(hour(),10);
+  await putPreferences(env,'manual',{daily_notification_hour:0});assert.equal(hour(),0);
+  await putPreferences(env,'manual',{change_notifications_enabled:true});assert.equal(hour(),0);
+  for(const invalid of [-1,24,1.5,'10',null]){assert.equal((await putPreferences(env,'manual',{daily_notification_hour:invalid})).status,400);assert.equal(hour(),0);}
+  await putPreferences(env,'manual',{daily_notification_hour:23});assert.equal(hour(),23);
+});
+await test('Daily report scheduler uses each funding country day and saved hour, and retry is idempotent',async()=>{
+  const {db,env}=fixture();const at=Date.parse('2026-07-01T07:00:00Z');
+  db.exec("UPDATE user_profiles SET preferred_country='PT' WHERE user_id='admin'");
+  const generated=[];const generate=async(_env,id)=>{generated.push(id);db.prepare("UPDATE daily_ai_reports SET status='ready',content='{}' WHERE id=?").run(id);};
+  await runDailyReports(env,{now:at,generate});await runDailyReports(env,{now:at,generate});
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM daily_ai_reports').get().n,2);
+  const reports=db.prepare('SELECT * FROM daily_ai_reports ORDER BY user_id').all();
+  assert.equal(reports.find(r=>r.user_id==='manual').timezone,'Europe/Sofia');
+  assert.equal(reports.find(r=>r.user_id==='admin').timezone,'Europe/Lisbon');
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM push_notifications WHERE user_id='manual'").get().n,1);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM push_notifications WHERE user_id='admin'").get().n,0);
+  await runDailyReports(env,{now:Date.parse('2026-07-01T09:00:00Z'),generate});
+  await runDailyReports(env,{now:Date.parse('2026-07-01T09:02:00Z'),generate});
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM push_notifications WHERE user_id='admin'").get().n,1);
+  assert.equal(generated.length,2);
+  db.exec("UPDATE user_preferences SET daily_notification_hour=13 WHERE user_id='manual'");
+  await runDailyReports(env,{now:Date.parse('2026-07-02T09:00Z'),generate});
+  await runDailyReports(env,{now:Date.parse('2026-07-02T09:02Z'),generate});
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM push_notifications WHERE user_id='manual'").get().n,1);
+  await runDailyReports(env,{now:Date.parse('2026-07-02T10:00Z'),generate});
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM push_notifications WHERE user_id='manual'").get().n,2);
+});
+await test('Country local dates can differ within the same scheduler tick',async()=>{
+  const {db,env}=fixture();db.exec("UPDATE user_profiles SET preferred_country='PT' WHERE user_id='admin'");
+  await runDailyReports(env,{now:Date.parse('2026-07-01T22:30Z'),generate:async()=>{}});
+  assert.equal(db.prepare("SELECT report_date FROM daily_ai_reports WHERE user_id='manual'").get().report_date,'2026-07-02');
+  assert.equal(db.prepare("SELECT report_date FROM daily_ai_reports WHERE user_id='admin'").get().report_date,'2026-07-01');
+});
+
+await test('Queued report delivery rechecks a changed hour without consuming retries or contacting the provider',async()=>{
+  const {db,env}=fixture(),at=Date.parse('2026-07-01T09:00Z');
+  db.prepare("INSERT INTO daily_ai_reports(id,user_id,report_date,timezone,status,content,created_at,updated_at) VALUES('timed','manual','2026-07-01','Europe/Sofia','ready','{}',?,?)").run(at,at);
+  db.prepare("INSERT INTO push_subscriptions(id,user_id,session_id,endpoint_hash,endpoint,p256dh,auth,vapid_fingerprint,created_at,updated_at) VALUES('timed-sub','manual','session-manual','hash','https://fcm.googleapis.com/fcm/send/fixture','fixture','fixture','fixture',?,?)").run(at,at);
+  await notifyReport(env,{id:'timed',user_id:'manual'},at);
+  db.exec("UPDATE user_preferences SET daily_notification_hour=13 WHERE user_id='manual'");
+  const id=db.prepare('SELECT id FROM push_deliveries').get().id;
+  db.prepare("INSERT INTO push_notifications(id,user_id,type,dedupe_key,payload,created_at,expires_at) VALUES('unrelated-event','manual','test','unrelated','{}',?,?)").run(at,at+300000);
+  db.exec("INSERT INTO push_deliveries(id,notification_id,subscription_id,state,attempts) VALUES('unrelated','unrelated-event','timed-sub','accepted',1)");
+  const state=await sendDelivery(env,id,{fingerprint:'fixture'},{now:at,fetchImpl:()=>{throw Error('must not send before local hour');}});
+  assert.equal(state,'pending');const row=db.prepare('SELECT attempts,next_attempt_at FROM push_deliveries WHERE id=?').get(id);assert.equal(row.attempts,0);assert.ok(row.next_attempt_at>at);
+  assert.deepEqual({...db.prepare("SELECT state,attempts,next_attempt_at FROM push_deliveries WHERE id='unrelated'").get()},{state:'accepted',attempts:1,next_attempt_at:0});
 });

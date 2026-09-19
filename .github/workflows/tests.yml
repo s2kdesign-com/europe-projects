@@ -24,3 +24,22 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Install Firefox for responsive checks
+        run: npx playwright install --with-deps firefox
+
+      - name: Check translated layouts and keyboard actions
+        run: npm run test:layout
+        env:
+          LAYOUT_ARTIFACT_DIR: ${{ runner.temp }}/profile-layout
+
+      - name: Save responsive screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: profile-layout
+          path: ${{ runner.temp }}/profile-layout/*.png
+          retention-days: 7

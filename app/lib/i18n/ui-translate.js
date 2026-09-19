@@ -7,10 +7,12 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useLanguage } from "../../components/i18n/I18nProvider.jsx";
 import { translateItems } from "./translate-client.js";
+import premiumLabels from "./premium-labels.json";
 
 // Ръчни преводи за термини, които машинният превод бърка (напр. „Изход" → „Exodus").
 // Ключ: изходният български текст → { lang: превод }.
 const UI_OVERRIDES = {
+  ...premiumLabels,
   "Изход": { en: "Sign off", de: "Abmelden" },
 };
 function overrideFor(lang, bg) {
@@ -27,12 +29,12 @@ export function useUiTranslate(labels) {
   const { lang } = useLanguage();
   const [map, setMap] = useState(() => new Map());
   const uniq = [...new Set((labels || []).filter(Boolean))];
-  const sig = lang + "|" + uniq.length;
+  const sig = lang + "|" + JSON.stringify(uniq);
 
   useEffect(() => {
     if (!lang || lang === "bg") { setMap(new Map()); return; }
     let alive = true;
-    const items = uniq.map((text, i) => ({ key: "u" + i, text }));
+    const items = uniq.filter(text => !overrideFor(lang, text)).map((text, i) => ({ key: "u" + i, text }));
     translateItems(lang, items).then((m) => {
       if (!alive) return;
       const byText = new Map();

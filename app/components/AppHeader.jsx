@@ -93,14 +93,14 @@ export default function AppHeader({ tab, onTab, savedCount, session }) {
     <header className={"appbar mobile-header" + (compact ? " is-compact" : "")}>
       <div className="appbar-inner">
         <div className="appbar-top" ref={topRef}>
-          <a className="brand" href="/" onClick={goHome} aria-label={tr("common.appName")}>
+          <Link className="brand" href="/" onClick={goHome} aria-label={tr("common.appName")}>
             <CountryLogoMark size={20} />
             <span>
               <span className="brand-name">{tr("common.appName")}</span>
               <br />
               <span className="brand-sub">{tr("common.tagline")}</span>
             </span>
-          </a>
+          </Link>
 
           <div className="appbar-account">
             <button className="help-btn" onClick={openWelcome} aria-label={tr("footer.aboutSystem")} title={tr("footer.aboutSystem")}><Icon name="info" size={18} /></button>
