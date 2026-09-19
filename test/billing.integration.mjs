@@ -19,7 +19,7 @@ const now=Date.now(),epoch=Math.floor(now/1000),later=epoch+864000;
 const migration=name=>fs.readFileSync(new URL('../migrations/'+name,import.meta.url),'utf8');
 function fixture(){
   const db=new DatabaseSync(':memory:');db.exec('PRAGMA foreign_keys=ON;');
-  db.exec(migration('0002_auth.sql'));db.exec(migration('0003_admin.sql'));db.exec(migration('0029_web_push.sql'));db.exec(migration('0031_premium_billing.sql'));
+  db.exec(migration('0002_auth.sql'));db.exec(migration('0003_admin.sql'));db.exec(migration('0029_web_push.sql'));db.exec(migration('0031_premium_billing.sql'));db.exec(migration('0033_public_country_push.sql'));
   db.exec(`ALTER TABLE user_profiles ADD COLUMN preferred_country TEXT;
     CREATE TABLE projects(id TEXT PRIMARY KEY,name TEXT,program TEXT,status TEXT,deadline_date TEXT,budget TEXT,eligible TEXT,notes TEXT,public_slug TEXT,last_updated TEXT,country_code TEXT);
     CREATE VIEW public_projects AS SELECT * FROM projects;

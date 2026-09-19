@@ -25,17 +25,17 @@ try {
   const publicKey = Buffer.from(await crypto.subtle.exportKey('raw', vapid.publicKey)).toString('base64url');
   const device = createECDH('prime256v1'); device.generateKeys();
   for (const privateKey of [JSON.stringify(jwk), jwk.d]) {
-    for (const status of [201, 302, 307]) {
+    for (const type of ['test','country']) for (const status of [201, 302, 307]) {
       const response = await runtime.dispatchFetch('http://localhost/', { method: 'POST', body: JSON.stringify({
         env: { WEB_PUSH_VAPID_PRIVATE_JWK: privateKey, WEB_PUSH_VAPID_PUBLIC_KEY: publicKey, WEB_PUSH_VAPID_SUBJECT: 'mailto:test@example.invalid' },
         subscription: { endpoint: 'https://fcm.googleapis.com/fcm/send/runtime-fixture', keys: { p256dh: device.getPublicKey().toString('base64url'), auth: randomBytes(16).toString('base64url') } },
-        status,
+        status,type,
       }) });
       assert.equal(response.status, 200);
       assert.deepEqual(await response.json(), { state: status === 201 ? 'accepted' : 'failed', requests: 1, encrypted: true });
     }
   }
-  console.log('ok - workerd sender accepts 201 and rejects redirects for JWK and scalar configuration (6 cases; no external delivery)');
+  console.log('ok - workerd personal/public sender accepts 201 and rejects redirects for JWK and scalar configuration (12 cases; no external delivery)');
   const secret=randomBytes(32).toString('hex'),body=JSON.stringify({id:'evt_workerd',type:'invoice.paid',data:{object:{}}}),timestamp=Math.floor(Date.now()/1000);
   const signature=createHmac('sha256',secret).update(timestamp+'.'+body).digest('hex');
   for(const [payload,status] of [[body,200],[body+' ',400]]){

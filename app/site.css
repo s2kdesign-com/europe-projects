@@ -587,3 +587,5 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
 .payments-admin pre { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 380px; }
 @media(max-width:700px) { .premium-plans { grid-template-columns: 1fr; } .report-history .btn { width: 100%; white-space: normal; } .payments-admin .table-scroll { max-width: 100%; } }
 @media(prefers-reduced-motion:reduce) { .premium-card-pulse::before { animation: none; opacity: .5; } }
+.push-country { display: grid; gap: 8px; margin: 18px 0; }
+.push-success { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 100; padding: 14px 20px; max-width: 90vw; border-radius: 12px; background: #e7f7ef; color: #125a39; box-shadow: 0 3px 18px #163b3026; }

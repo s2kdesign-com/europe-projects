@@ -2,8 +2,10 @@ import { getSession } from '../session.js';
 import { json, uuid } from '../util.js';
 import { PushError, notificationPayload, pushError, readPushJson, readVapid } from './security.js';
 import { createNotification, DAY, deadlineDue, rateLimit, receiveReceipt, registerSubscription, SAVED_SELECT, sendDelivery } from './service.js';
+import { anonymousOwner, publicRateLimit, registerPublicSubscription, visitorCookie } from './public.js';
+import { entitlement } from '../billing/entitlement.js';
 
-const reply=(data,status=200)=>json(data,status,{'cache-control':'no-store','x-content-type-options':'nosniff'});
+const reply=(data,status=200,headers={})=>json(data,status,{'cache-control':'no-store','x-content-type-options':'nosniff',...headers});
 export function pushSameOrigin(request,env,url) {
   try {
     const origin=request.headers.get('origin');
@@ -21,12 +23,33 @@ export async function handleNotifications(request,env,url,{sessionGetter=getSess
       catch { return reply({ok:true,configured:false}); }
     }
     const session=await sessionGetter(env,request);
-    if (!session?.user || !session.session) throw pushError('unauthorized',401);
     if (request.method!=='GET' && !pushSameOrigin(request,env,url)) throw pushError('csrf',403);
+    const owner=await anonymousOwner(request);
+    if(path==='visitor' && request.method==='POST'){
+      await publicRateLimit(env,'visitor:global',200);
+      return reply({ok:true},200,owner?{}:{'set-cookie':visitorCookie()});
+    }
+    if(path==='receipt' && request.method==='POST')return reply({ok:true,...await receiveReceipt(env,session,await readPushJson(request),owner)});
+    if(!session?.user || !session.session){
+      if(!owner)throw pushError('unauthorized',401);
+      if(path==='subscription' && request.method==='POST')return reply({ok:true,...await registerPublicSubscription(env,await readPushJson(request),await readVapid(env),owner)});
+      if((path==='subscription/status' && request.method==='POST') || (path==='subscription' && request.method==='DELETE')){
+        const body=await readPushJson(request);if(!/^[a-f0-9]{64}$/.test(body?.endpointHash||''))throw pushError('invalid_subscription');
+        await publicRateLimit(env,'manage:'+owner,60);
+        if(request.method==='DELETE'){
+          await env.DB.prepare("DELETE FROM push_subscriptions WHERE endpoint_hash=?1 AND scope='public_country' AND anonymous_token_hash=?2").bind(body.endpointHash,owner).run();return reply({ok:true});
+        }
+        const config=await readVapid(env);
+        const row=await env.DB.prepare("SELECT id,country_code,vapid_fingerprint,expiration_time FROM push_subscriptions WHERE endpoint_hash=?1 AND scope='public_country' AND anonymous_token_hash=?2").bind(body.endpointHash,owner).first();
+        const active=!!row&&row.vapid_fingerprint===config.fingerprint&&(!row.expiration_time||row.expiration_time>Date.now());
+        return reply({ok:true,active,id:active?row.id:null,scope:'public_country',countryCode:active?row.country_code:null});
+      }
+      throw pushError('unauthorized',401);
+    }
     const userId=session.user.id;
     if (path==='subscription' && request.method==='POST') {
       const config=await readVapid(env);
-      return reply({ok:true,...await registerSubscription(env,session,await readPushJson(request),config)});
+      return reply({ok:true,...await registerSubscription(env,session,await readPushJson(request),config,owner),scope:'authenticated',premium:(await entitlement(env,userId)).premium});
     }
     if (path==='subscription/status' && request.method==='POST') {
       const body=await readPushJson(request);
@@ -35,7 +58,7 @@ export async function handleNotifications(request,env,url,{sessionGetter=getSess
       const row=await env.DB.prepare(`SELECT id,session_id,vapid_fingerprint,expiration_time FROM push_subscriptions WHERE user_id=?1 AND endpoint_hash=?2`)
         .bind(userId,body.endpointHash).first();
       const active=!!row && row.session_id===session.session.id && row.vapid_fingerprint===config.fingerprint && (!row.expiration_time || row.expiration_time>Date.now());
-      return reply({ok:true,active,id:active?row.id:null});
+      return reply({ok:true,active,id:active?row.id:null,scope:'authenticated',premium:(await entitlement(env,userId)).premium});
     }
     if (path==='subscription' && request.method==='DELETE') {
       const body=await readPushJson(request);
@@ -74,7 +97,6 @@ export async function handleNotifications(request,env,url,{sessionGetter=getSess
       const ok=['accepted','pending'].includes(state);
       return reply({ok,deliveryId,state,...(!ok?{error:state==='expired'?'subscription_required':'delivery_failed'}:{})},state==='accepted'?200:state==='pending'?202:502);
     }
-    if (path==='receipt' && request.method==='POST') return reply({ok:true,...await receiveReceipt(env,session,await readPushJson(request))});
     if (path.startsWith('delivery/') && request.method==='GET') {
       const id=path.slice('delivery/'.length);
       const row=await env.DB.prepare(`SELECT d.state,d.displayed_at,d.clicked_at,d.error_code FROM push_deliveries d

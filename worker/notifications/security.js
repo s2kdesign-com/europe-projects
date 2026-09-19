@@ -30,6 +30,8 @@ export function validateEndpoint(value) {
 
 export async function validateSubscription(body) {
   if (!body || typeof body !== 'object') throw pushError('invalid_subscription');
+  if(Object.keys(body).some(key=>!['endpoint','expirationTime','keys','countryCode','replacesEndpointHash'].includes(key)))throw pushError('invalid_subscription');
+  if(body.replacesEndpointHash!=null&&!/^[a-f0-9]{64}$/.test(body.replacesEndpointHash))throw pushError('invalid_subscription');
   const endpoint = validateEndpoint(body.endpoint);
   const p256dh = decode(body.keys?.p256dh, 65);
   decode(body.keys?.auth, 16);
@@ -51,7 +53,7 @@ export function safeNotificationUrl(value, origin = 'https://euro-funds.eu') {
 }
 
 export function notificationPayload(type, data = {}) {
-  if (!['test','change','deadline'].includes(type)) throw pushError('invalid_notification');
+  if (!['test','change','deadline','country'].includes(type)) throw pushError('invalid_notification');
   const clean = (v, max) => String(v || '').replace(/[\u0000-\u001f]/g, ' ').slice(0,max);
   return {type, title:clean(data.title || 'Euro-Funds',100), body:clean(data.body,240), url:safeNotificationUrl(data.url), timestamp:new Date().toISOString()};
 }

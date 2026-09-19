@@ -71,7 +71,9 @@ self.addEventListener('pushsubscriptionchange',event=>event.waitUntil((async()=>
     if (!config.configured) throw Error();
     const key=Uint8Array.from(atob(config.publicKey.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(config.publicKey.length/4)*4,'=')),c=>c.charCodeAt(0));
     subscription=event.newSubscription || await self.registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});
-    const registered=await fetch('/api/notifications/subscription',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(subscription.toJSON())});
+    let replacesEndpointHash;
+    if(event.oldSubscription?.endpoint)replacesEndpointHash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(event.oldSubscription.endpoint)))].map(b=>b.toString(16).padStart(2,'0')).join('');
+    const registered=await fetch('/api/notifications/subscription',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({...subscription.toJSON(),...(replacesEndpointHash?{replacesEndpointHash}:{})})});
     if (!registered.ok) throw Error();
     await broadcast({type:'push-subscription-changed'});
   } catch {

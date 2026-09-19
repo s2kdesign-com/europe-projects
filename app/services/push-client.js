@@ -1,4 +1,19 @@
+import { normalizeCountry } from '../lib/country/countries.js';
 export const PUSH_PROMPT_KEY='evroproekti_push_prompt_last_shown';
+export const PUSH_COUNTRY_KEY='evroproekti_push_country';
+export const PUSH_LOGIN_INTENT='evroproekti_push_login_intent';
+export function beginNotificationLogin(win=globalThis) {
+  const url=new URL(win.location.href);url.searchParams.set('notificationOnboarding','1');
+  const path=url.pathname+url.search+url.hash;
+  try{win.sessionStorage.setItem(PUSH_LOGIN_INTENT,JSON.stringify({at:Date.now(),path}));}catch{throw fail('storage_unavailable');}
+  return path;
+}
+export function notificationLoginPending(win=globalThis) {
+  try{const value=JSON.parse(win.sessionStorage.getItem(PUSH_LOGIN_INTENT));return !!value&&Number.isFinite(value.at)&&Date.now()-value.at>=0&&Date.now()-value.at<900000;}catch{return false;}
+}
+export function clearNotificationLogin(win=globalThis) {
+  try{win.sessionStorage.removeItem(PUSH_LOGIN_INTENT);const url=new URL(win.location.href);url.searchParams.delete('notificationOnboarding');win.history.replaceState(null,'',url.pathname+url.search+url.hash);}catch{ /* No external redirect. */ }
+}
 export const PUSH_DAY=86400000;
 const disabledKey=userId=>'evroproekti_push_disabled:'+userId;
 const fail=code=>Object.assign(new Error(code),{code});
@@ -34,6 +49,7 @@ export function claimLocalPrompt(storage,now=Date.now()) {
 
 export function createPushClient(win=globalThis, fetchImpl=(...args)=>fetch(...args)) {
   let pending=null;
+  let pendingIdentity=null;
   let mutation=null;
   const api=async(path,body,method='POST')=>{
     let response;
@@ -68,8 +84,9 @@ export function createPushClient(win=globalThis, fetchImpl=(...args)=>fetch(...a
     // browser push service is temporarily unavailable during unsubscribe.
     try { await sub.unsubscribe(); } catch { /* Repair/rotation can retry later. */ }
   }
-  async function setup(userId,config) {
-    if (!userId) throw fail('login_required');
+  async function setup(userId,config,countryCode) {
+    if(!userId&&!normalizeCountry(countryCode))throw fail('country_required');
+    if(!userId)await api('visitor',{});
     const reg=await registration(true);
     let sub=await reg.pushManager.getSubscription();
     const key=publicKeyBytes(config.publicKey);
@@ -80,40 +97,45 @@ export function createPushClient(win=globalThis, fetchImpl=(...args)=>fetch(...a
     const subscribe=()=>reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});
     if (!sub) sub=await subscribe();
     let stored;
-    try { stored=await api('subscription',sub.toJSON()); }
+    const register=()=>api('subscription',{...sub.toJSON(),...(!userId?{countryCode:normalizeCountry(countryCode)}:{})});
+    try { stored=await register(); }
     catch (error) {
       if (!['subscription_owned_elsewhere','subscription_expired'].includes(error.code)) throw error;
       // Never transfer another account's endpoint. Rotate this browser's endpoint.
-      await sub.unsubscribe(); sub=await subscribe(); stored=await api('subscription',sub.toJSON());
+      await sub.unsubscribe(); sub=await subscribe(); stored=await register();
     }
     setOptOut(userId,false);
-    return {status:'enabled',permission:'granted',id:stored.id,configured:true};
+    return {status:'enabled',permission:'granted',id:stored.id,configured:true,scope:stored.scope,premium:stored.premium,countryCode:stored.countryCode};
   }
-  async function inspect(userId,{repair=true}={}) {
+  async function inspect(userId,{repair=true,countryCode=null}={}) {
     if (!pushSupported(win)) return {status:'unsupported',permission:'default'};
     const permission=win.Notification.permission;
     if (permission==='denied') return {status:'blocked',permission};
     const config=await api('config',undefined,'GET');
     if (!config.configured) return {status:'unavailable',permission};
     if (optOut(userId)) return {status:'disabled',permission,configured:true};
-    if (!userId) return {status:'login',permission,configured:true};
     if (permission!=='granted') return {status:'not-enabled',permission,configured:true};
     const reg=await registration();
     const sub=await reg?.pushManager.getSubscription();
     if (sub) {
-      const state=await api('subscription/status',{endpointHash:await endpointHash(sub.endpoint,win)});
-      if (state.active) return {status:'enabled',permission,id:state.id,configured:true};
+      let state;
+      try{state=await api('subscription/status',{endpointHash:await endpointHash(sub.endpoint,win)});}catch(e){if(userId||e.code!=='unauthorized')throw e;}
+      if (state?.active && (userId||!countryCode||state.countryCode===countryCode)) return {status:'enabled',permission,id:state.id,configured:true,scope:state.scope,premium:state.premium,countryCode:state.countryCode};
+      if(!countryCode&&state?.countryCode)countryCode=state.countryCode;
     }
-    return repair ? setup(userId,config) : {status:'setup',permission,configured:true};
+    let publicConsent=false;try{publicConsent=win.localStorage.getItem(disabledKey(null))==='0';}catch{}
+    return repair && (userId||(countryCode&&publicConsent)) ? setup(userId,config,countryCode) : {status:'setup',permission,configured:true};
   }
   const refresh=(userId,options)=>{
     if(mutation)return mutation;
-    if (!pending) pending=inspect(userId,options).finally(()=>{pending=null;});
+    const identity=JSON.stringify([userId,options?.countryCode,options?.repair]);
+    if(pending&&pendingIdentity!==identity)return pending.catch(()=>{}).then(()=>refresh(userId,options));
+    if (!pending){pendingIdentity=identity;pending=inspect(userId,options).finally(()=>{pending=null;pendingIdentity=null;});}
     return pending;
   };
-  async function enableNow(userId) {
+  async function enableNow(userId,countryCode) {
     if (!pushSupported(win)) throw fail('unsupported');
-    if (!userId) throw fail('login_required');
+    if(!userId&&!normalizeCountry(countryCode))throw fail('country_required');
     if (win.Notification.permission==='denied') throw fail('permission_denied');
     // This call happens synchronously from the user's click, before any fetch.
     const permission=win.Notification.permission==='granted'?'granted':await win.Notification.requestPermission();
@@ -121,11 +143,12 @@ export function createPushClient(win=globalThis, fetchImpl=(...args)=>fetch(...a
     if(pending)await pending.catch(()=>{});
     const config=await api('config',undefined,'GET');
     if (!config.configured) throw fail('push_not_configured');
-    return setup(userId,config);
+    return setup(userId,config,countryCode);
   }
   async function disableNow(userId) {
     if(pending)await pending.catch(()=>{});
     setOptOut(userId,true);
+    if(userId)setOptOut(null,true);
     try {
       const reg=await registration();
       const sub=await reg?.pushManager.getSubscription();
@@ -140,9 +163,10 @@ export function createPushClient(win=globalThis, fetchImpl=(...args)=>fetch(...a
     if(!mutation)mutation=action().finally(()=>{mutation=null;});
     return mutation;
   };
-  const enable=userId=>mutate(()=>enableNow(userId));
+  const enable=(userId,countryCode)=>mutate(()=>enableNow(userId,countryCode));
   const disable=userId=>mutate(()=>disableNow(userId));
   async function test(userId,scenario='test') {
+    if(!userId)throw fail('unauthorized');
     const state=await inspect(userId,{repair:false});
     if (state.status!=='enabled') throw fail(state.status==='blocked'?'permission_denied':'subscription_required');
     return api('test',{subscriptionId:state.id,scenario});

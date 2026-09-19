@@ -1,3 +1,9 @@
+## 2.58.0 — 2026-09-20
+
+- Fixed direct notification activation and optional Google onboarding return context.
+- Added anonymous country alerts in the existing push pipeline, safe account linking, and canonical daily counts.
+- Preserved Premium reports/preferences and added a server-enforced daily notification cap.
+
 ## 2.57.0 — 2026-09-19
 
 - Added database-managed monthly/annual Stripe subscriptions, secure checkout and customer portal.

@@ -1,12 +1,13 @@
 // @vitest-environment node
 import vm from 'node:vm';
 import fs from 'node:fs';
+import { webcrypto } from 'node:crypto';
 const source=fs.readFileSync(new URL('../public/sw.js',import.meta.url),'utf8');
 function fixture() {
   const events={};const tab={url:'https://euro-funds.eu/',navigate:vi.fn(async()=>{}),focus:vi.fn(async()=>{}),postMessage:vi.fn()};
   const self={location:{origin:'https://euro-funds.eu'},addEventListener:(name,fn)=>{events[name]=fn;},registration:{getNotifications:vi.fn(async()=>[]),showNotification:vi.fn(async()=>{})}};
   const clients={matchAll:vi.fn(async()=>[tab]),openWindow:vi.fn(async()=>{})};const fetch=vi.fn(async()=>({ok:true,json:async()=>({allowed:true})}));
-  vm.runInNewContext(source,{self,clients,fetch,URL,AbortSignal,Uint8Array,atob});
+  vm.runInNewContext(source,{self,clients,fetch,URL,AbortSignal,Uint8Array,atob,crypto:webcrypto,TextEncoder});
   const emit=async(name,event)=>{let work;events[name]({...event,waitUntil:p=>{work=p;}});await work;};
   return {self,clients,tab,fetch,emit};
 }

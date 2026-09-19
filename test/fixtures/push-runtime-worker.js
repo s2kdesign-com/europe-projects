@@ -14,7 +14,8 @@ export default {
     const config = await readVapid(input.env);
     const row = {
       ...input.subscription.keys, endpoint: input.subscription.endpoint,
-      type: 'test', payload: JSON.stringify({ title: 'Runtime validation', url: '/profile' }),
+      type: input.type||'test',user_id:null,saved_id:null,report_id:null,country_code:'BG',subscription_scope:input.type==='country'?'public_country':'authenticated',subscription_country:'BG',
+      payload: JSON.stringify({ title: 'Runtime validation', url: input.type==='country'?'/procedures/countries/bg':'/profile' }),
       expires_at: Date.now() + 300000, vapid_fingerprint: config.fingerprint,
       notification_id: 'fixture-event', subscription_id: 'fixture-subscription',
     };

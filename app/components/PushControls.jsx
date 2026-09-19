@@ -9,7 +9,7 @@ export const PUSH_STATUS = {
   'not-enabled':'Известията не са активирани.',disabled:'Известията са изключени в този браузър.',
   setup:'Известията се нуждаят от настройка или подновяване.',blocked:'Известията са блокирани в браузъра.',
   unsupported:'Този браузър не поддържа Web Push. На iPhone или iPad добавете сайта на началния екран и го отворете оттам.',
-  unavailable:'Известията временно не са достъпни.',login:'Влезте, за да получавате известия за запазените си процедури.',
+  unavailable:'Известията временно не са достъпни.',premium:'Premium известията са активни в този браузър.',
 };
 export const PUSH_ERRORS={
   permission_denied:'Разрешете известията от настройките за този сайт в браузъра, след което опитайте отново.',
@@ -21,26 +21,28 @@ export const PUSH_ERRORS={
   service_worker_conflict:'Има друга активна инсталация на сайта. Обновете я преди активиране на известията.',
   push_not_configured:'Известията временно не са достъпни.',
   device_limit:'Достигнат е лимитът от 10 браузъра. Изключете известията на старо устройство.',
-  login_required:'Влезте, за да активирате известията.',unauthorized:'Влезте отново, за да управлявате известията.',
+  country_required:'Изберете държава за публичните известия.',browser_identity_required:'Обновете страницата и разрешете необходимите бисквитки за този сайт.',unauthorized:'Сесията е изтекла. Влезте отново за личните известия.',
   delivery_failed:'Тестовото известие не можа да бъде изпратено. Опитайте отново.',
   push_unavailable:'Известията временно не са достъпни. Опитайте отново.',
 };
 const TEST_RESULT={queued:'Тестът изчаква повторен опит за доставка. Все още няма потвърждение от push услугата.',accepted:'Тестовото известие е изпратено. Изчаква се потвърждение от браузъра…',displayed:'Браузърът потвърди показването на тестовото известие.',waiting:'Push услугата прие известието, но показването още не е потвърдено. Проверете известията и режима „Не безпокойте“.',suppressed:'Не е изпратено известие: запазените настройки или срокът на процедурата не позволяват този тип.',no_saved:'Запазете процедура, за да проверите известията за промени или срокове.'};
 const SCENARIOS={test:'Общ тест',change:'Промяна по запазена процедура',deadline:'Напомняне за срок'};
-const LABELS=[...Object.values(PUSH_STATUS),...Object.values(PUSH_ERRORS),...Object.values(TEST_RESULT),'Известия в браузъра','Активирай известията','Изпрати тестово известие','Изключи в този браузър','Вход за активиране','Настройките по-горе управляват известията след „Запази профила“. Активирането важи за този браузър.'];
+const LABELS=[...Object.values(PUSH_STATUS),...Object.values(PUSH_ERRORS),...Object.values(TEST_RESULT),'Известия в браузъра','Активирай известията','Изпрати тестово известие','Изключи в този браузър','Настройките по-горе управляват известията след „Запази профила“. Активирането важи за този браузър.'];
 
-export default function PushControls() {
+export default function PushControls({dailyLimit=null,onDailyLimitChange=()=>{}}) {
   const push=usePushNotifications();
   const [scenario,setScenario]=useState('test');
-  const tl=useUiTranslate([...LABELS,...Object.values(SCENARIOS),'Тип тест']);
+  const tl=useUiTranslate([...LABELS,...Object.values(SCENARIOS),'Тип тест','Максимум известия на ден (Premium)','Всички избрани известия','Лимитът се прилага за всички браузъри общо. Нов ден започва в 00:00 UTC. Тестовете не се броят.']);
   if (!push) return null;
   const canEnable=['not-enabled','setup','disabled'].includes(push.status);
   return <div className="push-controls" aria-busy={push.busy}>
     <h3>{tl('Известия в браузъра')}</h3>
-    <p role="status"><Icon name={push.status==='enabled'?'check':'info'} size={16} /> {tl(PUSH_STATUS[push.status] || PUSH_STATUS.setup)}</p>
+    <p role="status"><Icon name={push.status==='enabled'?'check':'info'} size={16} /> {tl(PUSH_STATUS[push.status==='enabled'&&push.premium?'premium':push.status] || PUSH_STATUS.setup)}</p>
+    {push.premium&&<label>{tl('Максимум известия на ден (Premium)')} <select className="inp" value={dailyLimit??''} onChange={e=>onDailyLimitChange(e.target.value?Number(e.target.value):null)}>
+      <option value="">{tl('Всички избрани известия')}</option>{[1,3,10].map(n=><option key={n} value={n}>{n}</option>)}</select>
+      <span className="chart-note">{tl('Лимитът се прилага за всички браузъри общо. Нов ден започва в 00:00 UTC. Тестовете не се броят.')}</span></label>}
     {push.status==='blocked' && <p className="chart-note">{tl(PUSH_ERRORS.permission_denied)}</p>}
     <div className="push-actions">
-      {push.status==='login' && <button type="button" className="btn btn-primary" onClick={()=>push.session.login('/profile')}>{tl('Вход за активиране')}</button>}
       {canEnable && <button type="button" className="btn btn-primary" onClick={push.enable} disabled={push.busy}>{tl('Активирай известията')}</button>}
       {push.status==='enabled' && <label>{tl('Тип тест')} <select value={scenario} onChange={event=>setScenario(event.target.value)} disabled={push.busy}>{Object.entries(SCENARIOS).map(([value,label])=><option key={value} value={value}>{tl(label)}</option>)}</select></label>}
       <button type="button" className="btn" onClick={()=>push.sendTest(scenario)} disabled={push.busy || push.status!=='enabled'}>{tl('Изпрати тестово известие')}</button>

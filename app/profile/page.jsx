@@ -305,7 +305,7 @@ export default function ProfilePage() {
           </div>
           <Field label="Напомняне (дни преди срок)"><input className="inp inp-sm" type="number" min="0" max="60" value={prefs.notification_days_before} onChange={(e) => setPref("notification_days_before", e.target.value)} /></Field>
           <p className="chart-note"><Icon name="info" size={13} /> {tl("Предпочитанията се запазват, но изпращането на имейли изисква бъдеща имейл инфраструктура и все още не е активно.")}</p>
-          <PushControls />
+          <PushControls dailyLimit={prefs.premium_notification_daily_limit??null} onDailyLimitChange={value=>setPref('premium_notification_daily_limit',value)} />
         </Section>
 
         {/* 5b. Език и регион */}

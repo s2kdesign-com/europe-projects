@@ -370,7 +370,8 @@ export async function handleAuth(request, env, url) {
     if (method === "PUT") {
       const body = await readJson(request);
       if (!body) return err("invalid_body", 400);
-      await data.putPreferences(env, userId, body);
+      const result=await data.putPreferences(env, userId, body);
+      if(result?.error)return err(result.error,result.status||400);
       return ok({ preferences: await data.getPreferences(env, userId) });
     }
   }

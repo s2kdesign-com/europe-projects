@@ -5,6 +5,9 @@ import Icon from "../components/Icon.jsx";
 import { COMPANY } from "../lib/company.js";
 
 const COOKIES = [
+  { name: "__Host-evp_push", provider: COMPANY.name, purpose: "Доказва собствеността на анонимния браузърен абонамент; не създава потребителски профил", type: "HttpOnly, Secure бисквитка", life: "До 1 година", need: "Необходима за заявените известия", when: "При активиране на известия без вход" },
+  { name: "evroproekti_push_country", provider: COMPANY.name, purpose: "Избраната държава за публични известия", type: "localStorage", life: "До промяна или изтриване", need: "Функционална", when: "При избор или активиране" },
+  { name: "evroproekti_push_login_intent", provider: COMPANY.name, purpose: "Връща поканата за известия след доброволен вход с Google", type: "sessionStorage", life: "До приключване; валидност 15 минути", need: "Функционална", when: "При вход от поканата за известия" },
   { name: "evroproekti_push_prompt_last_shown", provider: COMPANY.name, purpose: "Ограничава поканата за известия до веднъж за 24 часа", type: "localStorage", life: "До изтриване; проверява се интервал от 24 часа", need: "Функционална", when: "След показана покана" },
   { name: "evroproekti_push_disabled:<профил>", provider: COMPANY.name, purpose: "Запомня изключването на известията за този браузър", type: "localStorage", life: "До промяна или изтриване", need: "Функционална", when: "При управление на известията" },
   { name: "evp_session", provider: COMPANY.name, purpose: "Поддържане на вход и сесия", type: "HttpOnly бисквитка", life: "30 дни", need: "Необходима", when: "При вход с Google" },
