@@ -18,6 +18,11 @@ Fetch live procedure data through the Cloudflare connector as documented in
 social-media/DATA_MODEL.md and pass the fresh envelope through --changes. If
 connector tools are unavailable, use the authenticated D1 REST/Wrangler transport
 and identify it in the report. Prepare with run_daily.py --transport browser.
+Before preparation, review and translate each title, budget explanation and
+applicant field into the scheduled posting language. Add the source-bound
+localization review required by RUN_PROCEDURE.md to the fresh --changes envelope.
+Do not trust project original_language for individual fields or publish fallback
+source-language prose. Preserve numbers, dates, currencies, links and meaning.
 Use the Chrome connector to upload the prepared PNG and publish the saved text
 as organic posts. Use browser_publish.py claim immediately before each final
 Post click, and record each verified permalink immediately afterwards. Respect

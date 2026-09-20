@@ -1,0 +1,3 @@
+INSERT INTO changelog_entries(version,title,summary,content,category,published_at,affected_route,created_at,updated_at)
+SELECT '2.61.1','Единен език в дневните социални публикации','Заглавията, бюджетните пояснения и кандидатите се проверяват на езика на публикацията.','["Пазят се оригиналните данни и провереният превод; липсващи или остарели проверки блокират публикуването.","Числата, валутите, сроковете и връзките остават непроменени.","Корекциите запазват съществуващите връзки и защитата срещу повторни публикации."]','fix','2026-09-20','/procedures',datetime('now'),datetime('now')
+WHERE NOT EXISTS (SELECT 1 FROM changelog_entries WHERE version='2.61.1');

@@ -64,13 +64,40 @@ the same queries through D1 REST or authenticated Wrangler when agent tools are
 unavailable to the script. Do not fabricate connector success.
 
 Rank new calls first, then nearest future closing dates, then most recent change.
-Use up to three whole call records that fit both text limits. Copy title, stored
-`deadline_date`, budget and eligible applicants verbatim. Attach every selected
+Use up to three whole call records that fit both text limits. Keep stored
+`deadline_date`, numeric values, currencies and URLs verbatim. Translate the
+complete title, budget explanation and eligible-applicant text into the selected
+posting language, preserving their meaning and proper names. Attach every selected
 call's canonical euro-funds.eu detail URL. Never derive a grant amount from the
 program budget or use memory for a fact. Missing structured dates/applicants say
 to consult the official documents; a missing budget is omitted. An elapsed date
-must not be described as an upcoming deadline. Records retain their source title
-and structured field language; only the surrounding copy is localized.
+must not be described as an upcoming deadline. Check each field independently:
+`original_language` describes the project and is not proof of a field's language.
+For example, a German project can have a Bulgarian budget explanation. Do not
+publish untranslated fallback text when translation or review is unavailable.
+
+Before composing, the scheduled agent must review/translate all candidate fields
+and add this object to each procedure in the fresh `--changes` envelope:
+
+```json
+"localization": {
+  "language": "de",
+  "source": {"title": "3. Förderaufruf", "budget": "Бюджетът не е публикуван.", "applicants": null},
+  "fields": {"title": "3. Förderaufruf", "budget": "Das Budget ist nicht veröffentlicht.", "applicants": null}
+}
+```
+
+Copy `source` exactly from that live procedure's title/budget/applicants (include
+null for missing values). Keep those original procedure fields unchanged for
+audit; only `localization.fields` contains reviewed translations. Fields already
+in the target language still need review and may retain their exact text. Review
+Latin-language prose too; script checks cannot distinguish German from English.
+Never summarize to fit, invent missing fields or change numeric spelling. Review
+meaning, negation, program-versus-call budget distinctions and applicant scope.
+The composer rejects missing/stale reviews, changed numbers/currencies/URLs and
+remaining Cyrillic/Greek prose outside their target languages. Resolve any proper
+name exception editorially without weakening the guard. No API key is needed for
+this agent review. Bare D1 snapshots intentionally fail until reviewed.
 
 If there are no changes in 30 days, still feature the scheduled country. State in
 its language that there were no new changes this week, include a live count of
@@ -108,6 +135,15 @@ For an image, pick the least recently used of three scenes for that country,
 excluding its previous image scene. Headlines include the run date and are
 checked against that country's stored `topic` values. Reuse today's saved draft
 on retry, not a new headline.
+
+Pending legacy drafts without a field-language review are blocked before a
+publishing claim. Do not bypass this by marking them reviewed without checking
+every field. Successful deliveries are never replayed for translation changes.
+For an owner-requested correction, edit the existing post in place, verify the
+saved text at the same permalink and append a dated correction audit to D1
+`social_posts.notes` while preserving prior notes, the immutable original draft,
+source snapshot and delivery statuses. If editing is unavailable, report it;
+never delete/repost or reset SUCCESS to force another run.
 
 ## 5. Render, upload and publish
 
@@ -180,7 +216,7 @@ python social-media/browser_publish.py report --date YYYY-MM-DD
 
 `--changes` is a fresh connector snapshot, never history. Without it the script
 fetches live data directly from Cloudflare. See the documented envelope schema.
-For verification use `--dry-run --country BG`; it prints composed posts without
+For verification use `--dry-run --country BG --changes <reviewed-snapshot.json>`; it prints composed posts without
 publishing or cloud writes. `--no-ai` tests a gradient during a controlled real
 run, without changing the two-images/one-link cadence.
 

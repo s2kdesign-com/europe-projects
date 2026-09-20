@@ -9,6 +9,7 @@ import uuid
 
 from common import ROOT, redact
 from storage import Cloudflare
+from localization import validate_saved_draft
 
 TARGETS = {
     'facebook': {'url': 'https://www.facebook.com/euro.funds.eu/',
@@ -51,6 +52,10 @@ def valid_permalink(platform, url):
 def claim(store, run_date, platform, author):
     if platform not in TARGETS or author != TARGETS[platform]['author']:
         raise ValueError('Composer author does not match the Euro-Funds target')
+    row = store.row(run_date)
+    if not row or row[platform+'_status'] not in ('PENDING', 'FAILED'):
+        raise ValueError('Claim refused: missing draft or delivery already claimed/completed')
+    validate_saved_draft(row)
     attempt = uuid.uuid4().hex
     rows = store.query(f"UPDATE social_posts SET {platform}_status='SENDING', {platform}_error=?2 "
                        f"WHERE run_date=?1 AND {platform}_status IN ('PENDING','FAILED') "

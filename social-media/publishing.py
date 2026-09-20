@@ -1,9 +1,14 @@
 """Atomic D1 per-platform guard, with conservative handling of uncertain delivery."""
 import json
 from common import HTTPFailure, redact
+from localization import validate_saved_draft
 
 
 def guarded_publish(store, row, platform, send):
+    current = store.row(row['run_date'])
+    if not current or current[platform+'_status'] not in ('PENDING', 'FAILED'):
+        return current
+    validate_saved_draft(current)
     if not store.claim(row['run_date'], platform):
         return store.row(row['run_date'])
     try:

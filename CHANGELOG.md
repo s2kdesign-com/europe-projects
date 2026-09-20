@@ -1,3 +1,9 @@
+## 2.61.1 — 2026-09-20
+
+- Require source-bound, field-level language review for social post titles, budget explanations and applicants; project language metadata no longer substitutes for review.
+- Preserve original source data, numbers, currencies, dates and links; block unreviewed legacy drafts before browser/API delivery claims.
+- Document in-place post corrections with D1 audit notes and unchanged duplicate-post guards. Add mixed-language and translation-integrity regressions.
+
 ## 2.61.0 — 2026-09-20
 
 - Permanent procedure URLs open the shared Procedures dashboard with the requested detail panel already selected.

@@ -1,9 +1,10 @@
-"""Deterministic native-language framing; never paraphrase structured call facts."""
+"""Native-language copy with reviewed translations and unchanged structured facts."""
 from datetime import datetime, timedelta, timezone
 import json
 from urllib.parse import urlparse
 
 from common import ROOT
+from localization import localized_fields
 
 COUNTRIES = json.loads((ROOT / 'countries.json').read_text(encoding='utf-8'))
 LOCALES = json.loads((ROOT / 'locales.json').read_text(encoding='utf-8'))
@@ -79,11 +80,12 @@ def select_procedures(snapshot):
     return sorted(snapshot['procedures'], key=rank)
 
 
-def procedure_line(p, labels):
-    fields = [p['title'], f"{labels['deadline']}: {p.get('deadline_date') or labels['unknown']}"]
+def procedure_line(p, labels, language):
+    translated = localized_fields(p, language)
+    fields = [translated['title'], f"{labels['deadline']}: {p.get('deadline_date') or labels['unknown']}"]
     if p.get('budget') not in (None, ''):
-        fields.append(str(p['budget']))
-    fields.append(f"{labels['applicants']}: {p.get('applicants') or labels['unknown']}")
+        fields.append(translated['budget'])
+    fields.append(f"{labels['applicants']}: {translated.get('applicants') or labels['unknown']}")
     return '• ' + ' · '.join(fields) + '\n' + p['url']
 
 
@@ -112,14 +114,14 @@ def compose(country, snapshot, kind, history, run_date):
         used = []
         for p in rows:
             candidate = used + [p]
-            body = '\n'.join(procedure_line(x, labels) for x in candidate)
+            body = '\n'.join(procedure_line(x, labels, country['language']) for x in candidate)
             if len(hook + '\n\n' + body + '\n\n' + ending) <= 1000:
                 used = candidate
             if len(used) == 3:
                 break
         if not used:
             raise ValueError('No complete procedure fits the post limit; editorial action required; do not invent or truncate facts')
-        body = '\n'.join(procedure_line(p, labels) for p in used)
+        body = '\n'.join(procedure_line(p, labels, country['language']) for p in used)
     facebook = hook + '\n\n' + body + '\n\n' + ending
     linkedin = facebook + '\n' + ENGLISH_LINE
     if len(facebook) > 1000 or len(linkedin) > 1300:
@@ -129,5 +131,6 @@ def compose(country, snapshot, kind, history, run_date):
     if headline in previous:
         raise ValueError('Headline already used for this country')
     return {'facebook': facebook, 'linkedin': linkedin, 'headline': headline,
+            'language': country['language'], 'localization_version': 1,
             'subtitle': f"{country['name_native']} · {recent}", 'used': used,
             'omitted': len(rows)-len(used), 'days': snapshot['days'], 'evergreen': not rows}

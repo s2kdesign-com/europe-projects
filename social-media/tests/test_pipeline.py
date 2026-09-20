@@ -21,10 +21,18 @@ from browser_publish import claim as browser_claim, finish as browser_finish, va
 from PIL import Image, ImageDraw
 import publish_facebook
 import publish_linkedin
+from localization import FIELDS, localized_fields
 
 
 def country(code):
     return next(c for c in COUNTRIES if c['code']==code)
+
+
+def review(procedure, language, **translations):
+    source = {key: procedure.get(key) for key in FIELDS}
+    procedure['localization'] = {'language': language, 'source': source,
+                                 'fields': {**source, **translations}}
+    return procedure
 
 
 def fixture(code='BG', days=7, empty=False):
@@ -34,10 +42,10 @@ def fixture(code='BG', days=7, empty=False):
     return {'source':'cloudflare-d1','complete':True,'country':code,'data_country':c['data_code'],
         'schema_version':1,'fetched_at':as_of.isoformat(),'days':days,
         'overview':{'open_count':4,'nearest_deadline':'2026-12-15'},
-        'procedures':[] if empty else [{
+        'procedures':[] if empty else [review({
             'id':code+'-fixture','title':titles.get(code,'Synthetic test call'),'country_code':c['data_code'],
             'deadline_date':'2026-12-15','budget':'EUR 12 345','applicants':'SME',
-            'url':'https://euro-funds.eu/procedures/test-'+code.lower(),'change_time':as_of.isoformat(),'is_new':1}]}
+            'url':'https://euro-funds.eu/procedures/test-'+code.lower(),'change_time':as_of.isoformat(),'is_new':1}, c['language'])]}
 
 
 class SQLiteStore(Cloudflare):
@@ -101,6 +109,7 @@ class ContentTests(unittest.TestCase):
 
     def test_long_call_is_omitted_whole(self):
         snap=fixture(); huge=deepcopy(snap['procedures'][0]); huge['title']='X'*1600; huge['id']='huge'
+        review(huge, 'bg')
         snap['procedures'].insert(0,huge)
         result=compose(country('BG'),snap,'image',[],'2026-09-20')
         self.assertEqual(len(result['used']),1)
@@ -108,6 +117,7 @@ class ContentTests(unittest.TestCase):
 
     def test_impossible_call_fails_without_fake_evergreen(self):
         snap=fixture(); snap['procedures'][0]['title']='X'*1600
+        review(snap['procedures'][0], 'bg')
         with self.assertRaisesRegex(ValueError,'No complete procedure'):
             compose(country('BG'),snap,'image',[],'2026-09-20')
 
@@ -127,6 +137,39 @@ class ContentTests(unittest.TestCase):
         validate_snapshot(snap,country('BG'))
         snap['overview']['open_count']=None
         with self.assertRaises(ValueError): validate_snapshot(snap,country('BG'))
+
+    def test_german_post_translates_bulgarian_budget_despite_german_metadata(self):
+        snap = fixture('DE'); p = snap['procedures'][0]
+        p.update(title='3. Förderaufruf', original_language='de', budget='Бюджетът за 3. прием не е публикуван.', applicants=None)
+        review(p, 'de', budget='Das Budget für den 3. Aufruf ist nicht veröffentlicht.')
+        result = compose(country('DE'), snap, 'image', [], '2026-09-20')
+        self.assertIn('Das Budget', result['facebook'])
+        self.assertNotIn('Бюджетът', result['facebook'])
+        self.assertEqual(result['used'][0]['budget'], p['budget'])
+        self.assertIn(p['deadline_date'], result['facebook'])
+        self.assertIn(p['url'], result['facebook'])
+
+    def test_missing_stale_wrong_language_and_untranslated_reviews_fail(self):
+        for mutate in (
+            lambda p: p.pop('localization'),
+            lambda p: p.update(budget='New source budget'),
+            lambda p: p['localization'].update(language='fr'),
+            lambda p: review(p, 'de', budget='Няма бюджет'),
+            lambda p: review(p, 'de', budget='EUR 99'),
+            lambda p: review(p, 'de', title=''),
+        ):
+            snap = fixture('DE'); mutate(snap['procedures'][0])
+            with self.assertRaises(ValueError):
+                compose(country('DE'), snap, 'image', [], '2026-09-20')
+
+    def test_translation_cannot_invent_missing_fields_or_change_links(self):
+        p = fixture('DE')['procedures'][0]
+        p['applicants'] = None
+        review(p, 'de', applicants='SME')
+        with self.assertRaises(ValueError): localized_fields(p, 'de')
+        p['budget'] = 'Details https://example.org/call EUR 100'
+        review(p, 'de', budget='Details https://example.org/other EUR 100')
+        with self.assertRaises(ValueError): localized_fields(p, 'de')
 
 
 class RotationTests(unittest.TestCase):
@@ -164,6 +207,21 @@ class DeliveryTests(unittest.TestCase):
     def setUp(self):
         self.store=SQLiteStore(); self.row=reservation(self.store)
     def tearDown(self): self.store.db.close()
+
+    def test_legacy_draft_cannot_be_claimed_by_browser_or_api(self):
+        saved = json.loads(self.row['changes_json'])
+        saved['content'].pop('localization_version')
+        self.store.query('UPDATE social_posts SET changes_json=?1 WHERE id=?2', (json.dumps(saved), self.row['id']))
+        with self.assertRaisesRegex(ValueError, 'language review'):
+            browser_claim(self.store, self.row['run_date'], 'facebook', 'Euro-Funds.eu - EU Funding & Grants')
+        with self.assertRaisesRegex(ValueError, 'language review'):
+            guarded_publish(self.store, self.row, 'facebook', lambda: self.fail('Must not send'))
+        self.assertEqual(self.store.row(self.row['run_date'])['facebook_status'], 'PENDING')
+
+    def test_modified_saved_text_cannot_be_claimed(self):
+        self.store.query("UPDATE social_posts SET facebook_text='tampered' WHERE id='fixture'")
+        with self.assertRaisesRegex(ValueError, 'differs'):
+            browser_claim(self.store, self.row['run_date'], 'facebook', 'Euro-Funds.eu - EU Funding & Grants')
 
     def test_browser_claim_checks_author_and_prevents_duplicate(self):
         with self.assertRaises(ValueError):

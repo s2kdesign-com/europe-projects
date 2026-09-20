@@ -11,6 +11,7 @@ from common import CONFIG, ROOT, redact, request
 from compose import COUNTRIES, cadence, compose, country_for, validate_snapshot
 from make_image import make_image
 from storage import Cloudflare, now
+from localization import validate_saved_draft
 import publish_facebook
 import publish_linkedin
 
@@ -79,6 +80,7 @@ def run(args, store=None):
         if not pending:
             report(row,country,content)
             return 0 if all(row[p+'_status']=='SUCCESS' for p in ('linkedin','facebook')) else 1
+        validate_saved_draft(row)
         image_url=None
         image_bytes=None
         if row['kind']=='image':

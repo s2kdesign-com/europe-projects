@@ -9,6 +9,7 @@ Run from the repository root. **Browser mode prepares a draft; follow RUN_PROCED
 - `SCHEDULED_PROMPT.md`: exact Part B prompt saved in the Codex daily task.
 - `VERIFICATION.md`: checks actually performed and remaining activation requirements.
 - `countries.json` / `locales.json`: rotation, metadata, scenes and native-language copy.
+- `localization.py`: requires source-bound field translations before composition and delivery; see `RUN_PROCEDURE.md` for the reviewed `--changes` envelope.
 - `compose.py`: fact-preserving selection and copy limits.
 - `make_image.py` / `fonts/`: image API, gradient fallback, layout and bundled Noto Sans.
 - `browser_publish.py`: browser draft handoff, atomic claim, verified result and report.
