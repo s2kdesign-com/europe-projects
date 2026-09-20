@@ -1,0 +1,11 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "euro-funds-social-images",
+  "main": "media-worker.js",
+  "account_id": "9c3fcd4952bcf0c295532e9884377d37",
+  "compatibility_date": "2026-09-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "kv_namespaces": [{ "binding": "IMAGES", "id": "9c1a7a254c4f466198c29c529bb72f52" }]
+}

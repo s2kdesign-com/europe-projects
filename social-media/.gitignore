@@ -1,0 +1,8 @@
+images/
+__pycache__/
+.venv/
+.env
+.env.*
+changes.json
+history-export.json
+verification-local/
