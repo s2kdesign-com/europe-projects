@@ -48,68 +48,24 @@ Storage Edit, or a preauthenticated Wrangler login on the local runner. The
 connector's credentials are **not automatically exported** to scripts. No
 credential scraping or copying from connector storage is implemented.
 
-## Meta / Facebook Page
+## Chrome browser connector (daily publishing)
 
-1. In Meta for Developers, create/select the owner's app and configure its
-   Facebook Login/Page management use case. Associate the business/Page as
-   required by Meta. The authenticating person needs Page access to publish.
-2. Authorize the app with `pages_show_list`, `pages_read_engagement` and
-   `pages_manage_posts`. Obtain a User access token through the app's OAuth flow
-   or Graph API Explorer for the owner/admin. Complete app review/advanced access
-   if Meta requires it for the intended users; development access is not a
-   substitute for production approval.
-3. Exchange the short-lived User token for a long-lived User token through
-   `/oauth/access_token` with `grant_type=fb_exchange_token`, app credentials and
-   the short-lived token. Perform this in a secure token tool; do not log output.
-4. Call `/me/accounts?fields=id,name,access_token,tasks` using the long-lived User
-   token. Select the exact Page **https://www.facebook.com/euro.funds.eu**. Save
-   its numeric `id` as `FB_PAGE_ID` and its Page token as
-   `FB_PAGE_ACCESS_TOKEN` in the scheduler's secret manager. Do not use the user
-   token as the publisher's Page token. Check token type, permissions, Page
-   identity and expiry with Meta's Access Token Debugger.
-5. Set `FB_GRAPH_VERSION` to a supported version for the app. The implementation
-   defaults to `v24.0` and requires v19 or later; verify support in the app
-   dashboard before activation. Meta's documentation fetch was rate limited
-   during implementation, and authenticated Meta calls have not been tested.
+Enable the Chrome connector in Codex and keep Chrome signed in to Facebook and
+LinkedIn. The local scheduled task needs the desktop and connector available.
+The signed-in user must be able to publish as the Euro-Funds Facebook Page and
+LinkedIn organization 145200865. No social API app or access token is required.
 
-Image posts use `/PAGE_ID/photos` with a public PNG URL. Link posts use
-`/PAGE_ID/feed`, both message text and an explicit `link` attachment. No ads or
-boost API is called. Tokens can be revoked by role/password/app changes even
-when they have a long lifetime; replace environment secrets when required.
+Open https://www.facebook.com/euro.funds.eu/ and use the top-right profile menu
+if necessary to switch to **Euro-Funds.eu - EU Funding & Grants**. Open
+https://www.linkedin.com/feed/ directly, then enter the Euro-Funds company admin
+view. Confirm the company author in the composer, not just the page heading.
+`RUN_PROCEDURE.md` contains the complete browser sequence and D1 claim commands.
 
-References: [Page access/setup](https://developers.facebook.com/docs/pages-api/getting-started/),
-[Page publishing](https://developers.facebook.com/docs/pages-api/posts/),
-[long-lived access tokens](https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived/).
-
-## LinkedIn company Page
-
-1. Create/select an app in LinkedIn Developers and associate the company Page
-   **145200865**. Have its super admin verify the app.
-2. Request Community Management API access and complete the required review.
-   Confirm the app's Auth tab actually grants `w_organization_social`. A
-   personal posting product alone does not grant company publishing.
-3. Add an HTTPS redirect URL you control. Use the Developer Portal token
-   generator, or the three-legged Authorization Code flow: authorize the
-   organization admin at `/oauth/v2/authorization`, request the approved scopes,
-   validate a cryptographically random `state`, and exchange the code at
-   `/oauth/v2/accessToken` with the same redirect URL and the app credentials.
-4. Save the resulting access token as `LINKEDIN_ACCESS_TOKEN`. Set
-   `LINKEDIN_VERSION` to a currently supported six-digit YYYYMM version (the
-   implementation was checked against the 202606 reference). The script sends
-   `X-Restli-Protocol-Version: 2.0.0` and fixes the author to
-   `urn:li:organization:145200865`.
-5. Track the token's returned expiry. Reauthorize before expiry, or use the
-   approved programmatic refresh flow if this app is eligible, updating the
-   secret through your secret manager. Indefinite token validity is not assumed.
-
-Images use initializeUpload, PUT PNG bytes, wait for AVAILABLE, then create the
-post. Link posts use article content. An ambiguous publish response requires
-reconciliation before replay; see `RUN_PROCEDURE.md`.
-
-References: [Community Management access](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/community-management-overview),
-[OAuth](https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow),
-[Posts API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api?view=li-lms-2026-06),
-[Images API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api?view=li-lms-2026-06).
+The Python entry point prepares the draft and PNG; the Codex Chrome connector
+performs UI publishing. Python alone does not drive Chrome. Missing login or
+Page permissions require the owner's action. Never copy browser cookies/tokens.
+Optional legacy API setup is isolated in `API_SETUP.md` and is not a preflight
+requirement for the daily browser task.
 
 ## Environment checklist
 
@@ -117,19 +73,9 @@ References: [Community Management access](https://learn.microsoft.com/en-us/link
 | --- | --- |
 | `OPENAI_API_KEY` | Image API; absent/failed API uses the gradient fallback |
 | `OPENAI_IMAGE_MODEL` | Optional; defaults to `gpt-image-1.5`, model error fallback `gpt-image-1` |
-| `FB_PAGE_ID` | Numeric ID of euro.funds.eu Page |
-| `FB_PAGE_ACCESS_TOKEN` | Page token with publishing/engagement scopes |
-| `FB_GRAPH_VERSION` | Optional; supported version, default `v24.0` |
-| `LINKEDIN_ACCESS_TOKEN` | Organization-authorized access token |
-| `LINKEDIN_VERSION` | Supported YYYYMM API version |
 | `CLOUDFLARE_API_TOKEN` | D1/KV access for Python; optional with preauthenticated local Wrangler |
 
 The account/database/namespace IDs and LinkedIn organization ID are public
-configuration, not secrets. For a cloud Codex runner, allow network access to
-Cloudflare, OpenAI, LinkedIn (including upload hosts), Meta and the public media
-origin. Store secrets in that runner's environment. A desktop scheduled task
-runs locally and does not itself provision or populate a cloud execution environment.
-
-Run the dry-run before enabling the daily schedule, then allow the scheduled
-procedure to publish with real credentials. This implementation session did not
-publish to either social platform or make a billable image generation request.
+configuration. The browser task runs locally using signed-in Chrome sessions.
+Run the dry-run before activation. An API transport opt-in is separate from the
+browser task and must never be used as an automatic fallback.

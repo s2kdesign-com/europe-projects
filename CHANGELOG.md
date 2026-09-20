@@ -1,3 +1,9 @@
+## 2.60.1 — 2026-09-20
+
+- Made Chrome connector publishing the daily default; social API tokens are optional legacy configuration.
+- Added Facebook Page switching and LinkedIn company composer identity checks.
+- Added browser delivery claims and attempt-scoped result recording with verified post permalinks.
+
 ## 2.60.0 — 2026-09-20
 
 - Added a daily EU-27 social publishing pipeline with live D1 facts, native-language framing and image/link cadence.

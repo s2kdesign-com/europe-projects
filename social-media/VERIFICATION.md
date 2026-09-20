@@ -34,20 +34,26 @@
 - Migrations 0037 and 0038 applied; the required 2.60.0 D1 changelog record exists.
   Website release metadata was updated locally; the main website was not deployed.
 
-## Activation state and limits
+## Chrome transport verification — 2026-09-20 (v2.60.1)
 
-The Codex task `Euro-Funding daily social publishing` is saved **PAUSED**, daily
-at 10:00 in the app's Europe/Sofia timezone. Automation ID:
-`euro-funding-daily-social-publishing`. Its exact prompt is in
-`SCHEDULED_PROMPT.md`. It is a desktop/local scheduled task; a cloud runner must
-be configured separately with the same repository, prompt and environment.
-
-Facebook Page ID/token and LinkedIn token/version were not supplied in the process
-environment. Live publishing, organization permissions, API-version access and
-token validity are therefore unverified. No posts have been sent. The OpenAI key
-shared in chat was not saved or committed; supply a replacement through the
-runtime secret manager. Paid image generation was not exercised; model-error and
-gradient fallback paths were tested with offline fixtures.
+- 33 Python tests passed, including default preparation without API calls,
+  wrong-author refusal, attempt ownership, duplicate claims, ambiguous-delivery
+  blocking and restoring the saved PNG for browser retries.
+- Chrome extension session confirmed Facebook's top-right profile selector is
+  already on **Euro-Funds.eu - EU Funding & Grants**. Its Create post dialog
+  showed that author and Public audience.
+- Opened LinkedIn directly and followed the Euro-Funds **View as admin** control
+  into organization **145200865**. Its company Create post dialog showed
+  **Euro-Funds | EU Funding & Grants**, Post to Anyone, and Add media.
+- Empty composers were inspected without submitting posts. Actual image upload,
+  Post click and permalink capture remain to be exercised during a publishing run.
+- The saved daily task uses the Chrome connector and the browser claim/record
+  commands. It no longer requires Facebook/LinkedIn API credentials.
+- Its existing PAUSED status and daily 10:00 Europe/Sofia schedule were preserved.
+  The updated prompt was saved to automation `euro-funding-daily-social-publishing`.
+- Chrome must be running, connected and signed in when the local task executes.
+  The OpenAI key shared in chat was not saved or used. Missing runtime image
+  credentials still use the tested branded gradient fallback.
 
 Copy surrounding the records is localized; procedure titles and structured
 fields remain exactly as stored, including any source-language/Bulgarian notes.
@@ -56,6 +62,5 @@ Some live records have very long narrative budget fields; the composer selects
 whole records that fit and reports how many were omitted. If none can fit, it
 requires editorial action rather than publishing misleading truncated facts.
 
-Tokens require renewal/reauthorization when their provider expires or revokes
-them. Ambiguous post delivery requires reconciliation; blindly retrying a timed
-out POST cannot guarantee exactly-once delivery on these remote APIs.
+Browser sessions may require the owner to sign in again. Ambiguous delivery
+requires reconciliation; never repeat a Post click solely because the UI timed out.

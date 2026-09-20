@@ -1,0 +1,3 @@
+INSERT INTO changelog_entries(version,title,summary,content,category,published_at,affected_route,created_at,updated_at)
+SELECT '2.60.1','Публикуване през Chrome за фирмените страници','Дневната задача използва активните сесии в Chrome за LinkedIn и Facebook.','["Преди публикуване се проверява точната фирмена страница; Facebook се превключва от менюто на профила.", "Историята в Cloudflare пази отделно потвърдените връзки и предотвратява повторно изпращане при неясен резултат.", "За този режим не са необходими API токени за социалните мрежи."]','fix','2026-09-20','/procedures',datetime('now'),datetime('now')
+WHERE NOT EXISTS (SELECT 1 FROM changelog_entries WHERE version='2.60.1');

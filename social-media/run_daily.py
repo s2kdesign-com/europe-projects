@@ -88,6 +88,8 @@ def run(args, store=None):
                     image_bytes,_=request('GET',image_url)
                     if not image_bytes.startswith(b'\x89PNG\r\n\x1a\n'):
                         raise ValueError('Saved image is not a PNG')
+                    image_path.parent.mkdir(parents=True, exist_ok=True)
+                    image_path.write_bytes(image_bytes)
                 else:
                     result=make_image(image_path,country,row['language'],content['headline'],content['subtitle'],
                                       row['primary_link'],row['scene'],no_ai=args.no_ai)
@@ -101,6 +103,11 @@ def run(args, store=None):
                     store.fail_pending(args.date,platform,exc)
                 report(store.row(args.date),country,content)
                 return 1
+        if getattr(args, 'transport', 'browser') == 'browser':
+            # Browser actions belong to the Chrome connector, never to Python.
+            from browser_publish import draft
+            print(json.dumps(draft(store.row(args.date)), ensure_ascii=False, indent=2))
+            return 0
         for platform in pending:
             try:
                 if platform=='linkedin':
@@ -126,6 +133,8 @@ def main():
     p.add_argument('--no-ai',action='store_true')
     p.add_argument('--changes',help='Fresh connector result envelope; never used as history')
     p.add_argument('--prepare',action='store_true',help='Read cloud history and print next country for connector queries')
+    p.add_argument('--transport', choices=('browser','api'), default='browser',
+                   help='Default: prepare for Chrome connector. API publishing requires explicit opt-in.')
     args=p.parse_args()
     date.fromisoformat(args.date)
     try:

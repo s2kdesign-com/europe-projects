@@ -17,6 +17,7 @@ from make_image import font, fit, make_image
 from publishing import guarded_publish
 from storage import Cloudflare, sql_literal
 from run_daily import run
+from browser_publish import claim as browser_claim, finish as browser_finish, valid_permalink
 from PIL import Image, ImageDraw
 import publish_facebook
 import publish_linkedin
@@ -163,6 +164,51 @@ class DeliveryTests(unittest.TestCase):
     def setUp(self):
         self.store=SQLiteStore(); self.row=reservation(self.store)
     def tearDown(self): self.store.db.close()
+
+    def test_browser_claim_checks_author_and_prevents_duplicate(self):
+        with self.assertRaises(ValueError):
+            browser_claim(self.store,self.row['run_date'],'linkedin','Svetlin Krastanov')
+        attempt=browser_claim(self.store,self.row['run_date'],'linkedin','Euro-Funds | EU Funding & Grants')['attempt']
+        with self.assertRaises(ValueError):
+            browser_claim(self.store,self.row['run_date'],'linkedin','Euro-Funds | EU Funding & Grants')
+        with self.assertRaises(ValueError):
+            browser_finish(self.store,self.row['run_date'],'linkedin','0'*32,'SUCCESS','https://www.linkedin.com/feed/update/urn:li:activity:123/')
+        browser_finish(self.store,self.row['run_date'],'linkedin',attempt,'SUCCESS','https://www.linkedin.com/feed/update/urn:li:activity:123/')
+        self.assertEqual(self.store.row(self.row['run_date'])['linkedin_status'],'SUCCESS')
+        self.assertEqual(self.store.row(self.row['run_date'])['facebook_status'],'PENDING')
+        with self.assertRaises(ValueError):
+            browser_finish(self.store,self.row['run_date'],'linkedin',attempt,'UNCERTAIN')
+
+    def test_browser_uncertain_never_replays_and_rejects_page_urls(self):
+        attempt=browser_claim(self.store,self.row['run_date'],'facebook','Euro-Funds.eu - EU Funding & Grants')['attempt']
+        with self.assertRaises(ValueError):
+            browser_finish(self.store,self.row['run_date'],'facebook',attempt,'SUCCESS','https://www.facebook.com/euro.funds.eu/')
+        browser_finish(self.store,self.row['run_date'],'facebook',attempt,'UNCERTAIN',error='UI disconnected after Post')
+        self.assertFalse(self.store.claim(self.row['run_date'],'facebook'))
+        for url in ('https://www.linkedin.com/feed/','https://www.linkedin.com.evil.example/posts/123',
+                    'https://evil.example/posts/123','http://www.linkedin.com/posts/123'):
+            self.assertFalse(valid_permalink('linkedin',url))
+        self.assertFalse(valid_permalink('facebook','https://www.facebook.com/photo/'))
+        self.assertTrue(valid_permalink('facebook','https://www.facebook.com/photo/?fbid=123'))
+        self.assertFalse(valid_permalink('facebook','https://www.facebook.com/permalink.php'))
+        self.assertTrue(valid_permalink('facebook','https://www.facebook.com/euro.funds.eu/posts/123/'))
+
+    def test_default_browser_preparation_never_calls_social_apis_or_claims(self):
+        args=argparse.Namespace(date=self.row['run_date'],country=None,dry_run=False,no_ai=True,changes=None,prepare=False)
+        with (patch('run_daily.publish_facebook.publish',side_effect=AssertionError('API')),
+              patch('run_daily.publish_linkedin.publish',side_effect=AssertionError('API')),
+              patch.object(self.store,'claim',side_effect=AssertionError('claim')),patch('builtins.print')):
+            self.assertEqual(run(args,self.store),0)
+        self.assertEqual(self.store.row(self.row['run_date'])['facebook_status'],'PENDING')
+
+    def test_browser_image_retry_restores_local_upload_file(self):
+        self.store.query("UPDATE social_posts SET kind='image', image_key='saved.png' WHERE id='fixture'")
+        args=argparse.Namespace(date=self.row['run_date'],country=None,dry_run=False,no_ai=True,changes=None,prepare=False)
+        with tempfile.TemporaryDirectory() as directory:
+            with (patch('run_daily.ROOT',Path(directory)),patch('run_daily.request',return_value=(b'\x89PNG\r\n\x1a\nfixture',{})),
+                  patch('run_daily.make_image',side_effect=AssertionError('regenerate')),patch('builtins.print')):
+                self.assertEqual(run(args,self.store),0)
+                self.assertTrue((Path(directory)/'images/2026-09-20-BG.png').is_file())
 
     def test_success_retry_sends_once(self):
         calls=[]

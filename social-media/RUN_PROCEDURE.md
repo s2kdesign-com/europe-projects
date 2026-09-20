@@ -10,12 +10,27 @@ ignore a changed rule or bypass a duplicate-post guard.
 ## 1. Preflight and date
 
 Work at the repository root. Choose today's calendar date in Europe/Sofia and
-pass it explicitly as `--date YYYY-MM-DD`. Check environment-variable presence
-without printing values. Require authenticated Cloudflare access, `FB_PAGE_ID`,
-`FB_PAGE_ACCESS_TOKEN`, `LINKEDIN_ACCESS_TOKEN` and `LINKEDIN_VERSION`. If these
-are missing, stop before reserving a date and report the missing variable names.
-No paid ads/boosting, no unsolicited messages, no credentials in files or output.
-Missing/failed OpenAI image access is allowed: the gradient fallback is mandatory.
+pass it explicitly as `--date YYYY-MM-DD`. Require authenticated Cloudflare
+D1/KV access and the **Chrome browser connector** with signed-in Facebook and
+LinkedIn sessions. Do not require Facebook/LinkedIn API tokens for browser mode.
+Use the computer-use skill and the supported `cua_repl` browser APIs. Select the
+Chrome extension browser, name the session, and reuse its tabs. Do not use the
+in-app browser, raw HTTP social endpoints, cookie extraction or Selenium.
+
+Before reserving today's draft, open the two destinations and verify access:
+- Facebook: https://www.facebook.com/euro.funds.eu/ . Open **Your profile** at
+  the top right. If another identity is active, select **Euro-Funds.eu - EU
+  Funding & Grants**, using **See all profiles** when needed. Return to the
+  target Page after switching. The Page URL alone does not prove author identity.
+- LinkedIn: open https://www.linkedin.com/feed/ directly in Chrome. Navigate to
+  https://www.linkedin.com/company/145200865/admin/ (or the visible Euro-Funds
+  company Page and **View as admin**). Confirm **Euro-Funds | EU Funding & Grants**.
+  The feed's personal **Start a post** is not the company publishing composer.
+
+If login, Page access or Chrome connectivity is unavailable, report that specific
+blocker; do not fall back to a personal profile or another business. Missing
+OpenAI image access is allowed: use the branded gradient fallback. No paid ads,
+boosts, unsolicited messages or credentials in files/output.
 
 ## 2. Read cloud history, choose country and language
 
@@ -38,7 +53,7 @@ BE starts French, then Dutch on its next visit, alternating by cloud history.
 MT includes `Merħba, Malta!`. EL is the requested rotation identifier; the real ISO,
 database and URL code is GR. `countries.json` contains native/English names,
 BCP-47 language tags, local hashtags, URLs, locales and three scenes per country.
-Language metadata does not imply the publishing APIs support every UI locale.
+Use the current UI labels; account language may differ from the post language.
 
 ## 3. Fetch live facts
 
@@ -111,17 +126,43 @@ key and verify that the public HTTPS URL serves the identical PNG before sending
 it to Facebook. Store its key in D1. Never upload a text dump, secret or environment
 file. Link-only runs create/upload no image.
 
-Publish LinkedIn first, then Facebook independently. LinkedIn uses company
-145200865, initializeUpload → PUT → AVAILABLE → Posts API for an image, article
-content for a link. Facebook uses the configured numeric ID for euro.funds.eu,
-`/photos` for images and `/feed` with a link attachment otherwise.
+Publish LinkedIn first, then Facebook independently through the Chrome connector.
+`run_daily.py --transport browser` reserves the immutable D1 draft, prepares the
+image and prints JSON containing each exact text, status, target and local PNG
+path. It does **not** publish or claim delivery. Browser is the default transport;
+legacy API scripts run only with explicit `--transport api` outside this task.
 
-The publisher atomically transitions each platform from PENDING/FAILED to SENDING
-in D1 before making the remote post. SUCCESS is never replayed. HTTP rejections
-are recorded with redacted errors and the other platform continues. Timeout,
-server error, a missing returned post ID or crash after posting is UNCERTAIN or
-SENDING, not safe to auto-retry. Show such states as failed/needs reconciliation.
-Cloud history is saved immediately after each platform, not just at the end.
+For each PENDING/FAILED platform:
+1. Inspect the current page, navigate to the target and check the active identity
+   as above. Open **Start a post** in LinkedIn's company admin view or **What's on
+   your mind?** on Facebook. Confirm the composer explicitly shows the exact
+   Euro-Funds author. Never reuse an element index from a previous UI snapshot.
+2. Paste that platform's saved text. For image runs, read the browser tool's
+   `file-uploads` documentation, click **Add media** / **Photo/video**, upload
+   only the generated local PNG via the supported file chooser and verify its
+   preview. For link-only runs, wait for the country-link preview when available.
+   Review text, author, image/link and public audience; navigate **Next** if shown.
+3. Immediately before the final **Post** button, atomically claim delivery:
+   `python social-media/browser_publish.py claim --date YYYY-MM-DD --platform linkedin --author "Euro-Funds | EU Funding & Grants"`
+   or use `--platform facebook --author "Euro-Funds.eu - EU Funding & Grants"`.
+   Continue only on exit 0 and a returned attempt identifier. A refused claim
+   means **do not click Post**. Keep the attempt identifier for the next command.
+4. Click the final **Post** exactly once. Inspect the resulting UI, open the new
+   post and verify its author and saved text. Obtain its actual permalink through
+   the post timestamp, **View post** or **Copy link to post** UI. Do not substitute
+   the feed, company Page, a guessed URL or a composer URL.
+5. Immediately record the result:
+   `python social-media/browser_publish.py record --date YYYY-MM-DD --platform linkedin --attempt ATTEMPT --status SUCCESS --url VERIFIED_POST_URL`
+   If the outcome or permalink cannot be verified after the click, use
+   `--status UNCERTAIN --error "Explain the observed problem without secrets"`.
+   The record command checks attempt ownership; it cannot overwrite a completed
+   or different attempt. Do the other platform independently afterwards.
+
+A failure before the claim leaves the draft retryable. A crash after the claim
+leaves SENDING; an ambiguous click leaves UNCERTAIN. Neither is auto-replayed.
+If the D1 result write fails, stop attempts for that platform and report the
+actual visible outcome and URL for reconciliation. Never classify a possible
+post as a safe retry merely because the browser or connector timed out.
 
 Before releasing a SENDING/UNCERTAIN guard, an operator must inspect that Page's
 real posts for the date/text. If the post exists, record SUCCESS and its URL. Only
@@ -132,7 +173,9 @@ row or reset history merely to retry; that breaks rotation and duplicate protect
 
 ```sh
 python social-media/run_daily.py --date YYYY-MM-DD --prepare
-python social-media/run_daily.py --date YYYY-MM-DD --changes social-media/changes.json
+python social-media/run_daily.py --date YYYY-MM-DD --transport browser --changes social-media/changes.json
+# Complete browser steps above, then:
+python social-media/browser_publish.py report --date YYYY-MM-DD
 ```
 
 `--changes` is a fresh connector snapshot, never history. Without it the script

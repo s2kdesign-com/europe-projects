@@ -13,6 +13,19 @@ export const CATEGORIES = [
 
 export const CHANGELOG_ENTRIES = [
   {
+  "version": "2.60.1",
+  "category": "fix",
+  "published_at": "2026-09-20",
+  "affected_route": "/procedures",
+  "title": "Публикуване през Chrome за фирмените страници",
+  "summary": "Дневната задача използва активните сесии в Chrome за LinkedIn и Facebook.",
+  "content": [
+    "Преди публикуване се проверява точната фирмена страница; Facebook се превключва от менюто на профила.",
+    "Историята в Cloudflare пази отделно потвърдените връзки и предотвратява повторно изпращане при неясен резултат.",
+    "За този режим не са необходими API токени за социалните мрежи."
+  ]
+},
+  {
     version: "2.60.0", category: "feature", published_at: "2026-09-20", affected_route: "/procedures",
     title: "Дневни публикации за финансиране по държави",
     summary: "Подготвена е система за публикации с реални данни и ротация на 27-те държави в ЕС.",
