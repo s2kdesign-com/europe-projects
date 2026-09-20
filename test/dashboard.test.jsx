@@ -57,10 +57,31 @@ function renderShell(path = "/", extra = {}) {
 }
 
 beforeEach(() => {
+  document.getElementById('procedure-data')?.remove();
   window.localStorage.clear();
   window.history.replaceState(null, "", "/");
   nav.pathname = "/";
   loadDetail.mockClear();
+});
+
+describe('Permanent procedure entry',()=>{
+  it('opens preloaded cross-country detail before the list and without a second detail request',async()=>{
+    const project={...projects[0],id:'DE:call',public_slug:'de-call',country_code:'DE',name:'German shared procedure'};
+    const script=document.createElement('script');script.id='procedure-data';script.type='application/json';
+    script.textContent=JSON.stringify({project,documents:[{id:44,title:'Preloaded document',content:'Full content'}]});
+    document.body.append(script);
+    renderShell('/procedures/de-call?fbclid=test',{initialData:null,fetchList:()=>new Promise(()=>{})});
+    const dialog=await screen.findByRole('dialog');
+    expect(within(dialog).getByText(project.name)).toBeInTheDocument();
+    expect(within(dialog).getByText('Preloaded document')).toBeInTheDocument();
+    expect(loadDetail).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe('/procedures/de-call');
+    expect(window.location.search).toBe('');
+    fireEvent.keyDown(dialog,{key:'Escape'});
+    await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(window.location.pathname).toBe('/procedures');
+    script.remove();
+  });
 });
 
 describe("DashboardShell — навигация и рендер", () => {

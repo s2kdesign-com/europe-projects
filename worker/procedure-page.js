@@ -78,7 +78,7 @@ function jsonLd(p, url) {
 
 function row(label, value) {
   if (!value) return "";
-  return `<div class="row"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`;
+  return `<div class="def"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`;
 }
 
 export function renderProcedureHTML(p, docs, related = [], metadata = procedureMetadata(p)) {
@@ -88,17 +88,21 @@ export function renderProcedureHTML(p, docs, related = [], metadata = procedureM
   const { title, description } = metadata;
 
   const docsHtml = (docs && docs.length)
-    ? `<section class="docs"><h2>Документи за кандидатстване</h2><ul>${docs.map((d) =>
+    ? `<section class="drawer-section"><div class="drawer-section-head"><h2>Документи за кандидатстване</h2></div><ul>${docs.map((d) =>
         `<li>${d.source_url ? `<a href="${esc(d.source_url)}" rel="nofollow noopener" target="_blank">${esc(d.title || "Документ")}</a>` : esc(d.title || "Документ")}${d.doc_type ? ` <span class="muted">(${esc(d.doc_type)})</span>` : ""}</li>`
       ).join("")}</ul></section>`
     : "";
 
   const body = `
-  <header class="site"><a class="brand" href="${SITE}/">Euro-Funding</a><a class="app" href="${SITE}/procedures">Всички процедури →</a></header>
-  <nav class="crumbs" aria-label="breadcrumbs"><a href="${SITE}/">Начало</a> › <a href="${SITE}/procedures">Процедури</a> › <span aria-current="page">${esc(trunc(p.name, 60))}</span></nav>
-  <main><article>
+  <div id="procedure-fallback" class="overlay" lang="bg">
+  <article class="drawer" aria-labelledby="procedure-title">
+    <div class="drawer-head"><div class="drawer-head-main">
     <span class="badge ${needsDeadlineReview(p) ? 'closing_soon' : esc(p.status || "")}">${esc(statusLabel)}</span>
-    <h1>${esc(p.name)}</h1>
+    <h1 id="procedure-title" lang="${pageLanguage(p)}">${esc(p.name)}</h1>
+    </div><a class="iconbtn drawer-close" href="/procedures" aria-label="Затвори">×</a></div>
+    <div class="drawer-scroll">
+    <nav aria-label="breadcrumbs"><a href="/">Начало</a> › <a href="/procedures">Процедури</a></nav>
+    <section class="drawer-section">
     ${needsDeadlineReview(p) ? `<p role="note">${esc(DEADLINE_REVIEW_NOTICE)}</p>` : ''}
     <dl>
       ${row("Идентификатор", p.id)}
@@ -109,33 +113,16 @@ export function renderProcedureHTML(p, docs, related = [], metadata = procedureM
       ${row("Допустими кандидати", p.eligible)}
       ${row("Година", p.year)}
       ${row("Последна актуализация", p.last_updated)}
-    </dl>
+    </dl></section>
     ${p.notes ? `<section><h2>Бележки</h2><p>${esc(p.notes)}</p></section>` : ""}
     ${docsHtml}
     ${related.length ? `<section><h2>Още по програмата</h2><ul>${related.map(r=>`<li><a href="${procedurePath(r)}">${esc(r.name)}</a></li>`).join('')}</ul></section>` : ''}
     ${officialSource(p) ? `<p class="source">Официален източник: <a href="${esc(officialSource(p))}" rel="noopener" target="_blank">${esc(officialSource(p))}</a></p>` : ""}
     <p class="ai">Информацията се структурира и анализира с помощта на изкуствен интелект.</p>
     <p class="disclaimer">AI анализът има информационен характер и не заменя официалната документация или професионалната експертна оценка.</p>
-    <p><a class="cta" href="${SITE}/procedures">← Към всички процедури</a></p>
-  </article></main>
-  <footer class="site-foot">© Euro-Funding · <a href="${SITE}/terms">Условия</a> · <a href="${SITE}/privacy">Поверителност</a></footer>`;
-
-  const css = `:root{--ink:#1e293b;--muted:#64748b;--line:#e2e8f0;--pri:#0b6ea3}
-  *{box-sizing:border-box}body{margin:0;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:#f5f7fa}
-  a{color:var(--pri)}main,header.site,.crumbs,.site-foot{max-width:820px;margin-inline:auto;padding-inline:20px}
-  header.site{display:flex;justify-content:space-between;align-items:center;padding-block:16px}
-  .brand{font-weight:800;text-decoration:none;font-size:20px;color:var(--ink)}
-  .crumbs{font-size:14px;color:var(--muted);padding-block:8px}
-  article{background:#fff;border:1px solid var(--line);border-radius:14px;padding:24px;margin-block:16px}
-  h1{font-size:26px;margin:8px 0 16px;letter-spacing:-.02em}h2{font-size:18px;margin:20px 0 8px}
-  .badge{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:#e0f2fe;color:#075985}
-  .badge.closed{background:#f1f5f9;color:#475569}.badge.closing_soon{background:#fef3c7;color:#92400e}.badge.upcoming{background:#ede9fe;color:#5b21b6}
-  dl{margin:0}.row{display:grid;grid-template-columns:200px 1fr;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
-  dt{color:var(--muted);font-weight:600}dd{margin:0}
-  .muted{color:var(--muted)}.source{font-size:14px;word-break:break-word}
-  .ai{font-size:13px;color:var(--muted);margin-top:20px}.disclaimer{font-size:12px;color:var(--muted)}
-  .cta{font-weight:700;text-decoration:none}.site-foot{font-size:13px;color:var(--muted);padding-block:24px}
-  @media(max-width:560px){.row{grid-template-columns:1fr}}`;
+    </div><div class="drawer-actions"><a class="btn" href="/procedures">← Към всички процедури</a>
+    ${officialSource(p) ? `<a class="btn" href="${esc(officialSource(p))}" rel="noopener" target="_blank">Официална страница</a>` : ''}</div>
+  </article></div>`;
 
   const head = `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
@@ -149,11 +136,58 @@ export function renderProcedureHTML(p, docs, related = [], metadata = procedureM
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:locale" content="${ogLocale(p)}">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(trunc(p.name, 90))}"><meta name="twitter:description" content="${esc(description)}"><meta name="twitter:image" content="${OG_IMAGE}">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-${jsonLd(p, url)}
-<style>${css}</style>`;
+${jsonLd(p, url)}`;
 
   // Езикът следва съдържанието на процедурата, а не езика на интерфейса.
   return `<!doctype html><html lang="${pageLanguage(p)}" dir="ltr"><head>${head}</head><body>${body}</body></html>`;
+}
+
+// Keep the exported React tree and its asset URLs intact. Only this explicitly
+// Worker-owned island and page metadata vary per request; no user/session data
+// enters the public cache. The fallback stays visible if JavaScript fails.
+export function renderProcedureShell(shell, p, docs, related = [], metadata = procedureMetadata(p)) {
+  if (!shell.includes('id="procedure-bootstrap"')) throw new Error('procedure_shell_missing_bootstrap');
+  const page = renderProcedureHTML(p, docs, related, metadata);
+  const head = page.match(/<head>([\s\S]*?)<\/head>/)[1]
+    .replace(/<meta (?:charset|name="viewport")[^>]*>/g, '').replace(/<link rel="icon"[^>]*>/g, '');
+  const fallback = page.match(/<body>([\s\S]*?)<\/body>/)[1];
+  const bootstrap = `<script id="procedure-data" type="application/json">${safeJson({ project: p, documents: docs, ok: true })}</script>${fallback}`;
+  // Next also carries metadata in its serialized server-component payload.
+  // Updating only <head> makes hydration reinsert the list's canonical/title.
+  const canonical = SITE + procedurePath(p);
+  const values = {
+    description: metadata.description, robots: 'index,follow',
+    'og:title': trunc(p.name, 90), 'og:description': metadata.description, 'og:url': canonical,
+    'og:type': 'article', 'og:locale': ogLocale(p), 'og:site_name': 'Euro-Funding',
+    'twitter:title': trunc(p.name, 90), 'twitter:description': metadata.description,
+  };
+  const flightString = value => String(value).startsWith('$') ? '$' + value : value;
+  shell = shell.replace(/<script>self\.__next_f\.push\((\[[\s\S]*?\])\)<\/script>/g, (script, raw) => {
+    const frame = JSON.parse(raw);
+    if (frame[0] !== 1 || typeof frame[1] !== 'string' || !frame[1].includes('"metadata":')) return script;
+    frame[1] = frame[1].replace(/(^|\n)([a-f0-9]+:)(\{[^\n]+\})(?=\n|$)/g, (row, newline, id, json) => {
+      const model = JSON.parse(json);
+      if (!Array.isArray(model.metadata)) return row;
+      model.metadata = model.metadata.filter(node => !(Array.isArray(node) && node[1] === 'link' && node[3]?.rel === 'alternate'));
+      for (const node of model.metadata) {
+        if (!Array.isArray(node) || !node[3]) continue;
+        const props = node[3];
+        if (node[1] === 'title') props.children = flightString(metadata.title);
+        if (node[1] === 'link' && props.rel === 'canonical') props.href = canonical;
+        const key = props.name || props.property;
+        if (node[1] === 'meta' && key in values) props.content = flightString(values[key]);
+      }
+      for (const lang of [pageLanguage(p), 'x-default']) model.metadata.push(['$', 'link', 'procedure-'+lang, {rel:'alternate',hrefLang:lang,href:canonical}]);
+      return newline + id + JSON.stringify(model);
+    });
+    return `<script>self.__next_f.push(${safeJson(frame)})</script>`;
+  });
+  return shell.replace(/<head>([\s\S]*?)<\/head>/, (_, original) => '<head>' + original
+    .replace(/<title>[\s\S]*?<\/title>/g, '')
+    .replace(/<meta (?:name="(?:description|robots|googlebot|twitter:[^"]*)"|property="og:[^"]*")[^>]*>/g, '')
+    .replace(/<link rel="(?:canonical|alternate)"[^>]*>/g, '')
+    .replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, '') + head + '</head>')
+    .replace(/<div id="procedure-bootstrap"[^>]*><\/div>/, () => `<div id="procedure-bootstrap">${bootstrap}</div>`);
 }
 
 // ---------------------------------------------------------------------------
@@ -368,12 +402,15 @@ export async function handleProcedurePage(request, env, url) {
   if (canonical && url.pathname !== `/procedures/${canonical}`) {
     return Response.redirect(`${SITE}/procedures/${canonical}`, 301);
   }
-  const docs = await env.DB.prepare("SELECT title, doc_type, source_url FROM documents WHERE project_id = ?1 ORDER BY id").bind(p.id).all();
+  const docs = await env.DB.prepare("SELECT id, project_id, title, doc_type, content, source_url FROM documents WHERE project_id = ?1 ORDER BY id").bind(p.id).all();
   const related = p.program_slug ? await env.DB.prepare('SELECT id, public_slug, name FROM public_projects WHERE program_slug=?1 AND id!=?2 ORDER BY last_updated DESC LIMIT 4').bind(p.program_slug,p.id).all() : {results:[]};
   // Concision preserves at least the first 40 characters. Matching prefixes can
   // collide; fetching that small peer group avoids scanning every page's data.
   const peers = await env.DB.prepare('SELECT id, name, program, country_code, source_id FROM public_projects WHERE substr(trim(name),1,40)=substr(trim(?1),1,40)').bind(p.name).all();
-  const html = renderProcedureHTML(p, docs.results || [], related.results, procedureMetadata(p, peers.results || [p]));
+  const asset = await env.ASSETS.fetch(new URL('/procedures', url.origin));
+  if (!asset.ok) return new Response('Procedure page temporarily unavailable', { status: 503, headers: { 'cache-control': 'no-store', 'retry-after': '60' } });
+  // Bounded build artifact, fetched through the binding rather than our public origin.
+  const html = renderProcedureShell(await asset.text(), p, docs.results || [], related.results, procedureMetadata(p, peers.results || [p]));
   return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" } });
 }
 

@@ -36,6 +36,19 @@ jobs:
         env:
           LAYOUT_ARTIFACT_DIR: ${{ runner.temp }}/profile-layout
 
+      - name: Build and check permanent procedure entry
+        run: npm run build && npm run test:procedure-entry
+        env:
+          PROCEDURE_ARTIFACT_DIR: ${{ runner.temp }}/procedure-entry
+
+      - name: Save procedure entry screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: procedure-entry
+          path: ${{ runner.temp }}/procedure-entry/*.png
+          retention-days: 7
+
       - name: Save responsive screenshots
         if: always()
         uses: actions/upload-artifact@v4

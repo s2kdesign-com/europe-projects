@@ -38,6 +38,8 @@ import { LS_VIEW, MAX_COMPARE, DEFAULT_VIEW, DEFAULT_PERIOD, DEFAULT_ACTIVITY_PE
 import { tabFromPath, pathForTab } from "../lib/routes.js";
 import TranslatedProjectsProvider from "./i18n/TranslatedProjects.jsx";
 import { useCountry } from "./country/CountryProvider.jsx";
+import { procedurePath } from '../lib/public-url.js';
+import { readProcedureBootstrap } from '../lib/procedure-bootstrap.js';
 
 async function defaultFetchList(signal, country) {
   const qs = country ? "?country=" + encodeURIComponent(country) : "";
@@ -71,6 +73,8 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
   const [overviewFilter, setOverviewFilter] = useState({ program: "", target: "" });
   const [acctProfile, setAcctProfile] = useState(null);
   const [drawerTab, setDrawerTab] = useState("overview");
+  const [bootstrap, setBootstrap] = useState(null);
+  useEffect(() => { setBootstrap(readProcedureBootstrap()); }, []);
   const toastTimer = useRef(null);
 
   const fx = useProjectFilters();
@@ -90,7 +94,11 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
 
   const saved = useSavedSync(session, flash);
 
-  const openProcedure = useCallback((id, tab = "overview") => { setDrawerTab(tab); fx.openProject(id); }, [fx]);
+  const openProcedure = useCallback((id, tab = "overview") => {
+    setDrawerTab(tab);
+    const project = data.projects.find(p => p.id === id) || (bootstrap?.project.id === id ? bootstrap.project : null);
+    fx.openProject(id, project ? procedurePath(project) : undefined);
+  }, [fx, data.projects, bootstrap]);
   const closeProcedure = useCallback(() => { fx.closeProject(); setDrawerTab("overview"); }, [fx]);
 
   useEffect(() => {
@@ -157,7 +165,8 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
   const savedProjects = useMemo(() => projects.filter((p) => savedIds.includes(p.id)), [projects, savedIds]);
   const compareProjects = useMemo(() => (filters.compare || []).map((id) => projects.find((p) => p.id === id)).filter(Boolean), [projects, filters.compare]);
   const [sharedProject, setSharedProject] = useState(null);
-  const listedSelection = projects.find((p) => p.id === filters.selected);
+  const preloadedDetail = bootstrap?.project.id === filters.selected ? bootstrap : null;
+  const listedSelection = preloadedDetail?.project || projects.find((p) => p.id === filters.selected);
   useEffect(() => {
     if (!filters.selected || listedSelection) { setSharedProject(null); return; }
     const controller = new AbortController();
@@ -167,6 +176,10 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
     return () => controller.abort();
   }, [filters.selected, listedSelection, loadDetail]);
   const selectedProject = listedSelection || (sharedProject?.id === filters.selected ? sharedProject : null);
+  useEffect(() => {
+    if (selectedProject) document.getElementById('procedure-fallback')?.remove();
+    window.dispatchEvent(new CustomEvent('procedure-open-change', { detail: { open: !!selectedProject } }));
+  }, [selectedProject]);
 
   const ovProjects = useMemo(
     () => projects.filter((p) => (!overviewFilter.program || p.program === overviewFilter.program) && (!overviewFilter.target || targetGroup(p) === overviewFilter.target)),
@@ -192,7 +205,7 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
   const inCompareFn = useCallback((id) => (filters.compare || []).includes(id), [filters.compare]);
   const toggleSave = saved.toggleSave;
 
-  const copyLink = useCallback(async (p) => { const ok = await copyText(buildShareUrl(window.location.origin, window.location.pathname, { selected: p.id })); flash(ok ? t("toast.linkCopied") : t("toast.copyFailed")); }, [flash, t]);
+  const copyLink = useCallback(async (p) => { const ok = await copyText(window.location.origin + procedurePath(p)); flash(ok ? t("toast.linkCopied") : t("toast.copyFailed")); }, [flash, t]);
   const copyView = useCallback(async () => { const ok = await copyText(buildShareUrl(window.location.origin, window.location.pathname, filters)); flash(ok ? t("toast.viewLinkCopied") : t("toast.copyFailed")); }, [filters, flash, t]);
   const downloadICS = useCallback((p) => { const ics = generateICS(p, now); if (!ics) return flash(t("toast.noDeadline")); downloadTextFile(slugFilename(p.name, "ics"), ics, "text/calendar;charset=utf-8"); flash(t("toast.icsDownloaded")); }, [now, flash, t]);
   const exportCSV = useCallback((list, name = "evroproekti.csv") => { downloadTextFile(name, projectsToCSV(list, now), "text/csv;charset=utf-8"); flash(t("toast.csvDownloaded", { count: list.length })); }, [now, flash, t]);
@@ -321,7 +334,7 @@ export default function DashboardShell({ initialTab = "overview", initialData = 
       <main id="main">{content}</main>
 
       {selectedProject && (
-        <ProjectDrawer base={selectedProject} initialTab={drawerTab} loadDetail={loadDetail} onClose={closeProcedure} isSaved={isSavedFn(selectedProject.id)} onToggleSave={toggleSave} onCopyLink={copyLink} onCalendar={downloadICS} />
+        <ProjectDrawer key={selectedProject.id} base={selectedProject} asPage={pathname?.startsWith('/procedures/')} initialDetail={preloadedDetail} initialTab={drawerTab} loadDetail={loadDetail} onClose={closeProcedure} isSaved={isSavedFn(selectedProject.id)} onToggleSave={toggleSave} onCopyLink={copyLink} onCalendar={downloadICS} />
       )}
 
       {compareProjects.length > 0 && !showCompare && (

@@ -27,6 +27,8 @@ export default function AppChrome() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [welcomeComplete,setWelcomeComplete] = useState(false);
   const [pushOpen,setPushOpen] = useState(false);
+  const [procedureOpen, setProcedureOpen] = useState(false);
+  const procedureOpenRef = useRef(false);
 
   const introSeenRef = useRef(false);
   const introReadyRef = useRef(false);   // изтекли ли са 5-те секунди
@@ -35,11 +37,24 @@ export default function AppChrome() {
 
   // Отваря информационния модал само ако е допустимо (не е видян, 5с изтекли, cookie изборът е направен).
   const maybeOpenIntro = useCallback(() => {
+    if (procedureOpenRef.current) { introPendingRef.current = true; return; }
     if (introSeenRef.current || !introReadyRef.current) return;
     if (!cookieResolvedRef.current) { introPendingRef.current = true; return; }
     introPendingRef.current = false;
     setShowWelcome(true);
   }, []);
+
+  useEffect(() => {
+    const update = () => {
+      const open = !!document.querySelector('.drawer, #procedure-fallback');
+      procedureOpenRef.current = open;
+      setProcedureOpen(open);
+      if (!open && introPendingRef.current) maybeOpenIntro();
+    };
+    update();
+    window.addEventListener('procedure-open-change', update);
+    return () => window.removeEventListener('procedure-open-change', update);
+  }, [maybeOpenIntro]);
 
   useEffect(() => {
     introSeenRef.current = !!lsGet(SYSTEM_INTRO_KEY);
@@ -116,7 +131,7 @@ export default function AppChrome() {
       )}
 
       {/* Банерът се крие докато информационният модал е отворен — никога заедно. */}
-      {cookieMode === "banner" && !consent && !showWelcome && (
+      {cookieMode === "banner" && !consent && !showWelcome && !procedureOpen && (
         <CookieConsentBanner
           mode="banner"
           onAcceptAll={() => saveConsent({ analytics: true })}
@@ -129,11 +144,11 @@ export default function AppChrome() {
       )}
 
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
-      <PushActivationPrompt welcomeComplete={welcomeComplete} blocked={showWelcome || !!cookieMode || !consent || showFeedback} onOpenChange={setPushOpen} />
+      <PushActivationPrompt welcomeComplete={welcomeComplete} blocked={procedureOpen || showWelcome || !!cookieMode || !consent || showFeedback} onOpenChange={setPushOpen} />
 
       {/* Известие за нова версия — само когато cookie изборът е направен и няма
           отворен модал/банер (не се припокрива с тях). */}
-      {appUpdate.update && !modalOpen && !(cookieMode === "banner" && !consent) && (
+      {appUpdate.update && !procedureOpen && !modalOpen && !(cookieMode === "banner" && !consent) && (
         <AppUpdateNotification
           update={appUpdate.update}
           onRefresh={appUpdate.refresh}

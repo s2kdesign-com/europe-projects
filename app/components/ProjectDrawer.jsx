@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { procedurePath, officialSource } from "../lib/public-url.js";
+import { officialSource } from "../lib/public-url.js";
 import Icon from "./Icon.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import { needsDeadlineReview, DEADLINE_REVIEW_NOTICE } from '../lib/deadline-review.js';
@@ -64,11 +64,11 @@ function DocumentBody({ d, td, tl }) {
   );
 }
 
-export default function ProjectDrawer({ base, initialTab = "overview", loadDetail, onClose, isSaved, onToggleSave, onCopyLink, onCalendar }) {
+export default function ProjectDrawer({ base, initialDetail = null, asPage = false, initialTab = "overview", loadDetail, onClose, isSaved, onToggleSave, onCopyLink, onCalendar }) {
   const tl = useUiTranslate(LABELS);
-  const [detail, setDetail] = useState(null); // { project, documents }
+  const [detail, setDetail] = useState(initialDetail); // { project, documents }
   const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialDetail);
   const [openDocs, setOpenDocs] = useState(() => new Set());
   const [showAllDocs, setShowAllDocs] = useState(false);
   const trapRef = useFocusTrap(true, onClose);
@@ -86,6 +86,7 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
   const td = useUiTranslate(dataStrings);
 
   useEffect(() => {
+    if (initialDetail?.project.id === base.id) return;
     let alive = true;
     const controller = new AbortController();
     setLoading(true);
@@ -98,7 +99,7 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
       .then((d) => { if (alive) { setDetail(d); setLoading(false); } })
       .catch((e) => { if (alive && e.name !== "AbortError") { setError(true); setLoading(false); } });
     return () => { alive = false; controller.abort(); };
-  }, [base.id, loadDetail]);
+  }, [base.id, loadDetail, initialDetail]);
 
   const docs = useMemo(() => sortDocuments(detail?.documents || []), [detail]);
 
@@ -132,6 +133,7 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
   });
 
   const p = detail?.project || base;
+  const Title = asPage ? 'h1' : 'h2';
   const dl = daysLeft(p.deadline_date);
   const single = docs.length === 1 ? docs[0] : null;
   const shownDocs = showAllDocs ? docs : docs.slice(0, DOCS_PAGE);
@@ -150,7 +152,7 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
               {isNovel(p) && <span className="badge new"><Icon name="sparkle" size={14} /> {tl("Ново")}</span>}
               {targetGroup(p) === "youth" && <span className="badge youth"><Icon name="users" size={14} /> {tl("Младежи")}</span>}
             </div>
-            <h2 id="drawer-title">{td(p.name)}</h2>
+            <Title id="drawer-title">{td(p.name)}</Title>
             {p.program && <div className="card-prog">{td(p.program)}</div>}
           </div>
           <button className="drawer-close" onClick={onClose} aria-label={tl("Затвори")}><Icon name="close" size={20} /></button>
@@ -251,7 +253,6 @@ export default function ProjectDrawer({ base, initialTab = "overview", loadDetai
           </Section>
         </div>
 
-        <p style={{padding:"0 18px"}}><a href={procedurePath(p)}>Постоянна страница на процедурата</a></p>
         {/* Sticky footer действия */}
         <div className="drawer-actions">
           <button className={"btn" + (isSaved ? " btn-primary" : "")} onClick={() => onToggleSave(p.id)} aria-pressed={isSaved}>

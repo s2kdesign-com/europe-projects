@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { allocateRoutes, routeEntities, ensurePublicRoutes, findPublicProcedure } from '../worker/public-routes.js';
 import { generateSitemap } from '../worker/sitemap.js';
-import { renderProcedureHTML, handleProcedurePage, handleCountryLanding } from '../worker/procedure-page.js';
+import { renderProcedureHTML, renderProcedureShell, handleProcedurePage, handleCountryLanding } from '../worker/procedure-page.js';
 import { procedurePath, officialSource } from '../app/lib/public-url.js';
 import { directoryHtml } from '../worker/public-directory.js';
 import { executeCheck } from '../worker/discovery/validation.js';
@@ -17,17 +17,46 @@ const test = typeof it === 'function' ? it : async(name,fn)=>{await fn();console
 function fixture(rows) {
   const db=new DatabaseSync(':memory:');
   const fields='id,name,program,priority,category,status,deadline,deadline_date,budget,budget_amount_eur,eligible,link,notes,is_new,first_seen,last_updated,year,country_code,official_url,managing_authority,original_language,source_id'.split(',');
-  db.exec(`CREATE TABLE projects (${fields.map(f=>f+' TEXT'+(f==='id'?' PRIMARY KEY':'')).join(',')}); CREATE TABLE documents (id INTEGER, project_id TEXT, title TEXT,doc_type TEXT,source_url TEXT);`);
+  db.exec(`CREATE TABLE projects (${fields.map(f=>f+' TEXT'+(f==='id'?' PRIMARY KEY':'')).join(',')}); CREATE TABLE documents (id INTEGER, project_id TEXT, title TEXT,doc_type TEXT,content TEXT,source_url TEXT);`);
   db.exec(fs.readFileSync(new URL('../migrations/0026_public_routes.sql',import.meta.url),'utf8'));
   for(const r of rows) db.prepare(`INSERT INTO projects (${fields}) VALUES (${fields.map(()=>'?')})`).run(...fields.map(f=>r[f]??null));
   const prepare=sql=>{
     let values=[];
     const stmt={bind(...v){values=v;return stmt;},async all(){const args=[];const q=sql.replace(/\?(\d+)/g,(_,i)=>{args.push(values[Number(i)-1]);return '?';});return {results:db.prepare(q).all(...args)};},async first(){return (await stmt.all()).results[0]||null;},async run(){return stmt.all();}};return stmt;
   };
-  return {env:{DB:{prepare,batch:qs=>Promise.all(qs.map(q=>q.run()))}},db};
+  return {env:{ASSETS:{fetch:async()=>new Response('<html><head><title>List</title></head><body><div id="procedure-bootstrap"></div></body></html>')},DB:{prepare,batch:qs=>Promise.all(qs.map(q=>q.run()))}},db};
 }
 const common={country_code:'BG',source_id:'source',program:'Programme',name:'Same call title',status:'open',last_updated:'2026-09-17',original_language:'en',official_url:'https://example.org/call'};
 const rows=[{...common,id:'x'.repeat(60)+'AAA'},{...common,id:'x'.repeat(60)+'BBB'},{...common,id:'BG:MixedCase:Call'},{...common,id:'programs'}];
+
+await test('Procedure shell preserves app assets, replaces list metadata and safely preloads public detail',()=>{
+  const shell='<html><head><title>List</title><meta name="description" content="List"><meta property="og:url" content="https://euro-funds.eu/procedures"><link rel="canonical" href="https://euro-funds.eu/procedures"><link rel="stylesheet" href="/_next/app.css"><script src="/_next/app.js" async></script></head><body><div id="procedure-bootstrap"></div><main>Dashboard</main></body></html>';
+  const p={...common,id:'DE:call',public_slug:'de-call',name:'$& </script><script>alert(1)</script>'};
+  const documents=[{id:1,title:'Guidelines',content:'Full public details </script>',source_url:'https://example.org/doc'}];
+  const doc=new JSDOM(renderProcedureShell(shell,p,documents)).window.document;
+  assert.equal(doc.querySelectorAll('title').length,1);
+  assert.equal(doc.querySelectorAll('link[rel=canonical]').length,1);
+  assert.equal(doc.querySelector('link[rel=canonical]').href,'https://euro-funds.eu/procedures/de-call');
+  assert.ok(doc.querySelector('link[href="/_next/app.css"]'));
+  assert.ok(doc.querySelector('script[src="/_next/app.js"]'));
+  assert.equal(doc.querySelector('#procedure-title').textContent,p.name);
+  assert.deepEqual(JSON.parse(doc.querySelector('#procedure-data').textContent),{project:p,documents,ok:true});
+  assert.equal(doc.querySelectorAll('script:not([type]):not([src])').length,0);
+  assert.equal(doc.querySelectorAll('style').length,0);
+  assert.throws(()=>renderProcedureShell('<html></html>',p,[]),/missing_bootstrap/);
+});
+
+await test('Missing procedure is a real 404 and unavailable shell is a non-cacheable 503',async()=>{
+  const {env,db}=fixture(rows);
+  const missing=new URL('https://euro-funds.eu/procedures/missing');
+  assert.equal((await handleProcedurePage(new Request(missing),env,missing)).status,404);
+  const p=await findPublicProcedure(env,rows[0].id);
+  env.ASSETS.fetch=async()=>new Response('Unavailable',{status:503});
+  const url=new URL('https://euro-funds.eu'+procedurePath(p)+'?fbclid=test');
+  const response=await handleProcedurePage(new Request(url),env,url);
+  assert.equal(response.status,503);assert.equal(response.headers.get('cache-control'),'no-store');
+  db.close();
+});
 
 await test('Current audit replaces retired samples and retains other categories after partial runs',()=>{
   const db=new DatabaseSync(':memory:');

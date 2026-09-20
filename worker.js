@@ -295,6 +295,7 @@ async function handleRequest(request, env, url) {
         if (resp) return resp;
       } catch (e) {
         await logError(env, { source: "server", method: "GET", path: pathname, status: 500, message: String((e && e.message) || e), detail: String((e && e.stack) || "") }).catch(() => {});
+        return new Response('Procedure page temporarily unavailable', { status: 503, headers: { 'cache-control': 'no-store', 'retry-after': '60' } });
       }
     }
 

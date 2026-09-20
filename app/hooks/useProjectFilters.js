@@ -7,6 +7,7 @@ import {
   serializeFilters,
 } from "../lib/project-utils.js";
 import { tabFromPath, ROUTE_QUERY_KEYS } from "../lib/routes.js";
+import { initialProcedureNavigation } from '../lib/procedure-bootstrap.js';
 
 // Параметри, валидни на всеки маршрут (отворена процедура, сравнение).
 const COMMON_QUERY_KEYS = ["id", "compare"];
@@ -27,13 +28,19 @@ export function routeScopedQuery(filters, pathname) {
 export function useProjectFilters() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const skipNextSync = useRef(false);
+  const navigation = useRef(null);
+  const firstSync = useRef(true);
+  const [initialized, setInitialized] = useState(false);
 
   // Първоначално четене от URL (само на клиента).
   useEffect(() => {
-    setFilters(deserializeFilters(window.location.search));
+    navigation.current = initialProcedureNavigation();
+    setFilters({ ...deserializeFilters(window.location.search), ...(navigation.current ? { selected: navigation.current.id } : {}) });
+    setInitialized(true);
     const onPop = () => {
       skipNextSync.current = true; // това е браузърна навигация, не наш push
-      setFilters(deserializeFilters(window.location.search));
+      navigation.current = initialProcedureNavigation();
+      setFilters({ ...deserializeFilters(window.location.search), ...(navigation.current ? { selected: navigation.current.id } : {}) });
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -41,22 +48,31 @@ export function useProjectFilters() {
 
   // Запис на състоянието в URL при промяна.
   useEffect(() => {
+    if (!initialized) return;
     if (skipNextSync.current) {
       skipNextSync.current = false;
       return;
     }
-    const qs = routeScopedQuery(filters, window.location.pathname);
-    const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    const nav = navigation.current;
+    const pathname = nav?.path || window.location.pathname;
+    const params = new URLSearchParams(routeScopedQuery(filters, pathname));
+    if (nav?.id === filters.selected) params.delete('id');
+    const lang = new URLSearchParams(window.location.search).get('lang');
+    if (lang) params.set('lang', lang);
+    const qs = params.toString();
+    const url = (qs ? `${pathname}?${qs}` : pathname) + window.location.hash;
     const current = window.location.search ? window.location.pathname + window.location.search : window.location.pathname;
-    if (url !== current) {
+    if (url !== current + window.location.hash || firstSync.current) {
       // pushState хвърля на file:// (origin "null"); при преглед просто го пропускаме.
       try {
-        window.history.pushState(null, "", url);
+        const state = { ...window.history.state, euroProcedure: nav?.id ? nav : null };
+        window.history[firstSync.current ? 'replaceState' : 'pushState'](state, "", url);
       } catch {
         /* локален file:// преглед — пропускаме синхронизацията с URL */
       }
     }
-  }, [filters]);
+    firstSync.current = false;
+  }, [filters, initialized]);
 
   const patch = useCallback((p) => setFilters((f) => ({ ...f, ...p })), []);
 
@@ -89,8 +105,19 @@ export function useProjectFilters() {
   // Клик по колона в „Активност" → таб „Процедури", филтриран по седмица и тип.
   const filterByWeek = useCallback((changeType, weekFrom, weekTo) => patch({ tab: "procedures", selected: null, changeType, weekFrom, weekTo, sort: "updated" }), [patch]);
   const clearChangeWeek = useCallback(() => patch({ changeType: "", weekFrom: "", weekTo: "" }), [patch]);
-  const openProject = useCallback((id) => patch({ selected: id }), [patch]);
-  const closeProject = useCallback(() => patch({ selected: null }), [patch]);
+  const openProject = useCallback((id, path) => {
+    if (path) navigation.current = { id, path, returnUrl: navigation.current?.returnUrl || window.location.pathname + window.location.search };
+    patch({ selected: id });
+  }, [patch]);
+  const closeProject = useCallback(() => {
+    if (navigation.current?.returnUrl) {
+      const url = new URL(navigation.current.returnUrl, window.location.origin);
+      navigation.current = { path: url.pathname };
+      setFilters({ ...deserializeFilters(url.search), selected: null });
+      return;
+    }
+    patch({ selected: null });
+  }, [patch]);
 
   const toggleCompare = useCallback((id) => {
     setFilters((f) => {

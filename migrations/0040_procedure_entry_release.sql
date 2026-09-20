@@ -1,0 +1,3 @@
+INSERT INTO changelog_entries(version,title,summary,content,category,published_at,affected_route,created_at,updated_at)
+SELECT '2.61.0','Споделените процедури се отварят директно в таблото','Постоянните връзки показват избраната процедура в познатия панел с детайли, документи и действия.','["Директните връзки използват общия дизайн и преводи на таблото.","Процедурата се зарежда независимо от избраната държава и списъка.","Запазени са постоянните адреси, старите връзки, историята и съдържанието за търсачки."]','fix','2026-09-20','/procedures',datetime('now'),datetime('now')
+WHERE NOT EXISTS (SELECT 1 FROM changelog_entries WHERE version='2.61.0');

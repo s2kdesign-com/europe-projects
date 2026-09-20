@@ -5,7 +5,9 @@ import DashboardShell from "../components/DashboardShell.jsx";
 export default function Page() {
   return (
     <>
-      <h1 className="sr-only">Активни европроекти и процедури за финансиране в България</h1>
+      {/* Worker-owned progressive HTML. React leaves the contents intact during hydration. */}
+      <div id="procedure-bootstrap" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: "" }} />
+      <h1 className="sr-only procedure-list-heading">Активни европроекти и процедури за финансиране в ЕС</h1>
       <DashboardShell initialTab="procedures" />
     </>
   );

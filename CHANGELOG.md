@@ -1,3 +1,10 @@
+## 2.61.0 — 2026-09-20
+
+- Permanent procedure URLs open the shared Procedures dashboard with the requested detail panel already selected.
+- Reuse dashboard styles, translations and actions; preload public details independently of country filters and catalog availability.
+- Preserve canonical sharing, legacy ID links, filter context, reload and browser history, crawlable content and social metadata.
+- Defer automatic onboarding prompts while reading a procedure. Add production-bundle navigation and responsive regression checks.
+
 ## 2.60.1 — 2026-09-20
 
 - Made Chrome connector publishing the daily default; social API tokens are optional legacy configuration.

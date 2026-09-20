@@ -14,7 +14,8 @@
     "deploy": "npm run build && wrangler deploy",
     "deploy:only": "wrangler deploy",
     "test:seo": "node test/seo-routes.integration.mjs",
-    "test:layout": "node test/profile-layout.mjs"
+    "test:layout": "node test/profile-layout.mjs",
+    "test:procedure-entry": "node test/procedure-entry.mjs"
   },
   "dependencies": {
     "fast-xml-parser": "^5.11.1",
