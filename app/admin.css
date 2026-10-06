@@ -61,6 +61,32 @@
 .admin-pager .pg-info { font-size: 13px; color: var(--muted); margin-right: auto; }
 .admin-pager button[disabled] { opacity: .45; cursor: default; }
 
+.admin .ov-section-head { flex-wrap: wrap; }
+.admin .ov-section-head .prof-section-title { margin: 0; }
+.admin-refresh, .admin-error-actions { margin-inline-start: auto; }
+.admin-error-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.admin-users-table { min-width: 1120px; }
+.admin-users-table .u-cell { min-width: 210px; max-width: 290px; }
+.admin-users-table .u-cell > .um-avatar { flex-shrink: 0; }
+.admin-users-table .u-cell > div { min-width: 0; overflow-wrap: anywhere; }
+.admin-user-email { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; overflow-wrap: anywhere; }
+.admin-role { inline-size: auto; min-inline-size: 14em; max-inline-size: none; }
+.admin-cell-note { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
+.admin-date { min-width: 120px; font-variant-numeric: tabular-nums; }
+.admin-billing { min-width: 150px; margin-top: 4px; font-size: 12px; }
+.admin-billing dl { margin: 8px 0; }
+.admin-billing dl div { margin-bottom: 8px; }
+.admin-billing dt { color: var(--muted); }
+.admin-billing dd { margin: 2px 0 0; overflow-wrap: anywhere; }
+.admin-page-size { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.admin-page-size select { inline-size: auto; }
+.admin-load-error { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px; border: 1px solid var(--red, #b91c1c); border-radius: var(--r-sm); color: var(--red-ink, #991b1b); overflow-wrap: anywhere; }
+.admin-error-message { min-width: 280px; max-width: 620px; overflow-wrap: anywhere; }
+.admin-error-message details { margin-top: 8px; }
+.admin-error-message pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.admin-billing summary, .admin-error-message summary { cursor: pointer; color: var(--primary-ink); padding-block: 4px; }
+.admin-billing summary:focus-visible, .admin-error-message summary:focus-visible, .table-scroll:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
 /* ── Вечерен AI pipeline (v2.31.0) ─────────────────────────────────────── */
 .ai-pipe-live { background: var(--surface-2, #f4f7fb); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-top: 6px; }
 .apl-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

@@ -14,6 +14,8 @@ import { handlePlatformStatistics } from "./worker/statistics.js";
 import { handleSyncRunReport } from "./worker/sync/handlers.js";
 import { COUNTRY_CODES, DEFAULT_COUNTRY, normalizeCountry } from "./app/lib/country/countries.js";
 import { APP_VERSION } from "./app/lib/version.js";
+import { BUILD_ID } from "./app/lib/build-info.js";
+import { staleNavigationResponse } from "./worker/deployment.js";
 // Слой „готовност за агенти": markdown negotiation, Link заглавки, API каталог,
 // OpenAPI, Content Signals и OAuth 2.1 authorization server.
 import { handleMarkdown, wantsMarkdown, markdownResponse, llmsTxt } from "./worker/agent/markdown.js";
@@ -158,6 +160,8 @@ export default {
  * Изнесен, за да може администрацията да валидира сайта в процеса, без мрежа.
  */
 async function pipeline(request, env) {
+  const stale = staleNavigationResponse(request, BUILD_ID);
+  if (stale) return stale;
   const url = new URL(request.url);
   // HEAD трябва да е идентичен на GET, само без тяло (RFC 9110 §9.3.2).
   const isHead = request.method === "HEAD";

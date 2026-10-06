@@ -5,7 +5,7 @@ import { buildAuthUrl, callbackUrl, createPkce, exchangeCode, verifyIdToken } fr
 import { authenticateBearer, requiredScope, wwwAuthenticate } from "./agent/oauth-server.js";
 import { handleDiscoveryAdmin } from "./discovery/handlers.js";
 import { handleSyncAdmin } from "./sync/handlers.js";
-import { createSession, destroySessionByToken, getSession, sessionClearCookie, sessionSetCookie } from "./session.js";
+import { createSession, destroySessionByToken, getSession, recordUserActivity, sessionClearCookie, sessionSetCookie } from "./session.js";
 import { listChangelog, addFeedback, listFeedback } from "./changelog.js";
 import * as data from "./db.js";
 import { LOCALE_CODES } from "../app/lib/i18n/locales.js";
@@ -163,7 +163,8 @@ export async function handleAuth(request, env, url) {
     if (!sameOrigin(request, env, url)) return err("csrf", 403);
     const body = (await readJson(request)) || {};
     const s = await getSession(env, request).catch(() => null);
-    await data.logError(env, { source: "client", method: String(body.method || ""), path: String(body.path || ""), status: body.status || null, message: String(body.message || ""), detail: String(body.detail || ""), userId: s && s.user ? s.user.id : null });
+    const saved = await data.logError(env, { source: "client", method: String(body.method || ""), path: String(body.path || ""), status: Number.isInteger(body.status) ? body.status : null, message: String(body.message || ""), detail: `${String(body.detail || "")}\nUser agent: ${request.headers.get("user-agent") || "unknown"}`, userId: s && s.user ? s.user.id : null });
+    if (!saved) return err("error_log_write_failed", 503);
     return ok({});
   }
 
@@ -179,7 +180,7 @@ export async function handleAuth(request, env, url) {
   const isPrivate =
     pathname === "/api/profile" || pathname === "/api/profile/language" || pathname === "/api/profile/country" || pathname === "/api/preferences" ||
     pathname === "/api/saved-procedures" || pathname.startsWith("/api/saved-procedures/") ||
-    pathname === "/api/account" || pathname.startsWith("/api/admin/");
+    pathname === "/api/account" || pathname === "/api/activity" || pathname.startsWith("/api/admin/");
   if (!isPrivate) return null;
 
   // Достъпът е или през сесия в браузъра, или през OAuth 2.1 токен. Токенът дава
@@ -238,7 +239,7 @@ export async function handleAuth(request, env, url) {
       if (aiResp) return aiResp;
       return err("not_found", 404);
     }
-    if (pathname === "/api/admin/users" && method === "GET") return ok({ users: await data.listUsers(env) });
+    if (pathname === "/api/admin/users" && method === "GET") return ok(await data.listUsersPage(env, url.searchParams.get("page"), url.searchParams.get("pageSize")));
     if (pathname.startsWith("/api/admin/users/") && method === "PATCH") {
       const id = decodeURIComponent(pathname.slice("/api/admin/users/".length));
       const body = (await readJson(request)) || {};
@@ -307,7 +308,7 @@ export async function handleAuth(request, env, url) {
       await env.DB.prepare("UPDATE countries SET source_count=(SELECT COUNT(*) FROM funding_sources WHERE country_code=?1), active_source_count=(SELECT COUNT(*) FROM funding_sources WHERE country_code=?1 AND enabled=1), updated_at=?2 WHERE code=?1").bind(existing.country_code, now).run();
       return ok({});
     }
-    if (pathname === "/api/admin/errors" && method === "GET") return ok({ errors: await data.listErrors(env, url.searchParams.get("limit")) });
+    if (pathname === "/api/admin/errors" && method === "GET") return ok(await data.listErrorsPage(env, url.searchParams.get("page"), url.searchParams.get("pageSize") || url.searchParams.get("limit")));
     if (pathname === "/api/admin/errors" && method === "DELETE") return ok(await data.clearErrors(env));
     if (pathname === "/api/admin/feedback" && method === "GET") return ok({ feedback: await listFeedback(env, url.searchParams.get("limit")) });
     return err("not_found", 404);
@@ -364,6 +365,10 @@ export async function handleAuth(request, env, url) {
       "ON CONFLICT(user_id) DO UPDATE SET language=excluded.language, language_mode=excluded.language_mode, language_updated_at=excluded.language_updated_at, updated_at=excluded.updated_at"
     ).bind(userId, language, mode, now, now).run();
     return ok({ preferredLanguage: language, languageMode: mode });
+  }
+  if (pathname === "/api/activity" && method === "POST") {
+    await recordUserActivity(env, userId);
+    return ok({});
   }
   if (pathname === "/api/preferences") {
     if (method === "GET") return ok({ preferences: await data.getPreferences(env, userId) });

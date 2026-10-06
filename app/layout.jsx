@@ -8,6 +8,7 @@ import "./footer.css";
 import "./site.css";
 import "./i18n.css";
 import ErrorReporter from "./components/ErrorReporter.jsx";
+import ActivityReporter from "./components/ActivityReporter.jsx";
 import AppChrome from "./components/AppChrome.jsx";
 import SiteFooter from "./components/SiteFooter.jsx";
 import I18nProvider from "./components/i18n/I18nProvider.jsx";
@@ -110,7 +111,7 @@ export default function RootLayout({ children }) {
             React бъндълът да се е заредил. Виж app/lib/webmcp.js. */}
         <script id="webmcp" dangerouslySetInnerHTML={{ __html: WEBMCP_INIT_SCRIPT }} />
         {/* Google Analytics (gtag.js) + Consent Mode v2 — виж GTAG_INIT по-горе */}
-        <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} />
+        <script async crossOrigin="anonymous" src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} />
         <script dangerouslySetInnerHTML={{ __html: GTAG_INIT }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       </head>
@@ -119,6 +120,7 @@ export default function RootLayout({ children }) {
           <CountryProvider>
             <PushNotificationsProvider>
             <ErrorReporter />
+            <ActivityReporter />
             <AppChrome />
             {children}
             <SiteFooter />

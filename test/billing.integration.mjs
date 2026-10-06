@@ -19,8 +19,12 @@ const now=Date.now(),epoch=Math.floor(now/1000),later=epoch+864000;
 const migration=name=>fs.readFileSync(new URL('../migrations/'+name,import.meta.url),'utf8');
 function fixture(){
   const db=new DatabaseSync(':memory:');db.exec('PRAGMA foreign_keys=ON;');
+  // The users administration now reads saved country/language mode and activity.
   db.exec(migration('0002_auth.sql'));db.exec(migration('0003_admin.sql'));db.exec(migration('0029_web_push.sql'));db.exec(migration('0031_premium_billing.sql'));db.exec(migration('0033_public_country_push.sql'));db.exec(migration('0035_notification_hour.sql'));
+  db.exec(migration('0005_language.sql'));db.exec(migration('0045_user_activity.sql'));
   db.exec(`ALTER TABLE user_profiles ADD COLUMN preferred_country TEXT;
+    ALTER TABLE user_profiles ADD COLUMN country_mode TEXT NOT NULL DEFAULT 'auto';
+    ALTER TABLE user_profiles ADD COLUMN country_detection_enabled INTEGER NOT NULL DEFAULT 1;
     CREATE TABLE projects(id TEXT PRIMARY KEY,name TEXT,program TEXT,status TEXT,deadline_date TEXT,budget TEXT,eligible TEXT,notes TEXT,public_slug TEXT,last_updated TEXT,country_code TEXT);
     CREATE VIEW public_projects AS SELECT * FROM projects;
     INSERT INTO users(id,email,role,created_at,updated_at) VALUES('free','free@example.invalid','user','2026-01-01','2026-01-01'),('manual','manual@example.invalid','premium','2026-01-01','2026-01-01'),('admin','admin@example.invalid','admin','2026-01-01','2026-01-01'),('other','other@example.invalid','user','2026-01-01','2026-01-01');

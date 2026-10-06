@@ -8,7 +8,7 @@ keep_vars = true # Preserve dashboard-managed public VAPID configuration; privat
 
 # Билд на статичния сайт преди деплой (важно за Cloudflare Git деплой / Workers Builds).
 [build]
-command = "npx next build"
+command = "npm run build"
 
 # Статичните файлове на дашборда (Next.js export).
 # run_worker_first = true: worker-ът се изпълнява ПРЕДИ да се сервира статичен asset,

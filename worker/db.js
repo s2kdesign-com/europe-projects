@@ -201,14 +201,37 @@ export async function deleteAccount(env, userId) {
 }
 
 // ---- Администрация ----
-export async function listUsers(env) {
-  const { results } = await env.DB.prepare(`SELECT u.id,u.email,u.display_name,u.avatar_url,u.role,u.created_at,u.last_login_at,
+export async function listUsers(env, { limit = 50, offset = 0 } = {}) {
+  const { results } = await env.DB.prepare(`SELECT u.id,u.email,u.display_name,u.avatar_url,u.role,u.created_at,u.last_login_at,u.last_active_at,
+    p.preferred_country,p.country_mode,p.country_detection_enabled,pr.language,pr.language_mode,
     s.status AS subscription_status,s.plan_id,s.started_at AS subscription_started,s.current_period_end,s.stripe_customer_id,s.last_invoice_status,
     CASE WHEN u.role IN ('premium','admin') THEN 'administrator' WHEN EXISTS(SELECT 1 FROM billing_subscriptions p WHERE p.user_id=u.id
       AND ${paidAccessSql('p','unixepoch()*1000')}) THEN 'subscription' ELSE NULL END AS premium_source
     FROM users u LEFT JOIN billing_subscriptions s ON s.id=(SELECT b.id FROM billing_subscriptions b WHERE b.user_id=u.id ORDER BY b.updated_at DESC LIMIT 1)
-    ORDER BY u.created_at DESC`).all();
+    LEFT JOIN user_profiles p ON p.user_id=u.id LEFT JOIN user_preferences pr ON pr.user_id=u.id
+    ORDER BY u.created_at DESC,u.id DESC LIMIT ?1 OFFSET ?2`).bind(limit, offset).all();
   return results || [];
+}
+
+function pagination(total, page, pageSize, sizes) {
+  const size = sizes.includes(Number(pageSize)) ? Number(pageSize) : 50;
+  const totalPages = Math.max(1, Math.ceil(total / size));
+  const requested = Number(page);
+  const current = Number.isSafeInteger(requested) && requested > 0 ? Math.min(requested, totalPages) : 1;
+  return { total, page: current, pageSize: size, totalPages };
+}
+export async function listUsersPage(env, page, pageSize) {
+  const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM users").first();
+  const meta = pagination(count.total, page, pageSize, [25, 50, 100]);
+  const users = await listUsers(env, { limit: meta.pageSize, offset: (meta.page - 1) * meta.pageSize });
+  return { users, ...meta };
+}
+export async function listErrorsPage(env, page, pageSize) {
+  const count = await env.DB.prepare("SELECT COUNT(*) AS total FROM error_log").first();
+  const meta = pagination(count.total, page, pageSize, [50, 100, 200]);
+  const { results } = await env.DB.prepare("SELECT id,created_at,source,method,path,status,message,detail,user_id FROM error_log ORDER BY id DESC LIMIT ?1 OFFSET ?2")
+    .bind(meta.pageSize, (meta.page - 1) * meta.pageSize).all();
+  return { errors: results || [], ...meta };
 }
 export async function setUserRole(env, targetUserId, role, adminId=null) {
   if (!ROLES.includes(role)) return { error: "invalid_role", status: 400 };
@@ -232,7 +255,15 @@ export async function clearErrors(env) {
 export async function logError(env, e = {}) {
   try {
     await env.DB.prepare("INSERT INTO error_log (created_at, source, method, path, status, message, detail, user_id) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)")
-      .bind(nowISO(), (e.source || "server").slice(0, 20), (e.method || "").slice(0, 10), (e.path || "").slice(0, 300), e.status || null, redactSecrets((e.message || "")).slice(0, 500), redactSecrets((e.detail || "")).slice(0, 2000), e.userId || null)
+      .bind(nowISO(), (e.source || "server").slice(0, 20), (e.method || "").slice(0, 10), (e.path || "").slice(0, 300), e.status || null, redactSecrets(e.message || ""), redactSecrets(e.detail || ""), e.userId || null)
       .run();
-  } catch { /* журналът не бива да чупи заявката */ }
+    return true;
+  } catch (error) {
+    console.error("error_log_write_failed", {
+      error: redactSecrets(String(error?.message || error)),
+      source: e.source || "server", method: e.method || "", path: e.path || "", status: e.status || null,
+      message: redactSecrets(e.message || ""), detail: redactSecrets(e.detail || ""),
+    });
+    return false;
+  }
 }

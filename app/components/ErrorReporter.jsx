@@ -1,39 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
-
-// Изпраща клиентските грешки към /api/errors (за таб „Exceptions"). С лимит,
-// за да не залива сървъра. Работи тихо — не пречи на приложението.
-let sent = 0;
-const MAX = 12;
+import { errorEventPayload, reportClientError } from "../services/error-reporting.js";
 
 export default function ErrorReporter() {
   useEffect(() => {
-    const send = (payload) => {
-      if (sent >= MAX) return;
-      sent++;
-      try {
-        fetch("/api/errors", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { "content-type": "application/json", "X-Requested-With": "fetch" },
-          body: JSON.stringify(payload),
-          keepalive: true,
-        }).catch(() => {});
-      } catch { /* ignore */ }
-    };
-    const onErr = (e) => send({
-      path: location.pathname, method: "GET",
-      message: (e.message || "error").slice(0, 400),
-      detail: `${e.filename || ""}:${e.lineno || ""}:${e.colno || ""} ${(e.error && e.error.stack) || ""}`.slice(0, 1500),
-    });
+    const onErr = (e) => reportClientError(errorEventPayload(e));
     const onRej = (e) => {
       const r = e.reason;
-      send({ path: location.pathname, method: "GET", message: ((r && r.message) || String(r) || "unhandledrejection").slice(0, 400), detail: ((r && r.stack) || "").slice(0, 1500) });
+      reportClientError({ message: r?.message || String(r) || "unhandledrejection", detail: `${r?.stack || ""}\nPage: ${location.pathname}\nVisibility: ${document.visibilityState}` });
     };
-    window.addEventListener("error", onErr);
+    window.addEventListener("error", onErr, true);
     window.addEventListener("unhandledrejection", onRej);
-    return () => { window.removeEventListener("error", onErr); window.removeEventListener("unhandledrejection", onRej); };
+    return () => { window.removeEventListener("error", onErr, true); window.removeEventListener("unhandledrejection", onRej); };
   }, []);
   return null;
 }

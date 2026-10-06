@@ -8,13 +8,14 @@
     "build": "next build",
     "gen-version": "node scripts/gen-version.mjs",
     "lint": "next lint",
-    "test": "vitest run && node test/seo-routes.integration.mjs && node test/push.integration.mjs && node test/billing.integration.mjs && node test/push-runtime.mjs",
+    "test": "vitest run && node test/seo-routes.integration.mjs && node test/push.integration.mjs && node test/billing.integration.mjs && node test/admin-users.integration.mjs && node test/push-runtime.mjs",
     "test:watch": "vitest",
     "test:sitemap": "node test/sitemap.test.mjs",
     "deploy": "npm run build && wrangler deploy",
     "deploy:only": "wrangler deploy",
     "test:seo": "node test/seo-routes.integration.mjs",
     "test:layout": "node test/profile-layout.mjs",
+    "test:admin-layout": "node test/admin-layout.mjs",
     "test:procedure-entry": "node test/procedure-entry.mjs"
   },
   "dependencies": {

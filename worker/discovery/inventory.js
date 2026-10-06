@@ -72,6 +72,7 @@ export const ROUTES = [
   { id: "internalAiRunReport", method: "POST", path: "/api/internal/ai-runs/report", kind: "internal", group: "internal", purposeKey: "route.internalReport", auth: "hmac", contentType: "application/json", cache: "no-store", openapi: false },
   { id: "internalAiPipeline", method: "POST", path: "/api/internal/ai/", kind: "internal", group: "internal", purposeKey: "route.internalPipeline", auth: "hmac", contentType: "application/json", cache: "no-store", openapi: false },
   { id: "clientErrors", method: "POST", path: "/api/errors", kind: "internal", group: "internal", purposeKey: "route.clientErrors", auth: "same-origin", contentType: "application/json", cache: "no-store", openapi: false },
+  { id: "userActivity", method: "POST", path: "/api/activity", kind: "internal", group: "internal", purposeKey: "route.userActivity", auth: "session", contentType: "application/json", cache: "no-store", openapi: false },
   { id: "feedback", method: "POST", path: "/api/feedback", kind: "internal", group: "internal", purposeKey: "route.feedback", auth: "same-origin", contentType: "application/json", cache: "no-store", openapi: false },
   { id: "translateBatch", method: "POST", path: "/api/i18n/translate-batch", kind: "internal", group: "internal", purposeKey: "route.translate", auth: "same-origin", contentType: "application/json", cache: "no-store", openapi: false },
 ];

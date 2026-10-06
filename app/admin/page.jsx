@@ -11,6 +11,9 @@ import AiModelsTab from "./AiModelsTab.jsx";
 import ApiAgentsTab from "./ApiAgentsTab.jsx";
 import SeoDiscoveryTab from "./SeoDiscoveryTab.jsx";
 import ScannerTab from "./ScannerTab.jsx";
+import UsersTab, { USER_LABELS } from "./UsersTab.jsx";
+import ErrorsTab, { ERROR_LABELS } from "./ErrorsTab.jsx";
+import { PAGER_LABELS } from "./AdminPager.jsx";
 import PaymentsTab from './PaymentsTab.jsx';
 import { SUMMARY_LABELS } from "./discovery-summaries.js";
 import { useUiTranslate, UiTrContext, useUiTr } from "../lib/i18n/ui-translate.js";
@@ -158,6 +161,7 @@ const DISCOVERY_LABELS = [
 ];
 
 const ADMIN_LABELS = [
+  ...USER_LABELS, ...ERROR_LABELS, ...PAGER_LABELS,
   'Плащания','Premium достъп','Абонамент','План','Край на периода','Последна фактура','От администратор','Чрез абонамент',
   "Настройки · Администрация", "Системни настройки, потребители, журнал на грешките и сигнали.",
   "Система", "Източници", "AI модели", "Потребители", "Exceptions", "Сигнали", "Раздели",
@@ -263,12 +267,6 @@ const ADMIN_LABELS = [
   "Час", "Час на автоматичното изпълнение", "Частично", "Часът е записан", "Ще бъде повторена",
   "Cloudflare secret", "не е зададен — добавянето на API ключове е блокирано. Задайте го с", "Източник на изпълнение",
 ].concat(DISCOVERY_LABELS, SUMMARY_LABELS);
-
-const ROLES = [
-  { key: "user", label: "Потребител" },
-  { key: "premium", label: "Премиум" },
-  { key: "admin", label: "Администратор" },
-];
 
 function fmt(ts) {
   if (!ts) return "—";
@@ -633,97 +631,6 @@ function SourcesTab() {
       {editing === "new" && editForm(true)}
       {editing && editing !== "new" && editForm(false)}
     </>
-  );
-}
-
-function UsersTab() {
-  const tl = useUiTr();
-  const [users, setUsers] = useState(null);
-  const [msg, setMsg] = useState(null);
-  const load = useCallback(() => { fetch("/api/admin/users", { credentials: "same-origin" }).then((r) => r.json()).then((d) => setUsers(d.users || [])).catch(() => setUsers([])); }, []);
-  useEffect(() => { load(); }, [load]);
-
-  const changeRole = async (id, role) => {
-    setUsers((us) => us.map((u) => (u.id === id ? { ...u, role, _saving: true } : u)));
-    try {
-      const r = await fetch("/api/admin/users/" + encodeURIComponent(id), { method: "PATCH", credentials: "same-origin", headers: { "content-type": "application/json", "X-Requested-With": "fetch" }, body: JSON.stringify({ role }) });
-      if (!r.ok) throw new Error();
-      setMsg(tl("Ролята е обновена.")); setTimeout(() => setMsg(null), 2000);
-    } catch { setMsg(tl("Промяната не бе записана.")); load(); }
-    finally { setUsers((us) => us.map((u) => (u.id === id ? { ...u, _saving: false } : u))); }
-  };
-
-  if (users == null) return <section className="prof-card"><p className="prose">{tl("Зареждане…")}</p></section>;
-  return (
-    <section className="prof-card">
-      <div className="ov-section-head"><h2 className="prof-section-title" style={{ margin: 0 }}>{tl("Потребители")}</h2><span className="count-dot">{users.length}</span>{msg && <span className="save-ok" role="status"><Icon name="check" size={14} /> {msg}</span>}</div>
-      <div className="table-scroll">
-        <table className="admin-table">
-          <thead><tr><th>{tl("Потребител")}</th><th>{tl("Имейл")}</th><th>{tl("Роля")}</th><th>{tl('Premium достъп')}</th><th>{tl('Абонамент')}</th><th>{tl('План')}</th><th>{tl('Край на периода')}</th><th>{tl('Последна фактура')}</th><th>{tl("Регистриран")}</th><th>{tl("Последен вход")}</th></tr></thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id}>
-                <td><div className="u-cell">{u.avatar_url ? <img src={u.avatar_url} alt="" width={28} height={28} className="um-avatar" referrerPolicy="no-referrer" /> : <span className="um-avatar um-initials">{(u.display_name || u.email || "?").charAt(0).toUpperCase()}</span>}<span>{u.display_name || "—"}</span></div></td>
-                <td className="mono">{u.email}</td>
-                <td>
-                  <select className="inp inp-sm" value={u.role} disabled={u._saving} onChange={(e) => changeRole(u.id, e.target.value)} aria-label={`${tl("Роля")}: ${u.email}`}>
-                    {ROLES.map((r) => <option key={r.key} value={r.key}>{tl(r.label)}</option>)}
-                  </select>
-                </td>
-                <td>{u.premium_source?tl(u.premium_source==='administrator'?'От администратор':'Чрез абонамент'):'—'}</td>
-                <td>{u.subscription_status||'—'}</td><td>{u.plan_id||'—'}</td><td>{fmt(u.current_period_end)}</td><td>{u.last_invoice_status||'—'}</td>
-                <td>{fmt(u.created_at)}</td>
-                <td>{fmt(u.last_login_at)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function ErrorsTab() {
-  const tl = useUiTr();
-  const [rows, setRows] = useState(null);
-  const [open, setOpen] = useState(null);
-  const load = useCallback(() => { fetch("/api/admin/errors?limit=200", { credentials: "same-origin" }).then((r) => r.json()).then((d) => setRows(d.errors || [])).catch(() => setRows([])); }, []);
-  useEffect(() => { load(); }, [load]);
-  const clear = async () => { if (!confirm(tl("Да изчистя ли журнала с грешки?"))) return; await fetch("/api/admin/errors", { method: "DELETE", credentials: "same-origin", headers: { "X-Requested-With": "fetch" } }); load(); };
-
-  if (rows == null) return <section className="prof-card"><p className="prose">{tl("Зареждане…")}</p></section>;
-  return (
-    <section className="prof-card">
-      <div className="ov-section-head">
-        <h2 className="prof-section-title" style={{ margin: 0 }}>Exceptions</h2>
-        <span className="count-dot">{rows.length}</span>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          <button className="btn btn-ghost" onClick={load}><Icon name="refresh" size={16} /> {tl("Обнови")}</button>
-          {rows.length > 0 && <button className="btn btn-danger" onClick={clear}><Icon name="close" size={16} /> {tl("Изчисти")}</button>}
-        </div>
-      </div>
-      {rows.length === 0 ? (
-        <div className="state ov-empty"><Icon name="check" size={26} /><h3>{tl("Няма записани грешки")}</h3><p>{tl("Системата не е регистрирала грешки. Тук се събират сървърни и клиентски изключения.")}</p></div>
-      ) : (
-        <div className="table-scroll">
-          <table className="admin-table">
-            <thead><tr><th>{tl("Време")}</th><th>{tl("Източник")}</th><th>{tl("Метод/Път")}</th><th>{tl("Статус")}</th><th>{tl("Съобщение")}</th></tr></thead>
-            <tbody>
-              {rows.map((e) => [
-                <tr key={e.id} className="err-row" onClick={() => setOpen(open === e.id ? null : e.id)}>
-                  <td className="nowrap">{fmt(e.created_at)}</td>
-                  <td><span className={"badge " + (e.source === "server" ? "amber" : "blue")}>{e.source || "?"}</span></td>
-                  <td className="mono">{e.method} {e.path}</td>
-                  <td>{e.status || "—"}</td>
-                  <td className="err-msg">{e.message}</td>
-                </tr>,
-                open === e.id && e.detail ? <tr key={e.id + "-d"}><td colSpan={5}><pre className="err-detail">{e.detail}</pre></td></tr> : null,
-              ])}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
   );
 }
 

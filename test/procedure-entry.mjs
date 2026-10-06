@@ -9,6 +9,8 @@ import { renderProcedureShell } from '../worker/procedure-page.js';
 import { procedurePath } from '../app/lib/public-url.js';
 import { LOCALE_CODES } from '../app/lib/i18n/locales.js';
 import labels from '../app/lib/i18n/premium-labels.json' with { type: 'json' };
+import { BUILD_ID } from '../app/lib/build-info.js';
+import { staleNavigationResponse } from '../worker/deployment.js';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 const output=process.env.PROCEDURE_ARTIFACT_DIR || path.join(root,'.next','procedure-checks');
@@ -21,10 +23,13 @@ const project={id:'DE:de-esf:zusammenhalt-staerken-3',public_slug:'de-de-esf-zus
 const documents=[{id:1,project_id:project.id,title:'Application guidelines',doc_type:'guidelines',content:'Application requirements and eligible costs.',source_url:'https://example.org/guidelines'}];
 const other={...project,id:'LV:other',public_slug:'lv-other',name:'Latvian procedure',country_code:'LV'};
 const canonical=procedurePath(project);
-let listFails=false;
+let listFails=false, servedBuild=BUILD_ID, staleRequests=0, calendarDocuments=0;
 const server=createServer(async(req,res)=>{
   try {
     const url=new URL(req.url,'http://local');
+    const stale=staleNavigationResponse(new Request(url,{headers:req.headers}),servedBuild);
+    if(stale){staleRequests++;res.writeHead(stale.status,Object.fromEntries(stale.headers));return res.end(await stale.text());}
+    if(url.pathname==='/calendar')calendarDocuments++;
     if(url.pathname.startsWith('/api/')){
       let data={ok:true,authenticated:false};
       if(url.pathname==='/api/projects'){
@@ -45,7 +50,7 @@ const server=createServer(async(req,res)=>{
       res.writeHead(200,{'content-type':'text/html'});
       return res.end(renderProcedureShell(shell,url.pathname===canonical?project:other,documents));
     }
-    const rel=url.pathname==='/'?'index.html':url.pathname==='/procedures'?'procedures.html':decodeURIComponent(url.pathname.slice(1));
+    const rel=url.pathname==='/'?'index.html':/^\/[a-z-]+$/.test(url.pathname)?url.pathname.slice(1)+'.html':decodeURIComponent(url.pathname.slice(1));
     const filename=path.resolve(root,'out',rel);
     if(!filename.startsWith(path.resolve(root,'out')+path.sep))throw Error('outside root');
     const content=await readFile(filename);
@@ -135,6 +140,16 @@ try {
   assert.equal(await fallback.locator('a[href="https://example.org/guidelines"]').count(),1);
   assert.equal(await fallback.locator('#procedure-fallback .drawer').evaluate(el=>getComputedStyle(el).display),'grid');
   await fallback.screenshot({path:path.join(output,'no-js-mobile.png')});
+  // A user kept an older tab open while the server moved to a new deployment.
+  // Actual Next navigation must load a fresh document before parsing new RSC.
+  servedBuild='simulated-next-deployment';
+  await page.goto(origin+'/procedures?lang=en');
+  await page.locator('.nav a[href="/calendar"]').waitFor();
+  await page.locator('.nav a[href="/calendar"]').click();
+  await page.waitForURL('**/calendar*');
+  await page.waitForFunction(()=>document.readyState==='complete');
+  assert.ok(staleRequests>0,'old deployment navigation was rejected before chunk imports');
+  assert.ok(calendarDocuments>0,'Next recovered using a full document navigation');
   assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({passed:true,layouts,checks:['direct','tracking','metadata','hydration','close','back-forward','filter-return','reload','legacy-id','catalog-failure','no-javascript','new-tab','saved-country','copy','save','calendar','focus'],output},null,2));
+  console.log(JSON.stringify({passed:true,layouts,checks:['direct','tracking','metadata','hydration','close','back-forward','filter-return','reload','legacy-id','catalog-failure','no-javascript','new-tab','saved-country','copy','save','calendar','focus','deployment-change-navigation'],output},null,2));
 } finally {await browser?.close();await new Promise(resolve=>server.close(resolve));}

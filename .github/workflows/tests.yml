@@ -36,6 +36,9 @@ jobs:
         env:
           LAYOUT_ARTIFACT_DIR: ${{ runner.temp }}/profile-layout
 
+      - name: Check admin pagination, layouts and exception controls
+        run: npm run test:admin-layout
+
       - name: Build and check permanent procedure entry
         run: npm run build && npm run test:procedure-entry
         env:

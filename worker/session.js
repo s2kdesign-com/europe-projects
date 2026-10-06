@@ -16,7 +16,17 @@ export async function createSession(env, userId, userAgent) {
   )
     .bind(id, userId, hash, isoPlusSeconds(SESSION_TTL_SECONDS), now, (userAgent || "").slice(0, 200))
     .run();
+  await recordUserActivity(env, userId);
   return { token, id };
+}
+
+// Called on sign-in and explicit foreground interaction, never by session
+// validation/polling. Persist on the user so logout does not erase activity.
+export async function recordUserActivity(env, userId) {
+  const now = nowISO();
+  const cutoff = new Date(Date.parse(now) - 60_000).toISOString();
+  await env.DB.prepare("UPDATE users SET last_active_at=?1 WHERE id=?2 AND (last_active_at IS NULL OR last_active_at<=?3)")
+    .bind(now, userId, cutoff).run();
 }
 
 export function sessionSetCookie(token, secure) {
@@ -41,7 +51,9 @@ export async function getSession(env, request) {
     .bind(session.user_id)
     .first();
   if (!user) return null;
-  await env.DB.prepare("UPDATE sessions SET last_used_at = ?1 WHERE id = ?2").bind(nowISO(), session.id).run();
+  if (!session.last_used_at || Date.parse(session.last_used_at) <= Date.now() - 60_000) {
+    await env.DB.prepare("UPDATE sessions SET last_used_at = ?1 WHERE id = ?2").bind(nowISO(), session.id).run();
+  }
   return { user, session };
 }
 

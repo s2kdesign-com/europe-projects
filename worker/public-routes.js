@@ -1,4 +1,5 @@
 import { codeSlug } from '../app/lib/slug.js';
+import { readWithRetry } from './d1-read.js';
 
 export const RESERVED = new Set(['programs', 'status', 'candidates', 'deadlines', 'countries']);
 export const programKey = p => JSON.stringify([p.country_code || '', p.source_id || '', p.program]);
@@ -58,7 +59,8 @@ export async function ensurePublicRoutes(env) {
 export async function findPublicProcedure(env, slug) {
   await ensurePublicRoutes(env);
   // Exact ID first: raw IDs are case-sensitive and can contain punctuation.
-  const exact = await env.DB.prepare('SELECT * FROM public_projects WHERE id = ?1').bind(slug).first();
+  const path = '/procedures/' + encodeURIComponent(slug);
+  const exact = await readWithRetry(env, () => env.DB.prepare('SELECT * FROM public_projects WHERE id = ?1').bind(slug).first(), path);
   if (exact) return exact;
-  return env.DB.prepare(`SELECT * FROM public_projects WHERE public_slug = ?1 OR id IN (SELECT entity_id FROM public_route_aliases WHERE kind='procedure' AND alias=?1)`).bind(slug).first();
+  return readWithRetry(env, () => env.DB.prepare(`SELECT * FROM public_projects WHERE public_slug = ?1 OR id IN (SELECT entity_id FROM public_route_aliases WHERE kind='procedure' AND alias=?1)`).bind(slug).first(), path);
 }
