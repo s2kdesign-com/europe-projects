@@ -32,6 +32,15 @@ function browserLanguages() {
   return navigator.languages && navigator.languages.length ? [...navigator.languages] : [navigator.language].filter(Boolean);
 }
 
+// The device's automatic choice is independent of URL/manual overrides.
+export function automaticDeviceLanguage() {
+  const languages = browserLanguages();
+  return {
+    language: resolveLanguage({ browserLanguages: languages, fallback: DEFAULT_LOCALE }),
+    source: languages.some(code => normalizeLocale(code)) ? "browser_locale" : "fallback",
+  };
+}
+
 // Прилага език към i18n + <html lang/dir>. persist=true записва като ръчен избор.
 export function applyLanguage(code, { persist = false } = {}) {
   const lng = normalizeLocale(code) || DEFAULT_LOCALE;
@@ -53,7 +62,7 @@ export function resetToDevice() {
   if (s) {
     try { s.removeItem(LANG_KEY); s.setItem(LANG_MODE_KEY, "auto"); } catch { /* ignore */ }
   }
-  const lng = resolveLanguage({ browserLanguages: browserLanguages(), fallback: DEFAULT_LOCALE });
+  const lng = automaticDeviceLanguage().language;
   return applyLanguage(lng, { persist: false });
 }
 

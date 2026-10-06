@@ -203,6 +203,7 @@ export async function deleteAccount(env, userId) {
 // ---- Администрация ----
 export async function listUsers(env, { limit = 50, offset = 0 } = {}) {
   const { results } = await env.DB.prepare(`SELECT u.id,u.email,u.display_name,u.avatar_url,u.role,u.created_at,u.last_login_at,u.last_active_at,
+    u.automatic_country,u.automatic_country_source,u.automatic_country_at,u.automatic_language,u.automatic_language_source,u.automatic_language_at,
     p.preferred_country,p.country_mode,p.country_detection_enabled,pr.language,pr.language_mode,
     s.status AS subscription_status,s.plan_id,s.started_at AS subscription_started,s.current_period_end,s.stripe_customer_id,s.last_invoice_status,
     CASE WHEN u.role IN ('premium','admin') THEN 'administrator' WHEN EXISTS(SELECT 1 FROM billing_subscriptions p WHERE p.user_id=u.id

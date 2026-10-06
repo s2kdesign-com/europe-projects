@@ -43,6 +43,7 @@ export default function CountryProvider({ initialSlug = null, children }) {
   const [confirmed, setConfirmed] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [ready, setReady] = useState(false);
+  const [automatic, setAutomatic] = useState(null);
 
   // Разрешаване на клиента (веднъж).
   useEffect(() => {
@@ -53,6 +54,7 @@ export default function CountryProvider({ initialSlug = null, children }) {
       if (!alive) return;
       setSuggestedCountry(geo || null);
       setAuthenticated(!!profile);
+      setAutomatic(resolveCountry({ cloudflareCountry: geo, browserLocales: typeof navigator !== "undefined" ? navigator.languages : null }));
       const res = resolveCountry({
         urlSlug: initialSlug,
         profileCountry: profile && profile.country,
@@ -120,6 +122,7 @@ export default function CountryProvider({ initialSlug = null, children }) {
     setMode("auto");
     setDetectionSource(res.source);
     setConfirmed(false);
+    setAutomatic(res);
     if (authenticated) {
       try {
         await fetch("/api/profile/country", {
@@ -147,9 +150,11 @@ export default function CountryProvider({ initialSlug = null, children }) {
     isCountryConfirmed: confirmed,
     countryDataStatus: ready ? "ready" : "loading",
     ready,
+    automaticCountry: automatic?.country || null,
+    automaticCountrySource: automatic?.source || null,
     setCountry,
     resetToAutomaticCountry,
-  }), [country, mode, detectionSource, suggestedCountry, confirmed, ready, setCountry, resetToAutomaticCountry, liveByCode]);
+  }), [country, mode, detectionSource, suggestedCountry, confirmed, ready, automatic, setCountry, resetToAutomaticCountry, liveByCode]);
 
   return <CountryContext.Provider value={value}>{children}</CountryContext.Provider>;
 }

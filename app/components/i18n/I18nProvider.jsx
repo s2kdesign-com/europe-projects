@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState, useCallback } 
 import { I18nextProvider } from "react-i18next";
 import i18n from "../../lib/i18n/config.js";
 import { localeDir, normalizeLocale } from "../../lib/i18n/locales.js";
-import { applyLanguage, resetToDevice as resetToDeviceStore, resolveInitial } from "../../lib/i18n/language-store.js";
+import { applyLanguage, automaticDeviceLanguage, resetToDevice as resetToDeviceStore, resolveInitial } from "../../lib/i18n/language-store.js";
 import { ensureCatalog } from "../../lib/i18n/catalog.js";
 import { setUiLocale } from "../../lib/project-utils.js";
 
@@ -19,8 +19,10 @@ export function useLanguage() {
 export default function I18nProvider({ children }) {
   const [lang, setLang] = useState(i18n.language || "bg");
   const [loading, setLoading] = useState(false);
+  const [automatic, setAutomatic] = useState(null);
 
   useEffect(() => {
+    setAutomatic(automaticDeviceLanguage());
     const onChange = (lng) => { setUiLocale(lng); setLang(lng); };
     i18n.on("languageChanged", onChange);
     setUiLocale(i18n.language);
@@ -44,6 +46,7 @@ export default function I18nProvider({ children }) {
 
   const resetToDevice = useCallback(async () => {
     const lng = resetToDeviceStore();
+    setAutomatic(automaticDeviceLanguage());
     setLoading(true);
     try { const ok = await ensureCatalog(lng); if (ok && i18n.language === lng) i18n.changeLanguage(lng); }
     finally { setLoading(false); }
@@ -51,8 +54,8 @@ export default function I18nProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ lang, dir: localeDir(lang), loading, setLanguage, resetToDevice }),
-    [lang, loading, setLanguage, resetToDevice]
+    () => ({ lang, dir: localeDir(lang), loading, setLanguage, resetToDevice, automaticLanguage: automatic?.language || null, automaticLanguageSource: automatic?.source || null }),
+    [lang, loading, setLanguage, resetToDevice, automatic]
   );
 
   return (

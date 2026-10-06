@@ -6,7 +6,7 @@ import { useUiTr } from "../lib/i18n/ui-translate.js";
 import { adminRequest, formatAdminDate, useAdminPage } from "./admin-data.js";
 import AdminPager, { AdminLoadError } from "./AdminPager.jsx";
 
-export const USER_LABELS = ["Език", "Автоматично", "Ръчно", "Последна активност", "Току-що", "Няма потребители", "Неуспешна промяна на ролята."];
+export const USER_LABELS = ["Език", "Автоматично", "Ръчно", "По подразбиране", "Последна активност", "Току-що", "Няма потребители", "Неуспешна промяна на ролята."];
 const roles = [{ key: "user", label: "Потребител" }, { key: "premium", label: "Премиум" }, { key: "admin", label: "Администратор" }];
 
 function recent(value, lang, now, tl) {
@@ -50,8 +50,8 @@ export default function UsersTab() {
           <tbody>{data.users.map(user => <tr key={user.id}>
             <td><div className="u-cell">{user.avatar_url ? <img src={user.avatar_url} alt="" width={28} height={28} className="um-avatar" referrerPolicy="no-referrer" /> : <span className="um-avatar um-initials">{(user.display_name || user.email || "?").charAt(0).toUpperCase()}</span>}<div><strong>{user.display_name || "—"}</strong><span className="admin-user-email">{user.email}</span></div></div></td>
             <td><select className="inp admin-role" value={user.role || "user"} disabled={loading || !!saving} onChange={event => changeRole(user.id, event.target.value)} aria-label={`${tl("Роля")}: ${user.email}`}>{roles.map(role => <option key={role.key} value={role.key}>{tl(role.label)}</option>)}</select></td>
-            <td>{displayName(user.preferred_country, lang, "region")}<small className="admin-cell-note">{tl(user.country_mode === "manual" ? "Ръчно" : "Автоматично")}</small></td>
-            <td>{user.language_mode === "manual" ? displayName(user.language, lang, "language") : tl("Автоматично")}<small className="admin-cell-note">{user.language_mode === "manual" ? tl("Ръчно") : "—"}</small></td>
+            <td title={user.country_mode !== "manual" && user.automatic_country_at ? formatAdminDate(user.automatic_country_at, lang) : undefined}>{displayName(user.country_mode === "manual" ? user.preferred_country : user.automatic_country, lang, "region")}<small className="admin-cell-note">{tl(user.country_mode === "manual" ? "Ръчно" : "Автоматично")}{user.country_mode !== "manual" && user.automatic_country_source === "fallback" ? ` · ${tl("По подразбиране")}` : ""}</small></td>
+            <td title={user.language_mode !== "manual" && user.automatic_language_at ? formatAdminDate(user.automatic_language_at, lang) : undefined}>{displayName(user.language_mode === "manual" ? user.language : user.automatic_language, lang, "language")}<small className="admin-cell-note">{tl(user.language_mode === "manual" ? "Ръчно" : "Автоматично")}{user.language_mode !== "manual" && user.automatic_language_source === "fallback" ? ` · ${tl("По подразбиране")}` : ""}</small></td>
             <td>{user.premium_source ? tl(user.premium_source === "administrator" ? "От администратор" : "Чрез абонамент") : "—"}<details className="admin-billing"><summary>{tl("Абонамент")}: {user.subscription_status || "—"}</summary><dl>{[["План", user.plan_id || "—"], ["Край на периода", formatAdminDate(user.current_period_end, lang)], ["Последна фактура", user.last_invoice_status || "—"]].map(([label, value]) => <div key={label}><dt>{tl(label)}</dt><dd>{value}</dd></div>)}</dl></details></td>
             <td className="admin-date">{formatAdminDate(user.created_at, lang)}</td>
             <td className="admin-date"><time dateTime={user.last_active_at || undefined} title={formatAdminDate(user.last_active_at, lang)}>{recent(user.last_active_at, lang, now, tl)}</time><small className="admin-cell-note">{formatAdminDate(user.last_active_at, lang)}</small></td>

@@ -21,7 +21,7 @@ function fixture(){
   const db=new DatabaseSync(':memory:');db.exec('PRAGMA foreign_keys=ON;');
   // The users administration now reads saved country/language mode and activity.
   db.exec(migration('0002_auth.sql'));db.exec(migration('0003_admin.sql'));db.exec(migration('0029_web_push.sql'));db.exec(migration('0031_premium_billing.sql'));db.exec(migration('0033_public_country_push.sql'));db.exec(migration('0035_notification_hour.sql'));
-  db.exec(migration('0005_language.sql'));db.exec(migration('0045_user_activity.sql'));
+  db.exec(migration('0005_language.sql'));db.exec(migration('0045_user_activity.sql'));db.exec(migration('0046_automatic_user_locale.sql'));
   db.exec(`ALTER TABLE user_profiles ADD COLUMN preferred_country TEXT;
     ALTER TABLE user_profiles ADD COLUMN country_mode TEXT NOT NULL DEFAULT 'auto';
     ALTER TABLE user_profiles ADD COLUMN country_detection_enabled INTEGER NOT NULL DEFAULT 1;

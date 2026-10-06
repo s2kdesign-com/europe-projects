@@ -7,6 +7,9 @@ import '../../app/auth.css';
 import '../../app/admin.css';
 
 const users = Array.from({ length: 76 }, (_, i) => ({ id: 'user-' + i, email: `long.email.address.${i}@example.invalid`, display_name: 'A User With A Long Display Name ' + i, role: i ? 'user' : 'admin', preferred_country: i % 2 ? 'BG' : 'GR', country_mode: i % 2 ? 'auto' : 'manual', language: i % 2 ? 'bg' : 'de', language_mode: i % 2 ? 'auto' : 'manual', created_at: '2026-10-01T12:00:00Z', last_active_at: new Date(Date.now() - i * 3600000).toISOString(), subscription_status: i ? null : 'active', plan_id: 'annual', premium_source: i ? null : 'administrator', current_period_end: Date.now() + 86400000, last_invoice_status: 'paid' }));
+users.forEach(user => Object.assign(user, { automatic_country: 'DE', automatic_country_source: 'cloudflare', automatic_country_at: '2026-10-06T08:00:00Z', automatic_language: 'ro', automatic_language_source: 'browser_locale', automatic_language_at: '2026-10-06T08:00:00Z' }));
+Object.assign(users[3], { automatic_country: null, automatic_language: null });
+Object.assign(users[5], { automatic_country: 'BG', automatic_country_source: 'fallback', automatic_language: 'en', automatic_language_source: 'fallback' });
 const errors = Array.from({ length: 225 }, (_, i) => ({ id: 225 - i, created_at: '2026-10-06T08:30:00Z', source: 'client', path: '/', method: 'GET', message: i === 0 ? 'Uncaught Error: Error invoking postMessage: Java object is gone' : i === 1 ? 'Script error.' : 'A genuine application failure ' + i + ' with a complete error message that should always wrap inside the table instead of being silently truncated', detail: i === 0 ? 'iabjs://navigation_performance_logger_android:1\n at sendDataToNative\n at sendJsBlockingTimeMessage\nUser agent: Synthetic Android test' : 'Original full stack details\n at app.js:14', user_id: 'synthetic-user' }));
 window.fixtureRequests = [];
 window.fixtureFail = null;

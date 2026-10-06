@@ -11,7 +11,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const output = await mkdtemp(path.join(tmpdir(), 'euro-admin-layout-'));
 await build({ entryPoints: [path.join(root, 'test/fixtures/admin-layout.jsx')], bundle: true, outfile: path.join(output, 'fixture.js'), jsx: 'automatic', define: { 'process.env.NODE_ENV': '"production"' }, loader: { '.woff2': 'dataurl' }, plugins: [{ name: 'local-translations', setup(build) {
   build.onLoad({ filter: /i18n[\\/]ui-translate\.js$/ }, () => ({ contents: `
-    const labels={'Потребители':'Users','Потребител':'User','Роля':'Role','Администратор':'Administrator','Премиум':'Premium','Държава':'Country','Език':'Language','Автоматично':'Automatic','Ръчно':'Manual','Обнови':'Refresh','Следваща':'Next','Предишна':'Previous','На страница':'Per page','Страница':'Page','Последна активност':'Last active','Регистриран':'Registered','Подробности':'Details','Изчисти':'Clear','Опитай отново':'Retry','Интеграция на браузъра':'Browser integration'};
+    const labels={'Потребители':'Users','Потребител':'User','Роля':'Role','Администратор':'Administrator','Премиум':'Premium','Държава':'Country','Език':'Language','Автоматично':'Automatic','Ръчно':'Manual','По подразбиране':'Default','Обнови':'Refresh','Следваща':'Next','Предишна':'Previous','На страница':'Per page','Страница':'Page','Последна активност':'Last active','Регистриран':'Registered','Подробности':'Details','Изчисти':'Clear','Опитай отново':'Retry','Интеграция на браузъра':'Browser integration'};
     export const useUiTr=()=>text=>new URLSearchParams(location.search).get('lang')==='bg'?text:labels[text]||text;`, loader: 'js' }));
   build.onLoad({ filter: /i18n[\\/]I18nProvider\.jsx$/ }, () => ({ contents: `export const useLanguage=()=>({lang:new URLSearchParams(location.search).get('lang')||'en'});`, loader: 'js' }));
 } }] });
@@ -39,6 +39,14 @@ try {
   }
   await page.goto(origin + '/?lang=en'); await page.locator('.admin-role').last().waitFor();
   const users = page.locator('section').first(), errors = page.locator('section').nth(1);
+  const row = users.locator('tbody tr');
+  assert.match(await row.nth(0).locator('td').nth(2).innerText(), /Greece\s+Manual/, 'manual country retains precedence over the automatic observation');
+  assert.match(await row.nth(0).locator('td').nth(3).innerText(), /German\s+Manual/);
+  assert.match(await row.nth(1).locator('td').nth(2).innerText(), /Germany\s+Automatic/);
+  assert.match(await row.nth(1).locator('td').nth(3).innerText(), /Romanian\s+Automatic/, 'automatic language is not inferred from the country');
+  assert.match(await row.nth(3).locator('td').nth(2).innerText(), /—\s+Automatic/, 'an unobserved account has no guessed country');
+  assert.match(await row.nth(3).locator('td').nth(3).innerText(), /—\s+Automatic/, 'a legacy language default is not presented as observed');
+  assert.match(await row.nth(5).locator('td').nth(2).innerText(), /Bulgaria\s+Automatic · Default/);
   await users.getByRole('button', { name: 'Next', exact: true }).click();
   await page.waitForFunction(() => document.querySelectorAll('.admin-users-table tbody tr').length === 26);
   await users.locator('.admin-page-size select').selectOption('25');

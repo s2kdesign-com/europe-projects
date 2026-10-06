@@ -12,6 +12,7 @@ db.exec("ALTER TABLE user_profiles ADD COLUMN preferred_country TEXT; ALTER TABL
 const seed = db.prepare('INSERT INTO users(id,email,role,created_at,updated_at,last_login_at) VALUES(?,?,?,?,?,?)');
 for (let i = 0; i < 76; i++) seed.run(`user-${String(i).padStart(3, '0')}`, `user${i}@example.invalid`, i === 0 ? 'admin' : 'user', '2026-10-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z', '2026-10-02T00:00:00.000Z');
 migration('0045_user_activity.sql');
+migration('0046_automatic_user_locale.sql');
 db.exec("INSERT INTO user_profiles(user_id,preferred_country,country_mode,created_at,updated_at) VALUES('user-075','GR','manual','2026-01-01','2026-01-01'); INSERT INTO user_preferences(user_id,language,language_mode,created_at,updated_at) VALUES('user-075','de','manual','2026-01-01','2026-01-01');");
 const prepare = sql => {
   let values = [];
@@ -54,6 +55,39 @@ await recordUserActivity(env, 'user-000'); assert.equal(activity('user-000').las
 assert.equal(activity('user-001').last_active_at, '2026-10-02T00:00:00.000Z', 'other users are untouched');
 assert.equal((await call('/api/activity', 'POST', '', env.APP_URL)).status, 401);
 assert.equal((await call('/api/activity', 'POST', cookie, 'https://hostile.invalid')).status, 403);
+const automatic = { automaticCountry: 'DE', automaticCountrySource: 'cloudflare', automaticLanguage: 'ro', automaticLanguageSource: 'browser_locale' };
+assert.equal((await call('/api/activity', 'POST', cookie, env.APP_URL, automatic)).status, 200);
+const observed = id => db.prepare('SELECT automatic_country,automatic_country_source,automatic_country_at,automatic_language,automatic_language_source,automatic_language_at FROM users WHERE id=?').get(id);
+assert.equal(observed('user-000').automatic_country, 'DE');
+assert.equal(observed('user-000').automatic_language, 'ro', 'country never determines the language');
+assert.equal(observed('user-000').automatic_language_source, 'browser_locale');
+assert.ok(Date.parse(observed('user-000').automatic_country_at));
+assert.equal(observed('user-001').automatic_country, null, 'observations are scoped to the authenticated user');
+const captured = observed('user-000');
+await call('/api/activity', 'POST', cookie, env.APP_URL, automatic);
+assert.deepEqual(observed('user-000'), captured, 'unchanged observations are throttled');
+assert.equal((await call('/api/activity', 'POST', cookie, env.APP_URL, { ...automatic, automaticCountry: 'RO', automaticLanguage: 'de' })).status, 200);
+assert.equal(observed('user-000').automatic_country, 'RO', 'changed resolutions update immediately within the throttle window');
+assert.equal(observed('user-000').automatic_language, 'de');
+const changed = observed('user-000');
+assert.equal((await call('/api/activity', 'POST', cookie, env.APP_URL, { ...automatic, automaticLanguage: 'xx' })).status, 400);
+assert.equal((await call('/api/activity', 'POST', cookie, env.APP_URL, { ...automatic, automaticCountry: 'XX' })).status, 400);
+assert.equal((await call('/api/activity', 'POST', cookie, env.APP_URL, { ...automatic, automaticCountrySource: 'manual' })).status, 400);
+assert.equal((await call('/api/activity', 'POST', cookie, env.APP_URL, null)).status, 200);
+assert.deepEqual(observed('user-000'), changed, 'invalid and legacy payloads cannot erase a saved observation');
+assert.equal((await call('/api/activity', 'POST', '', env.APP_URL, automatic)).status, 401);
+assert.equal((await call('/api/activity', 'POST', cookie, 'https://hostile.invalid', automatic)).status, 403);
+const manualSession = await createSession(env, 'user-075', 'synthetic-browser');
+await call('/api/activity', 'POST', 'evp_session=' + manualSession.token, env.APP_URL, automatic);
+const manualUser = (await listUsersPage(env)).users[0];
+assert.equal(manualUser.preferred_country, 'GR'); assert.equal(manualUser.country_mode, 'manual');
+assert.equal(manualUser.language, 'de'); assert.equal(manualUser.language_mode, 'manual');
+assert.equal(manualUser.automatic_country, 'DE'); assert.equal(manualUser.automatic_language, 'ro');
+const edgeRequest = new Request(env.APP_URL + '/api/activity', { method: 'POST', headers: { cookie, origin: env.APP_URL, 'content-type': 'application/json' }, body: JSON.stringify(automatic) });
+Object.defineProperty(edgeRequest, 'cf', { value: { country: 'BG' } });
+assert.equal((await handleAuth(edgeRequest, env, new URL(edgeRequest.url))).status, 200);
+assert.equal(observed('user-000').automatic_country, 'BG', 'server-observed edge country takes priority');
+assert.equal(observed('user-000').automatic_country_source, 'cloudflare');
 assert.equal((await call('/api/admin/users')).status, 200);
 assert.equal((await (await call('/api/admin/users')).json()).users.length, 50);
 const ordinary = await createSession(env, 'user-001', 'synthetic-browser');
@@ -80,4 +114,4 @@ const consoleError = console.error; let reported = null;
 console.error = (...args) => { reported = args; };
 try { assert.equal((await call('/api/errors', 'POST', '', env.APP_URL, { message: 'genuine failure' })).status, 503); assert.match(JSON.stringify(reported), /genuine failure/); }
 finally { console.error = consoleError; db.close(); }
-console.log('ok - admin pagination, country/language, activity ownership/throttling/logout, exception preservation and persistence failures');
+console.log('ok - admin pagination, automatic country/language persistence and manual preference preservation, activity ownership/throttling/logout, exception preservation and persistence failures');

@@ -10,6 +10,7 @@ import { listChangelog, addFeedback, listFeedback } from "./changelog.js";
 import * as data from "./db.js";
 import { LOCALE_CODES } from "../app/lib/i18n/locales.js";
 import { normalizeCountry } from "../app/lib/country/countries.js";
+import { automaticPreferences, recordAutomaticPreferences } from "./user-environment.js";
 import { handleAdminAI } from "./ai/handlers.js";
 import { handleAIPipeline } from "./ai/pipeline-handlers.js";
 import { getSupportedLanguages, translateBatch } from "./translation.js";
@@ -367,6 +368,15 @@ export async function handleAuth(request, env, url) {
     return ok({ preferredLanguage: language, languageMode: mode });
   }
   if (pathname === "/api/activity" && method === "POST") {
+    // Old clients sent an empty body; keep those activity reports compatible.
+    const text = await request.text();
+    let body = {};
+    if (text) {
+      try { body = JSON.parse(text); } catch { return err("invalid_body", 400); }
+    }
+    const automatic = automaticPreferences(body, request);
+    if (automatic.error) return err(automatic.error, 400);
+    await recordAutomaticPreferences(env, userId, automatic);
     await recordUserActivity(env, userId);
     return ok({});
   }

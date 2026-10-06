@@ -4,11 +4,13 @@ import { afterEach, it, expect, vi } from 'vitest';
 import ActivityReporter from '../app/components/ActivityReporter.jsx';
 import ErrorReporter from '../app/components/ErrorReporter.jsx';
 
-const state = vi.hoisted(() => ({ authenticated: false, pathname: '/', report: vi.fn() }));
+const state = vi.hoisted(() => ({ authenticated: false, pathname: '/', country: 'DE', language: 'ro', report: vi.fn() }));
 vi.mock('../app/hooks/useSession.js', () => ({ useSession: () => ({ authenticated: state.authenticated }) }));
+vi.mock('../app/components/country/CountryProvider.jsx', () => ({ useCountry: () => ({ automaticCountry: state.country, automaticCountrySource: 'cloudflare' }) }));
+vi.mock('../app/components/i18n/I18nProvider.jsx', () => ({ useLanguage: () => ({ automaticLanguage: state.language, automaticLanguageSource: 'browser_locale' }) }));
 vi.mock('next/navigation', () => ({ usePathname: () => state.pathname }));
 vi.mock('../app/services/error-reporting.js', async importOriginal => ({ ...await importOriginal(), reportClientError: state.report }));
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); state.authenticated = false; state.pathname = '/'; state.report.mockClear(); });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); state.authenticated = false; state.pathname = '/'; state.country = 'DE'; state.language = 'ro'; state.report.mockClear(); });
 
 it('only authenticated foreground entry/navigation records activity', async () => {
   const fetch = vi.fn(async () => ({ ok: true })); vi.stubGlobal('fetch', fetch);
@@ -18,6 +20,7 @@ it('only authenticated foreground entry/navigation records activity', async () =
   state.authenticated = true; view.rerender(<ActivityReporter />);
   await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
   expect(fetch.mock.calls[0][0]).toBe('/api/activity');
+  expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ automaticCountry: 'DE', automaticCountrySource: 'cloudflare', automaticLanguage: 'ro', automaticLanguageSource: 'browser_locale' });
   time += 61000;
   state.pathname = '/procedures'; view.rerender(<ActivityReporter />);
   await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
@@ -26,6 +29,19 @@ it('only authenticated foreground entry/navigation records activity', async () =
   state.pathname = '/calendar'; view.rerender(<ActivityReporter />);
   await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
   expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+it('waits for resolution then records changes immediately without waiting a minute', async () => {
+  state.authenticated = true; state.country = null;
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+  const fetch = vi.fn(async () => ({ ok: true })); vi.stubGlobal('fetch', fetch);
+  const view = render(<ActivityReporter />);
+  expect(fetch).not.toHaveBeenCalled();
+  state.country = 'DE'; view.rerender(<ActivityReporter />);
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+  state.language = 'bg'; view.rerender(<ActivityReporter />);
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  expect(JSON.parse(fetch.mock.calls[1][1].body).automaticLanguage).toBe('bg');
 });
 
 it('reports activity persistence failure rather than silently swallowing it', async () => {

@@ -50,4 +50,14 @@ describe('foreground activity', () => {
     const note = createActivityTracker({ send, visible: () => true, now: () => 0, onError });
     await note(); await note(); expect(onError).toHaveBeenCalledTimes(1); expect(send).toHaveBeenCalledTimes(2);
   });
+  it('does not lose a resolution that changes during an in-flight activity update', async () => {
+    let resolve, value = { automaticLanguage: 'ro' };
+    const send = vi.fn().mockImplementationOnce(() => new Promise(done => { resolve = done; })).mockResolvedValue(undefined);
+    const note = createActivityTracker({ send, visible: () => true, context: () => value, now: () => 0, onError: vi.fn() });
+    const pending = note();
+    value = { automaticLanguage: 'de' }; await note();
+    resolve(); await pending;
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[1][0]).toEqual(value);
+  });
 });

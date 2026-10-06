@@ -5,19 +5,29 @@ import { usePathname } from "next/navigation";
 import { useSession } from "../hooks/useSession.js";
 import { createActivityTracker } from "../services/user-activity.js";
 import { reportClientError } from "../services/error-reporting.js";
+import { useCountry } from "./country/CountryProvider.jsx";
+import { useLanguage } from "./i18n/I18nProvider.jsx";
 
 export default function ActivityReporter() {
-  const { authenticated } = useSession();
+  const { authenticated, user } = useSession();
+  const { automaticCountry, automaticCountrySource } = useCountry();
+  const { automaticLanguage, automaticLanguageSource } = useLanguage();
+  const ready = !!automaticCountry && !!automaticLanguage;
+  const context = useRef(null);
+  context.current = { automaticCountry, automaticCountrySource, automaticLanguage, automaticLanguageSource };
   const pathname = usePathname();
   const tracker = useRef(null);
   useEffect(() => {
-    if (!authenticated) return;
+    if (!authenticated || !ready) return;
+    let alive = true;
     const note = createActivityTracker({
-      visible: () => document.visibilityState === "visible",
-      async send() {
+      visible: () => alive && document.visibilityState === "visible",
+      context: () => context.current,
+      async send(value) {
         const response = await fetch("/api/activity", {
           method: "POST", credentials: "same-origin", keepalive: true,
-          headers: { "X-Requested-With": "fetch" },
+          headers: { "X-Requested-With": "fetch", "content-type": "application/json" },
+          body: JSON.stringify(value),
         });
         // An expired session is expected; it must not create an error storm.
         if (!response.ok && response.status !== 401) throw new Error(`Activity update failed (HTTP ${response.status})`);
@@ -32,11 +42,12 @@ export default function ActivityReporter() {
     document.addEventListener("visibilitychange", visible);
     void note();
     return () => {
+      alive = false;
       tracker.current = null;
       events.forEach(event => window.removeEventListener(event, interaction));
       document.removeEventListener("visibilitychange", visible);
     };
-  }, [authenticated]);
-  useEffect(() => { if (tracker.current) void tracker.current(); }, [pathname]);
+  }, [authenticated, ready, user?.id]);
+  useEffect(() => { if (tracker.current) void tracker.current(); }, [pathname, automaticCountry, automaticCountrySource, automaticLanguage, automaticLanguageSource]);
   return null;
 }
